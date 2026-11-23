@@ -1,0 +1,407 @@
+"use client";
+
+// The two report charts with a selector: latency per region (heat map) and
+// the monthly bill per workload (cost curves). Both read the same snapshot
+// as the static charts.
+import { useState } from "react";
+import {
+  REPORT,
+  PROVIDERS,
+  PROVIDER,
+  REGIONS,
+  CHAINS,
+  Figure,
+  Legend,
+  SvgLogo,
+  logScale,
+  costAt,
+  heatColor,
+  fmtMs,
+  fmtUsd,
+  fmtCount,
+  INK,
+  INK_MUTED,
+  INK_FAINT,
+  RULE,
+  type Region,
+} from "./shared";
+
+function Tabs<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="inline-flex flex-wrap border border-rule">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          aria-pressed={o.value === value}
+          className={`px-3 py-1.5 label-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
+            o.value === value ? "bg-ink text-paper" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* The ranking changes with the method, and with the region            */
+/* ------------------------------------------------------------------ */
+
+type MethodKey = "cheap" | "archive" | "getlogs";
+const METHOD_COLS: { key: MethodKey; label: string; note: string }[] = [
+  { key: "cheap", label: "Cheap call", note: "eth_getBlockByNumber" },
+  { key: "archive", label: "Archive read", note: "balance, 5M blocks back" },
+  { key: "getlogs", label: "eth_getLogs", note: "address filter" },
+];
+
+const SCOPES: { value: string; label: string }[] = [
+  { value: "all", label: "All regions" },
+  { value: "us-east", label: "US East" },
+  { value: "eu-west", label: "EU West" },
+  { value: "sgp", label: "Singapore" },
+];
+
+/** A slope chart, because the point is the crossing: the order on a cheap
+ *  call is not the order on an expensive one. Grouped bars would sort by
+ *  provider and hide exactly that.
+ *
+ *  The region selector exists because the crossings are not the same from
+ *  every continent, which is the reviewer's first point taken one step
+ *  further. Until 5 November the capability probe ran in one region and
+ *  this chart was static; it now has a full 24h window in all three. */
+export function MethodSpreadChart() {
+  const M = REPORT.methods;
+  const [scope, setScope] = useState<string>("all");
+  const rowsFor = M.byRegion?.[scope] ?? M.latency;
+  const W = 700;
+  const H = 420;
+  const m = { l: 62, r: 150, t: 34, b: 52 };
+  const y = logScale(2, 500, m.t, H - m.b);
+  const colX = METHOD_COLS.map(
+    (_, i) => m.l + (i * (W - m.l - m.r)) / (METHOD_COLS.length - 1),
+  );
+  const yt = [2, 5, 10, 30, 100, 300];
+  const rows = rowsFor
+    .map((r) => ({ ...r, p: PROVIDER[r.provider] }))
+    .filter((r) => r.p && r.cheap != null);
+
+  // Label placement. Two providers can sit a few pixels apart on a log
+  // scale and each label is two lines, so they would overlap. Place each at
+  // its own last point, then walk down pushing any label too close to the
+  // one above. A leader line keeps a nudged label attached to its dot.
+  const LABEL_GAP = 26;
+  const ends = rows
+    .map((r) => {
+      const keys = METHOD_COLS.map((c) => c.key).filter((k) => r[k] != null);
+      const lastKey = keys[keys.length - 1];
+      const i = METHOD_COLS.findIndex((c) => c.key === lastKey);
+      return { slug: r.provider, x: colX[i], y: y(r[lastKey] as number) };
+    })
+    .sort((a, b) => a.y - b.y);
+  const labelY: Record<string, number> = {};
+  let floor = -Infinity;
+  for (const e of ends) {
+    const ly = Math.max(e.y, floor + LABEL_GAP);
+    labelY[e.slug] = ly;
+    floor = ly;
+  }
+
+  return (
+    <Figure
+      title="The ranking changes with the method"
+      subtitle="The same key asked three ways, from cheapest call to most expensive. A line that crosses another means the two providers swap places. GetBlock has no archive point because it does not serve the call."
+      source={`Source: OpenChainBench rpc-keyed-latency probes, ${M.window} to ${M.asOf}, Ethereum, medians. ${M.regionScope?.note ?? ""}`}
+    >
+      <div className="px-2 pb-3">
+        <Tabs options={SCOPES} value={scope} onChange={setScope} />
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label={`Latency per provider across a cheap call, an archive read and eth_getLogs, ${scope}`}>
+        {yt.map((v) => (
+          <g key={v}>
+            <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke={RULE} strokeDasharray="2 4" />
+            <text x={m.l - 8} y={y(v) + 4} fontSize={11} textAnchor="end" style={{ fill: INK_FAINT }}>
+              {v} ms
+            </text>
+          </g>
+        ))}
+        {METHOD_COLS.map((c, i) => (
+          <g key={c.key}>
+            <text x={colX[i]} y={m.t - 16} fontSize={12} fontWeight={600} textAnchor="middle" style={{ fill: INK }}>
+              {c.label}
+            </text>
+            <text x={colX[i]} y={m.t - 3} fontSize={10} textAnchor="middle" style={{ fill: INK_FAINT }}>
+              {c.note}
+            </text>
+          </g>
+        ))}
+        {rows.map((r) => {
+          const pts = METHOD_COLS.map((c, i) => {
+            const v = r[c.key];
+            return v == null ? null : { x: colX[i], y: y(v), v };
+          });
+          const drawn = pts.filter(Boolean) as { x: number; y: number; v: number }[];
+          const last = drawn[drawn.length - 1];
+          return (
+            <g key={r.provider}>
+              <polyline
+                points={drawn.map((d) => `${d.x},${d.y}`).join(" ")}
+                fill="none"
+                stroke={r.p.color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                opacity={0.75}
+              />
+              {drawn.map((d, i) => (
+                <circle key={i} cx={d.x} cy={d.y} r={4} fill={r.p.color} />
+              ))}
+              {Math.abs(labelY[r.provider] - last.y) > 1 ? (
+                <line x1={last.x + 4} y1={last.y} x2={last.x + 14} y2={labelY[r.provider]} stroke={r.p.color} strokeWidth={1} opacity={0.5} />
+              ) : null}
+              <SvgLogo slug={r.provider} x={last.x + 22} y={labelY[r.provider]} r={8} id={`ms-${scope}-${r.provider}`} />
+              <text x={last.x + 35} y={labelY[r.provider] - 2} fontSize={12} fontWeight={600} style={{ fill: INK }}>
+                {r.p.name}
+              </text>
+              <text x={last.x + 35} y={labelY[r.provider] + 10} fontSize={10} style={{ fill: INK_MUTED }}>
+                {drawn.map((d) => `${fmtMs(d.v)}`).join(" · ")}
+              </text>
+            </g>
+          );
+        })}
+        <text x={(m.l + W - m.r) / 2} y={H - 10} fontSize={11} textAnchor="middle" style={{ fill: INK_MUTED }}>
+          Median round trip, ms (log). Lower is faster.
+        </text>
+      </svg>
+    </Figure>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Latency heat map                                                    */
+/* ------------------------------------------------------------------ */
+
+type Metric = "p50" | "p99" | "cold50";
+const METRICS: { value: Metric; label: string }[] = [
+  { value: "p50", label: "Warm p50" },
+  { value: "p99", label: "Warm p99" },
+  { value: "cold50", label: "Cold p50" },
+];
+
+export function LatencyHeatmap() {
+  const [region, setRegion] = useState<Region>("us-east");
+  const [metric, setMetric] = useState<Metric>("p50");
+  const W = 700;
+  const m = { l: 118, t: 50 };
+  const cw = (W - m.l) / PROVIDERS.length;
+  const ch = 34;
+  const H = m.t + CHAINS.length * ch + 4;
+  const cell = (chain: string, p: string) =>
+    REPORT.http.find((h) => h.chain === chain && h.region === region && h.provider === p);
+  return (
+    <Figure
+      title="Every chain, every provider"
+      subtitle="Round-trip latency in ms for eth_getBlockByNumber (getSlot on Solana), 7-day percentile per cell. The outlined cell is the fastest on that chain. Blank: the provider does not serve that chain from that region."
+      source="Source: OpenChainBench rpc-keyed-latency probes every 120 s, 7 days to 13 Nov 2026 13:07 UTC. BlockMachine since 24 Oct; Alchemy on 7 chains until its Free key capped on 24 Oct."
+    >
+      <div className="flex flex-wrap items-center gap-2 px-2 pb-3">
+        <Tabs options={REGIONS.map((r) => ({ value: r.slug, label: r.name }))} value={region} onChange={setRegion} />
+        <Tabs options={METRICS} value={metric} onChange={setMetric} />
+      </div>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label={`Latency heat map, ${REGIONS.find((r) => r.slug === region)!.name}, ${METRICS.find((mm) => mm.value === metric)!.label}`}>
+          {PROVIDERS.map((p, j) => (
+            <g key={p.slug}>
+              <SvgLogo slug={p.slug} x={m.l + j * cw + cw / 2} y={12} r={10} id={`hm-${p.slug}`} />
+              <text x={m.l + j * cw + cw / 2} y={40} fontSize={12} fontWeight={600} textAnchor="middle" style={{ fill: INK }}>
+                {p.name}
+              </text>
+            </g>
+          ))}
+          {CHAINS.map((c, i) => {
+            const yy = m.t + i * ch;
+            const vals = PROVIDERS.map((p) => cell(c.slug, p.slug)?.[metric]);
+            const present = vals.filter((v): v is number => v !== undefined);
+            const best = present.length ? Math.min(...present) : undefined;
+            return (
+              <g key={c.slug}>
+                <SvgLogo slug={c.slug} x={m.l - 14} y={yy + ch / 2} r={8} id={`hmc-${c.slug}`} />
+                <text x={m.l - 28} y={yy + ch / 2 + 4} fontSize={12} textAnchor="end" style={{ fill: INK_MUTED }}>
+                  {c.name}
+                </text>
+                {PROVIDERS.map((p, j) => {
+                  const v = vals[j];
+                  const x0 = m.l + j * cw;
+                  if (v === undefined)
+                    return <rect key={p.slug} x={x0 + 2} y={yy + 2} width={cw - 4} height={ch - 4} fill={RULE} opacity={0.35} />;
+                  return (
+                    <g key={p.slug}>
+                      <rect
+                        x={x0 + 2}
+                        y={yy + 2}
+                        width={cw - 4}
+                        height={ch - 4}
+                        fill={heatColor(v)}
+                        stroke={v === best ? INK : "none"}
+                        strokeWidth={v === best ? 2 : 0}
+                      />
+                      <text x={x0 + cw / 2} y={yy + ch / 2 + 4.5} fontSize={12.5} fontWeight={v === best ? 700 : 500} textAnchor="middle" style={{ fill: "#0b1220" }}>
+                        {fmtMs(v)}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div className="flex items-center gap-2 px-2 pt-3 text-[11px] text-ink-faint">
+        <span>1 ms</span>
+        <span
+          className="h-2 w-40"
+          style={{ background: `linear-gradient(90deg, ${[1, 3, 8, 25, 80, 300].map((v) => heatColor(v)).join(", ")})` }}
+        />
+        <span>300 ms+</span>
+      </div>
+    </Figure>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Cost curves                                                         */
+/* ------------------------------------------------------------------ */
+
+type Profile = "dapp" | "indexer" | "trace" | "solana-bot";
+const PROFILES: { value: Profile; label: string; note: string }[] = [
+  { value: "dapp", label: "Dapp", note: "Dapp frontend on Ethereum: 40% eth_call, 15% each balances, block number and receipts, 5% each gas estimates, sends and logs." },
+  { value: "indexer", label: "Indexer", note: "Log indexer on Ethereum at archive depth: 50% eth_getLogs, 25% eth_getBlockByNumber, 25% eth_getBlockReceipts." },
+  { value: "trace", label: "Trace", note: "Trace and debug on Ethereum at archive depth: 60% debug_traceTransaction, 20% trace_block, 20% eth_getBlockByNumber." },
+  { value: "solana-bot", label: "Solana bot", note: "Solana trading bot: 40% getAccountInfo, 20% getMultipleAccounts, 15% getLatestBlockhash, 15% sendTransaction, 10% simulateTransaction. Dwellir and BlockMachine do not price Solana." },
+];
+
+export function CostCurves() {
+  const [profile, setProfile] = useState<Profile>("dapp");
+  const W = 700;
+  const H = 380;
+  const m = { l: 56, r: 176, t: 16, b: 44 };
+  const x = logScale(1e6, 1e9, m.l, W - m.r);
+  const y = logScale(5, 40000, H - m.b, m.t);
+  const curves = REPORT.cost[profile];
+  const xt = [1e6, 1e7, 1e8, 1e9];
+  const yt = [10, 100, 1000, 10000];
+  const marks = [1e7, 1e8, 1e9];
+  const present = PROVIDERS.filter((p) => curves[p.slug]);
+  // End labels sit at each line's last served value; nudge apart so they never overlap.
+  const ends = present
+    .map((p) => {
+      const pts = curves[p.slug].filter((pt) => pt[1] !== null);
+      const last = pts[pts.length - 1];
+      return { slug: p.slug, x: x(last[0]), y: y(last[1] as number), v: last[1] as number, r: last[0] };
+    })
+    .sort((a, b) => a.y - b.y);
+  const labelled = ends.filter((e) => e.r >= 1e9);
+  for (let i = 1; i < labelled.length; i++)
+    if (labelled[i].y - labelled[i - 1].y < 14) labelled[i].y = labelled[i - 1].y + 14;
+  const note = PROFILES.find((p) => p.value === profile)!.note;
+  return (
+    <Figure
+      title="Monthly bill by volume"
+      subtitle="Cheapest paid plan of each provider that can serve the volume, list prices. Each step is a plan change. A line ending in a cross stops at the volume where the provider's throughput cap is reached. Lines at the same price overlap: on the dapp mix four providers start at $49."
+      source="Source: OpenChainBench rpc-cost, bench 282, catalogue of 22 Oct 2026. The calculator on the bench page prices any volume from 100k to 5B."
+    >
+      <div className="flex flex-wrap items-center gap-2 px-2 pb-2">
+        <Tabs options={PROFILES.map(({ value, label }) => ({ value, label }))} value={profile} onChange={setProfile} />
+      </div>
+      <p className="px-2 pb-2 text-[12px] text-ink-muted">{note}</p>
+      <Legend slugs={present.map((p) => p.slug)} />
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label={`Monthly bill by volume, ${PROFILES.find((pp) => pp.value === profile)!.label}`}>
+        {xt.map((v) => (
+          <g key={`x${v}`}>
+            <line x1={x(v)} x2={x(v)} y1={m.t} y2={H - m.b} stroke={RULE} strokeDasharray={marks.includes(v) ? "0" : "2 4"} opacity={marks.includes(v) ? 0.9 : 1} />
+            <text x={x(v)} y={H - m.b + 18} fontSize={11} textAnchor="middle" style={{ fill: INK_FAINT }}>
+              {fmtCount(v)}
+            </text>
+          </g>
+        ))}
+        {yt.map((v) => (
+          <g key={`y${v}`}>
+            <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke={RULE} strokeDasharray="2 4" />
+            <text x={m.l - 8} y={y(v) + 4} fontSize={11} textAnchor="end" style={{ fill: INK_FAINT }}>
+              {fmtUsd(v)}
+            </text>
+          </g>
+        ))}
+        <text x={(m.l + W - m.r) / 2} y={H - 6} fontSize={11} textAnchor="middle" style={{ fill: INK_MUTED }}>
+          Requests a month (log)
+        </text>
+        {present.map((p) => {
+          const segs: string[] = [];
+          let cur = "";
+          const pts = curves[p.slug];
+          for (let i = 0; i < pts.length; i++) {
+            const [r, usd] = pts[i];
+            if (usd === null) {
+              if (cur) segs.push(cur);
+              cur = "";
+              continue;
+            }
+            const prev = pts[i - 1];
+            // The bill is affine in requests between two plan corners, which is a
+            // curve on log-log axes: sample it instead of drawing a straight chord.
+            if (cur && prev && prev[1] !== null) {
+              for (let k = 1; k < 16; k++) {
+                const rr = prev[0] + ((r - prev[0]) * k) / 16;
+                const uu = prev[1] + ((usd - prev[1]) * k) / 16;
+                cur += `L${x(rr).toFixed(1)},${y(uu).toFixed(1)}`;
+              }
+            }
+            cur += `${cur ? "L" : "M"}${x(r).toFixed(1)},${y(usd).toFixed(1)}`;
+          }
+          if (cur) segs.push(cur);
+          return (
+            <g key={p.slug}>
+              {segs.map((d, i) => (
+                <path key={i} d={d} fill="none" stroke={p.color} strokeWidth={2.4} strokeLinejoin="round" />
+              ))}
+              {marks.map((r) => {
+                const v = costAt(curves[p.slug], r);
+                if (v === null) return null;
+                return (
+                  <circle key={r} cx={x(r)} cy={y(v)} r={3.5} fill={p.color} stroke="var(--color-surface)" strokeWidth={1.5}>
+                    <title>{`${PROVIDER[p.slug].name}, ${fmtCount(r)} requests: $${Math.round(v).toLocaleString("en-US")}`}</title>
+                  </circle>
+                );
+              })}
+            </g>
+          );
+        })}
+        {ends.map((e) =>
+          e.r < 1e9 ? (
+            <g key={e.slug}>
+              <path d={`M${e.x - 4},${y(e.v) - 4}L${e.x + 4},${y(e.v) + 4}M${e.x - 4},${y(e.v) + 4}L${e.x + 4},${y(e.v) - 4}`} stroke={PROVIDER[e.slug].color} strokeWidth={2} />
+              <title>{`${PROVIDER[e.slug].name} cannot serve more than about ${fmtCount(e.r)} requests a month on this workload`}</title>
+            </g>
+          ) : (
+            <g key={e.slug}>
+              <line x1={W - m.r + 6} x2={W - m.r + 14} y1={e.y} y2={e.y} stroke={PROVIDER[e.slug].color} strokeWidth={3} />
+              <SvgLogo slug={e.slug} x={W - m.r + 22} y={e.y} r={6} id={`cc-${e.slug}`} />
+              <text x={W - m.r + 31} y={e.y + 4} fontSize={11} fontWeight={600} style={{ fill: INK }}>
+                {PROVIDER[e.slug].name} ${Math.round(e.v).toLocaleString("en-US")}
+              </text>
+            </g>
+          ),
+        )}
+      </svg>
+    </Figure>
+  );
+}

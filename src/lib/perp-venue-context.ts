@@ -212,7 +212,7 @@ export function benchRowsForVenue(
       benchSlug: "perp-fees-at-size",
       label: "Fee at $100k",
       blurb:
-        "All-in cost at $100k notional (taker + spread + impact), 24h average. Oracle venues hold flat regardless of size.",
+        "All-in cost at $100k notional (taker + spread + impact), 24h average.",
       rank: feesAtSize?.rank ?? null,
       cohortSize: feesAtSize?.total ?? cohortSize,
       value: feesAtSize?.value != null ? fmtBps(feesAtSize.value) : null,

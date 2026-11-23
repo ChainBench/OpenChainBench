@@ -490,9 +490,10 @@ const fetchRpcHubCached = unstable_cache(
   // v10: the snapshot carries the WebSocket cohort.
   // v11: the snapshot carries p95 and the per-region tails; a v10 entry would
   // serve a shape without them for its whole TTL.
-  // v12: lockstep with RPC_HUB_KEY v7. The WebSocket cohort is a share of
-  // first pushes ranked high to low; a v11 entry ranks the old lag.
-  ["rpc-hub-cohort-v12", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v12: provider names read Quicknode, not QuickNode.
+  // v13: lockstep with RPC_HUB_KEY v7. The WebSocket cohort is a share of
+  // first pushes ranked high to low; a v12 entry ranks the old lag.
+  ["rpc-hub-cohort-v13", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 

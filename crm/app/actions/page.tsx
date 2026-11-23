@@ -2,9 +2,13 @@ import { Shell } from "@/components/shell";
 import { Delta, Empty, fmtInt, Kpi } from "@/components/ui";
 import { parseWindow } from "@/lib/window";
 import { readSnapshot, trafficFor } from "@/lib/snapshot";
+import type { OutboundRow } from "@/lib/traffic";
 
 export const dynamic = "force-dynamic";
 const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
+
+const COOKIELESS_HINT =
+  "Clicks counted without the cookie the site's analytics script sets: JavaScript or cookies off, a link opened before the page finished loading or straight from another site, or a robot posing as a browser. A robot that forges the cookie is not in this column.";
 
 const ACTION_LABEL: Record<string, string> = {
   outbound_click: "Outbound clicks",
@@ -47,36 +51,8 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
       <section className="mt-6 grid gap-3 md:grid-cols-2">
         <div className="panel p-4">
           <p className="label">{`Where visitors go, ${w.label} (outbound clicks by host)`}</p>
-          {outbound.length > 0 ? (
-            <table className="data mt-2">
-              <thead>
-                <tr>
-                  <th>Host</th>
-                  <th className="num">Clicks</th>
-                  <th className="num">{w.deltaLabel}</th>
-                  <th className="num">Visitors</th>
-                  <th>From</th>
-                </tr>
-              </thead>
-              <tbody>
-                {outbound.map((o) => (
-                  <tr key={o.host}>
-                    <td className="mono">{o.host}</td>
-                    <td className="num mono">{fmtInt(o.clicks)}</td>
-                    <td className="num mono">
-                      <Delta now={o.clicks} prev={o.prevClicks} />
-                    </td>
-                    <td className="num mono">{fmtInt(o.visitors)}</td>
-                    <td className="mono truncate" style={{ maxWidth: 200, color: "var(--muted)" }} title={o.topPage}>
-                      {o.topPage}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <Empty text="No outbound click recorded yet." />
-          )}
+          <OutboundTable rows={outbound} deltaLabel={w.deltaLabel} />
+          <UncheckedNote rows={outbound} />
         </div>
         <div className="panel p-4">
           <p className="label">{`What gets copied, ${w.label}`}</p>
@@ -165,5 +141,51 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
         )}
       </section>
     </Shell>
+  );
+}
+
+function OutboundTable({ rows, deltaLabel }: { rows: OutboundRow[]; deltaLabel: string }) {
+  if (rows.length === 0) return <Empty text="No outbound click recorded yet." />;
+  return (
+    <table className="data mt-2">
+      <thead>
+        <tr>
+          <th>Host</th>
+          <th className="num">Clicks</th>
+          <th className="num">{deltaLabel}</th>
+          <th className="num">Visitors</th>
+          <th className="num" title={COOKIELESS_HINT}>
+            No analytics cookie
+          </th>
+          <th>From</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((o) => (
+          <tr key={o.host}>
+            <td className="mono">{o.host}</td>
+            <td className="num mono">{fmtInt(o.clicks)}</td>
+            <td className="num mono">
+              <Delta now={o.clicks} prev={o.prevClicks} />
+            </td>
+            <td className="num mono">{fmtInt(o.visitors)}</td>
+            <td className="num mono">{fmtInt(o.cookielessClicks)}</td>
+            <td className="mono truncate" style={{ maxWidth: 200, color: "var(--muted)" }} title={o.topPage}>
+              {o.topPage}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function UncheckedNote({ rows }: { rows: OutboundRow[] }) {
+  const unchecked = rows.reduce((sum, o) => sum + o.uncheckedClicks, 0);
+  if (unchecked === 0) return null;
+  return (
+    <p className="mt-2 text-xs" style={{ color: "var(--warn)" }}>
+      {`${fmtInt(unchecked)} of these clicks were counted while the repeat filter was unavailable, so a double click among them may count twice.`}
+    </p>
   );
 }

@@ -1,0 +1,222 @@
+# OpenChainBench. Bench № 313
+
+slug: token-sellability
+number: "313"
+title: "Which aggregator routes you into a token you cannot sell"
+seo_title: "Which aggregator routes you into an unsellable token"
+seo_description: "Aggregators on Robinhood Chain ranked by the share of failed-exit tokens they still return a route into, simulated on-chain at two timings so a cooldown is not read as a trap."
+subtitle: Share of the tokens whose simulated sale reverted that each aggregator still returns a route into, counted by distinct token over 24h.
+
+category: Aggregators
+status: live
+metric: Routed into failed exits
+unit: pct
+higher_is_better: false
+row_noun: { one: aggregator, many: aggregators }
+
+# The reliability column would read as uptime on a board where the figure is
+# already a share of a population.
+ledger_reliability: false
+zero_is_a_value: true
+
+disclaimer: |
+  This page reports a simulation, not an intention. A row says that a sale of the token, from an address funded for the purpose, reverted at the block stated, on the route a live aggregator returned. A reverted sale covers honeypots, thin liquidity and paused contracts alike, and this page does not separate them. It does not say the token is a scam or that its authors meant harm. The method is reproducible with a free RPC: buy, approve and sell in one eth_simulateV1 on a live aggregator route.
+
+seo_intro: |
+  An aggregator can hold the best quote on a token nobody can sell out of,
+  and a quote leaderboard would score that as quality. This page asks the
+  other question. For tokens that actually moved on Robinhood Chain in the
+  last few minutes it buys, approves and sells in a single simulated request,
+  keeps the ones whose sale failed, and then puts those same tokens back to
+  every aggregator. A row is an aggregator, and its figure is the share of
+  that cohort it still returned a route into.
+
+abstract: |
+  Each sweep takes the contracts that emitted a Transfer in a recent window,
+  keeps those an aggregator will quote in both directions, and simulates the
+  round trip with eth_simulateV1. State carries between the calls, so the buy
+  funds the sale and no storage slot has to be guessed. Guessing the balances
+  slot is the usual method and it fails silently on any non-standard layout,
+  which is exactly the population under test.
+
+  Nothing here rests on a list. The ground truth is computed from the chain
+  on every sweep, including the control.
+
+methodology:
+  - "Two timings. Selling in the same block as the buy holds the market still but trips every anti-bot cooldown, which is often an honest protection. The delayed timing sells 30 minutes later: 149 empty blocks, which is 151 blocks and 150 steps of the 12 seconds the node gives an empty block whatever the chain's own block time. A token that fails same-block and passes delayed is NOT a honeypot and is never counted as one. The two have yet to disagree about one token."
+  - "A failed exit is counted against an aggregator only once a second consecutive sweep finds the same thing, with no sale in between, and that applies to a token we have never sold as much as to one we have. One observation is one sample. A failure that reverses was the instrument: 39 of 657 tokens did exactly that in a day, the chain's own wrapped ether among them."
+  - "SushiSwap supplies the routes this probe signs and is therefore not ranked. A token only enters the cohort if SushiSwap quoted a way into it, so scoring SushiSwap would score it on a population it selected: it quoted 98.6% of the cohort on 2026-11-05, which is what that construction produces."
+  - "The exit is tested on the route the token was bought through, and on that route only. A sale that succeeds proves a token can be sold; a sale that reverts does not prove no route exists, because another aggregator's path may clear where this one did not. Read a row as how often an aggregator routed into a token whose exit failed, not as proof of a trap."
+  - "A control token runs first on every sweep, not occasionally. If the control cannot be sold, the sweep measured the probe rather than the tokens and every verdict in it is discarded. This caught a broken run on 2026-11-03 that would otherwise have named two tokens as unsellable."
+  - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
+  - "What the exit is WORTH is recorded, not counted. An earlier version called a token unsellable when its only route out was quoted under a tenth of the stake, which put the chain's own stablecoin in the cohort: USDG was quoted 4.08% and the sale delivered 4.08%, exactly as promised. Every non-reverting exit measured delivered 100.0% of its quote, because the route carries its own minimum output. A thin pool priced honestly is not a failed exit."
+  - "Not every row has to rest on the same number of tokens, and the Tokens asked column is there to show it. LI.FI is the tight one: it answers a request and then asks for several minutes, so it is sent only the failed tokens rather than the whole sweep. Read any row whose column is below the others as the same calculation on less evidence, which is a weaker claim rather than a different one."
+  - "A score is read against the Quotes overall column, never alone. An aggregator that quotes 98% of every token examined will route into nearly every failed one without selecting anything, so its figure is a fact about coverage. The reading worth having is the gap between the two, and a row whose score sits ABOVE its own coverage is quoting failed tokens more often than it quotes."
+  - "A refusal is graded, because two opposite claims were being written as one. Screened out means the reason names the TOKEN: a deny list, a screen, an impact guard. No market means it names the market. A router that screens is protecting you; one with no pool is simply absent, and the score alone could not tell them apart."
+  - "Routed with a reservation counts answers that carry a route AND a caveat the aggregator states itself. It is a column and never the score, because only one provider publishes such a field and ranking on it would rank how talkative an API is. Measured here it is specific and not sensitive: it fired on 3 of 9 failed tokens and on 0 of 12 the same sweeps sold."
+  - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
+  - "The cohort is tokens that emitted a Transfer in the window, not new launches. The event that announces a new token on this chain is not identified, and guessing it would bias the sample towards whichever launchpad was guessed. Tokens that moved is a weaker claim and a true one."
+  - "Every probe buys with 0.02 of the chain's native coin and sells 99% of whatever the buy actually delivered, so a rounding difference can never read as a refusal. The size is part of the result: of seven tokens whose round trip returned almost nothing at this size, four returned more than a tenth at 0.002 and six at 0.0002. A reverted sale does not move with size; what the exit is worth does."
+  - "The figure counts DISTINCT tokens over 24h, not questions. A token that stays in the cohort for twenty sweeps counts once, so the rate follows how common a failed exit is rather than how long one token lingers, and it survives a restart and a change in how many tokens a sweep examines. A row under a tenth of the expected tokens is withheld rather than published."
+  - "A row with no questions at all publishes nothing rather than zero. Zero is the best score on this board and has to be earned by declining, never inherited by not being asked."
+  - "Measured against a route a user would really sign, taken from a live aggregator response rather than hand-built calldata. Simulating calldata we encoded ourselves would test the encoder, not the token."
+
+findings:
+  - "Tokens that take your money and will not give it back are rare but not absent, and a quote leaderboard cannot see them: the best price on something unsellable still reads as the best price."
+  - "Refusing to route is a behaviour this board can see and a price board cannot. One router screens the token before it polls anyone, another keeps a deny list, and on a quote leaderboard both read as missing coverage. Refusing is not the same as ranking well, though: an aggregator earns a low figure here by declining the specific tokens whose exit failed, not by declining in general, and the two do not always go together."
+  - "The delayed sale is a partial guard. It catches a cooldown written against the clock, because the empty blocks move the timestamp 30 minutes. It cannot catch one written against the block height: a contract returning NUMBER inside this simulation reads the same frozen value in the buy block and the exit block, so a height-based timer reverts at both timings and looks like a trap. The guard stays for the half it covers."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/token-sellability
+
+expected_n: 120
+
+prometheus:
+  window: 24h
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 3600
+
+dimension_labels:
+  tier: Sell attempted
+
+# The selector decides WHICH tokens count as unsellable, and therefore what
+# each aggregator is scored against. Delayed is the default because it is the
+# fair reading: a token blocked only in the same block has an anti-bot
+# cooldown, not a trap, and counting those would inflate every row.
+aggregate_filters: { tier: delayed }
+dimensions:
+  tier:
+    - { value: delayed,    label: "30 minutes later" }
+    - { value: same_block, label: "In the same block" }
+
+ledger_columns:
+  - { label: "Routed in", slot: p50 }
+  - { label: "Tokens asked", panel: asked }
+  - { label: "Screened out", panel: screened }
+  - { label: "No market", panel: no_liquidity }
+  - { label: "With a reservation", panel: reserved }
+  - { label: "Quotes overall", panel: coverage }
+
+metric_panels:
+  - id: asked
+    label: Tokens asked
+    description: Distinct tokens from the failed-exit cohort this aggregator answered about over the same 24 hours as its score, so it is the denominator that score divides by. An aggregator that answered nothing is absent rather than scored zero, because zero is the best score here.
+    metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_asked_token{rule="reverts-v2"}[24h])))
+    label_key: provider
+    unit: count
+    higher_is_better: true
+    tab: false
+  - id: coverage
+    label: Quotes overall
+    description: "What it quotes in GENERAL, across every token examined and not just the failed ones. Read the score against this: a router that quotes almost everything routes into almost every trap without selecting, and one whose score sits above this line quotes traps more than it quotes."
+    # The selector the worker injects goes into the FIRST brace of the
+    # metric, or is appended at the end when there is none. With no brace
+    # here the appended `{provider="..."}` landed after the closing paren
+    # of a composite expression, which Prometheus answers 400 to, so this
+    # panel published nothing for anybody while the other four filled.
+    # The brace is on the numerator on purpose: the denominator stays
+    # per-provider through `sum by (provider)` and the division matches
+    # on that label, so each row still divides by its OWN surveys.
+    metric: 100 * sum by (provider) (avg_over_time(token_sellability_quoted{benchmark="token-sellability"}[24h])) / (sum by (provider) (avg_over_time(token_sellability_surveyed[24h])) > 0)
+    label_key: provider
+    unit: pct
+    # Coverage, and more of it is better AS COVERAGE. The score is the column
+    # where lower wins; this one is the line it is read against, and marking
+    # it lower-is-better told the reader that quoting less is a virtue.
+    higher_is_better: true
+  - id: screened
+    label: Screened out
+    description: "Distinct tokens from the failed-exit cohort this aggregator refused with a reason that names the TOKEN: a deny list, a screen, an impact guard. Higher is better here, unlike the score: it is the router protecting you."
+    metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_screened_token{rule="reverts-v2"}[24h])))
+    label_key: provider
+    unit: count
+    higher_is_better: true
+  - id: no_liquidity
+    label: No market
+    description: Distinct tokens it returned no route for with a reason that names the MARKET rather than the token. Not a judgement about the token and not a protection, just an absence of liquidity on this route.
+    metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_no_liquidity_token{rule="reverts-v2"}[24h])))
+    label_key: provider
+    unit: count
+    higher_is_better: false
+  - id: reserved
+    label: Routed with a reservation
+    description: Distinct tokens it routed into while attaching a reservation of its own. Only Trnch publishes one today, as a confidence about pricing rather than a verdict on the token, so read a zero as silence and not as certainty.
+    metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_reserved_token{rule="reverts-v2"}[24h])))
+    label_key: provider
+    unit: count
+    # Attaching a caveat is better than attaching none, so more is better.
+    # The previous direction said the opposite: that warning you less wins.
+    higher_is_better: true
+
+providers:
+
+  - slug: kyberswap
+    name: KyberSwap
+    tier: delayed
+    tag: No auth, per chain aggregator engine
+    formula: "Share of the tokens whose sale reverted when attempted 30 minutes after the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="kyberswap",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="kyberswap",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="kyberswap",tier="delayed"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="kyberswap",tier="delayed"}[24h])))
+
+  - slug: paraswap
+    name: ParaSwap
+    tier: delayed
+    tag: Trades as Velora, no key
+    formula: "Share of the tokens whose sale reverted when attempted 30 minutes after the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="paraswap",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="paraswap",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="paraswap",tier="delayed"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="paraswap",tier="delayed"}[24h])))
+
+  - slug: lifi
+    name: LI.FI
+    tier: delayed
+    tag: Cross-chain relayer
+    formula: "Share of the tokens whose sale reverted when attempted 30 minutes after the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="lifi",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="delayed"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="delayed"}[24h])))
+
+  - slug: trnch
+    name: Trnch
+    tier: delayed
+    tag: Screens the token with its own agent before polling routers
+    formula: "Share of the tokens whose sale reverted when attempted 30 minutes after the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="trnch",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="trnch",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="trnch",tier="delayed"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="trnch",tier="delayed"}[24h])))
+
+  - slug: kyberswap-same-block
+    name: KyberSwap
+    tier: same_block
+    tag: No auth, per chain aggregator engine
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="kyberswap",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="kyberswap",tier="same_block"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="kyberswap",tier="same_block"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="kyberswap",tier="same_block"}[24h])))
+
+  - slug: paraswap-same-block
+    name: ParaSwap
+    tier: same_block
+    tag: Trades as Velora, no key
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="paraswap",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="paraswap",tier="same_block"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="paraswap",tier="same_block"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="paraswap",tier="same_block"}[24h])))
+
+  - slug: lifi-same-block
+    name: LI.FI
+    tier: same_block
+    tag: Cross-chain relayer
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="lifi",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="same_block"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="same_block"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="same_block"}[24h])))
+
+  - slug: trnch-same-block
+    name: Trnch
+    tier: same_block
+    tag: Screens the token with its own agent before polling routers
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    queries:
+      p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="trnch",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="trnch",tier="same_block"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="trnch",tier="same_block"}[24h]))) > 0)
+      sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="trnch",tier="same_block"}[24h])))

@@ -149,4 +149,40 @@ describe("an unranked row keeps its measured value", () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  test("an unranked row is not also declared to have answered", () => {
+    // Absent from the ORDER and absent from the DATA are two different
+    // absences. The loop cleared `unresponsive` and forced
+    // `availability: "live"` for every labelled row, so declaring a provider
+    // unranked also declared it responsive: a row that had returned nothing
+    // kept the zeros it arrived with and published them.
+    //
+    // Bench 313 put LI.FI at 0% that way on 2026-11-06, with no asked_token
+    // and no routed_token series in Prometheus at all, on a board where
+    // lower is better and 0 is the best score a row can hold. The unranked
+    // label kept it out of first place; it did not keep the 0 off the page.
+    //
+    // Asserted on the source because the loop sits inside loadBenchmark
+    // behind a live Prometheus fetch. What is worth pinning is that the
+    // promotion is conditional at all.
+    const loop = SRC.slice(
+      SRC.indexOf("if (unrankedBySlug.size > 0)"),
+      SRC.indexOf("// Per-chain leaders/trailers"),
+    );
+    expect(loop.length).toBeGreaterThan(0);
+    // The label is unconditional: not being ranked is a property of the
+    // provider, whatever the window holds.
+    expect(loop).toContain("r.unrankedLabel = entry.label;");
+    // The promotion is not.
+    const promote = loop.indexOf('r.availability = "live";');
+    const guard = loop.indexOf("r.successRate");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(promote);
+    for (const line of ["r.unresponsive = undefined;", 'r.availability = "live";']) {
+      const at = loop.indexOf(line);
+      expect(at).toBeGreaterThan(-1);
+      // Inside the guarded branch, which opens after the reading test.
+      expect(loop.lastIndexOf("if (read)", at)).toBeGreaterThan(guard);
+    }
+  });
 });

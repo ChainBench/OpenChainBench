@@ -220,6 +220,7 @@ function variantPath(slug: string, f: BenchmarkFilters): string {
   if (f.kind) qs.set("kind", f.kind);
   if (f.venue) qs.set("venue", f.venue);
   if (f.tier) qs.set("tier", f.tier);
+  if (f.fees) qs.set("fees", f.fees);
   return `/api/bench/${slug}/variant${qs.size ? `?${qs.toString()}` : ""}`;
 }
 

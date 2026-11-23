@@ -30,6 +30,8 @@ methodology:
 faq:
   - q: "Which Sonic RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
+  - q: "Is the official Sonic RPC the fastest one?"
+    a: "Not necessarily, and this page says which it is: the chain-official endpoint measures {{p50:sonic-official}} while {{best_name}} leads the board at {{best_p50}}. An official endpoint is run for correctness and reach rather than for the lowest median from three probe regions, so a third-party gateway often answers sooner. Both figures come from the same call at the same cadence, so they are comparable."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

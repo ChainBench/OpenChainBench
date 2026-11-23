@@ -18,6 +18,8 @@ const NOT_SERVED: Record<string, string> = {
   // holds on every profile and size tab (see NOT_SERVED_ON_EVERY_VIEW).
   "wallet-cost": "no self-serve price for this app size",
   "server-wallet-cost": "no self-serve price for this workload",
+  // CDP is Base only, ZeroDev stops at 50,000 operations: a product fact.
+  "paymaster-cost": "no self-serve price on this chain at this volume",
 };
 
 /**
@@ -30,7 +32,7 @@ const NOT_SERVED: Record<string, string> = {
  * rpc-cost is not here because its label names the Ethereum dapp mix, which
  * is false on its Solana tab.
  */
-const NOT_SERVED_ON_EVERY_VIEW = new Set(["wallet-cost", "server-wallet-cost"]);
+const NOT_SERVED_ON_EVERY_VIEW = new Set(["wallet-cost", "server-wallet-cost", "paymaster-cost"]);
 
 export function notServedOnEveryView(benchSlug: string): boolean {
   return NOT_SERVED_ON_EVERY_VIEW.has(benchSlug);

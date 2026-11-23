@@ -14,19 +14,21 @@ import (
 // or a public list; this harness never signs or sends anything, holds no
 // key and has no wallet, so nothing it does can spend money.
 //
-// Costs are histograms rather than gauges because the question a board
-// asks is "what does this usually cost over a day", and a gauge holds only
-// the last tick. Buckets are chosen around the costs actually measured on
-// 2026-10-25: a BTC round trip through Zcash on Maya came back at 325 bps
-// with a 0.02 % spread over five samples, so the interesting range is tens
-// to low hundreds of bps and the tail needs room for a thin pool. A single
-// populated bucket makes a percentile a constant of the bucket layout
-// rather than a measurement, which is a defect this repo has shipped
-// before, so the grid is fine where the mass is.
+// Costs are gauges, not histograms, and the choice is not cosmetic: a
+// Histogram exposes _bucket, _sum and _count and never a series under its
+// own name, so a quantile_over_time on the metric name matches nothing and
+// every row renders empty. That is how the first version of this file would
+// have published a board with a title and no numbers.
+//
+// A gauge sampled each tick and quantiled over 24h is the pattern the
+// sibling cost bench already uses (rwa_depth_cost_100k_bps), and it keeps
+// the published percentile a property of the samples instead of a property
+// of a bucket grid chosen by hand. Each (rail, asset, bucket, region) tuple
+// is its own series, so one gauge per tuple loses nothing.
 var (
-	roundTripBps *prometheus.HistogramVec
-	roundTripSec *prometheus.HistogramVec
-	exitCostBps  *prometheus.HistogramVec
+	roundTripBps *prometheus.GaugeVec
+	roundTripSec *prometheus.GaugeVec
+	exitCostBps  *prometheus.GaugeVec
 
 	// Delivery capability is not a cost, it is a yes or no with a reason.
 	// 1 means a valid shielded destination was accepted for that rail and
@@ -40,21 +42,29 @@ var (
 	// The Monero maker book is an over-the-counter order book, not a quote
 	// rail, so it gets its own family and must never share a ranking with
 	// the three above.
-	xmrMakers     prometheus.Gauge
-	xmrDispersion prometheus.Gauge
-	xmrBestPrice  prometheus.Gauge
-	xmrMinSize    prometheus.Gauge
-	xmrMaxSize    prometheus.Gauge
+	// One family for every peer-to-peer book, keyed by venue and coin.
+	// These were unlabelled singletons, which is exactly why a board could
+	// not be built on them: a bench needs rows keyed by a label, and an
+	// unlabelled gauge is one row at best.
+	bookMakers     *prometheus.GaugeVec
+	bookOffers     *prometheus.GaugeVec
+	bookPairs      *prometheus.GaugeVec
+	bookSize       *prometheus.GaugeVec
+	bookDispersion *prometheus.GaugeVec
+	bookBestPrice  *prometheus.GaugeVec
+	bookMinSize    *prometheus.GaugeVec
+	bookMaxSize    *prometheus.GaugeVec
 
 	// Health. A board that cannot tell "the rail is slow" from "our prober
 	// failed" publishes the prober's health as the provider's, which this
 	// repo has also shipped before.
-	probeTotal   *prometheus.CounterVec
-	lastSuccess  *prometheus.GaugeVec
-	poolDepth    *prometheus.GaugeVec
-	quoteOut     *prometheus.GaugeVec
-	quoteEta     *prometheus.GaugeVec
-	registerOnce bool
+	probeTotal    *prometheus.CounterVec
+	lastSuccess   *prometheus.GaugeVec
+	poolDepth     *prometheus.GaugeVec
+	quoteOut      *prometheus.GaugeVec
+	streamSeconds *prometheus.GaugeVec
+	quoteEta      *prometheus.GaugeVec
+	registerOnce  bool
 )
 
 func initMetrics() {
@@ -63,25 +73,19 @@ func initMetrics() {
 	}
 	registerOnce = true
 
-	bpsBuckets := []float64{5, 10, 25, 50, 100, 150, 200, 300, 400, 600, 900, 1500, 3000}
-	secBuckets := []float64{30, 60, 120, 300, 600, 900, 1800, 3600, 7200}
-
-	roundTripBps = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "privacy_round_trip_bps",
-		Help:    "Basis points lost going from a liquid asset into a privacy asset and back, from two chained quotes.",
-		Buckets: bpsBuckets,
+	roundTripBps = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_round_trip_bps",
+		Help: "Basis points lost going from a liquid asset into a privacy asset and back, from two chained quotes.",
 	}, []string{"rail", "asset", "bucket", "region"})
 
-	roundTripSec = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "privacy_round_trip_seconds",
-		Help:    "Wall-clock seconds the two legs of the round trip are quoted to take, in plus out.",
-		Buckets: secBuckets,
+	roundTripSec = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_round_trip_seconds",
+		Help: "Seconds the two legs of the round trip are quoted to take, in plus out.",
 	}, []string{"rail", "asset", "bucket", "region"})
 
-	exitCostBps = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "privacy_exit_cost_bps",
-		Help:    "Basis points lost selling a fixed notional of a privacy asset back into a liquid one.",
-		Buckets: bpsBuckets,
+	exitCostBps = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_exit_cost_bps",
+		Help: "Basis points lost selling a fixed notional of a privacy asset back into a liquid one.",
 	}, []string{"rail", "asset", "bucket", "region"})
 
 	shieldedAccepted = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -99,26 +103,39 @@ func initMetrics() {
 		Help: "Refusals of a shielded destination, by the reason the rail gave.",
 	}, []string{"rail", "source_chain", "reason"})
 
-	xmrMakers = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_maker_count",
-		Help: "Makers currently quoting BTC to XMR atomic swaps.",
-	})
-	xmrDispersion = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_price_dispersion_pct",
-		Help: "Spread between the best and worst maker quote, as a percent of the median.",
-	})
-	xmrBestPrice = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_best_sat_per_xmr",
-		Help: "Best maker price in satoshi per XMR.",
-	})
-	xmrMinSize = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_min_swap_sat",
-		Help: "Smallest swap any maker will take, in satoshi.",
-	})
-	xmrMaxSize = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_max_swap_sat",
-		Help: "Largest swap any maker will take, in satoshi.",
-	})
+	lbl := []string{"venue", "coin"}
+	bookMakers = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_maker_count",
+		Help: "Distinct makers with a live offer for this coin. The column that separates a market from one person's standing order.",
+	}, lbl)
+	bookOffers = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_live_offers",
+		Help: "Live, unexpired offers touching this coin.",
+	}, lbl)
+	bookPairs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_pairs",
+		Help: "Distinct trading pairs this coin appears in.",
+	}, lbl)
+	bookSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_size_offered",
+		Help: "Whole coins on offer, summed from the feed's own formatted amounts rather than from raw units, because these coins do not share a decimal count.",
+	}, lbl)
+	bookDispersion = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_price_dispersion_pct",
+		Help: "Spread between the best and worst maker price, as a percent of the median. Needs at least two makers.",
+	}, lbl)
+	bookBestPrice = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_best_price",
+		Help: "Best maker price, in the venue's own unit.",
+	}, lbl)
+	bookMinSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_min_swap",
+		Help: "Smallest swap any maker will take, in the venue's own unit.",
+	}, lbl)
+	bookMaxSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_max_swap",
+		Help: "Largest swap any maker will take, in the venue's own unit.",
+	}, lbl)
 
 	probeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "privacy_probe_total",
@@ -129,6 +146,17 @@ func initMetrics() {
 		Name: "privacy_last_success_timestamp_seconds",
 		Help: "Unix time of the last successful probe per rail and probe kind. A board reading a 24h median with a stale stamp here is reading a frozen feed.",
 	}, []string{"rail", "probe"})
+
+	// A rail can buy a cheap price with time, and the board must say so or
+	// it compares two different trades. THORChain quoted a size worth about
+	// a third of its ZEC pool at 61.7 bps round trip, which no AMM does at
+	// that fraction: the response carries streaming_swap_blocks 96 and
+	// max_streaming_quantity 286, so the swap is split into hundreds of
+	// sub-swaps. The slippage is real and it was paid in seconds.
+	streamSeconds = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_streaming_swap_seconds",
+		Help: "Seconds the rail will spend streaming the swap in sub-swaps to cut slippage. 0 means the swap is not streamed.",
+	}, []string{"rail", "asset", "bucket", "region"})
 
 	quoteOut = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "privacy_quote_out_asset",

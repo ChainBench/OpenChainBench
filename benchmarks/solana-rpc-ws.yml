@@ -1,0 +1,179 @@
+# OpenChainBench. Bench № 314
+
+slug: solana-rpc-ws
+number: "314"
+title: Fastest private Solana WebSocket push, per-slot race across keyed RPC providers
+seo_title: "Fastest Solana WebSocket RPC push 2026, private endpoints"
+seo_description: "{{best_name}} pushes the most Solana slots first over WebSocket, {{best_p50}} of those it received (24h), among Alchemy, Chainstack, FluxRPC, GetBlock and Quicknode."
+subtitle: Share of Solana slots each provider pushed first over WebSocket, per region, across API-key endpoints probed from us-east, eu-west and Singapore.
+
+category: RPCs
+status: live
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
+metric: First to push
+unit: pct
+higher_is_better: true
+# A provider that never wins a race reads 0%, a result, not a missing value.
+zero_is_a_value: true
+
+seo_intro: |
+  A bot that subscribes to slotSubscribe does not care what a provider's
+  median HTTP latency is. It cares who hands it slot N first. This page
+  races the private (Solana) cohort: one WebSocket per provider per
+  region, open ten minutes in every hour across the whole cohort, every
+  frame timestamped on arrival, and each slot credited to whichever
+  provider delivered it earliest in that region. {{best_name}} currently
+  leads, first on {{best_p50}} of the slots it received (24h), across
+  {{count}} keyed providers.
+
+  The figure is a share of wins, not a latency. A provider at 0% received
+  the slots but never first; read it with the coverage column, which
+  counts the slots each provider delivered against the cohort maximum.
+
+abstract: |
+  Private, API-key Solana endpoints raced on WebSocket delivery. One
+  harness holds a slotSubscribe subscription per provider in each of three
+  regions and timestamps every push on receipt. Per slot, the earliest
+  arrival in that region wins; each provider's figure is the share of the
+  slots it received that it delivered first.
+
+  The same process runs the HTTP arm of the keyed cohort, which is
+  deliberate: comparing arrival times recorded by separate processes would
+  compare clocks as much as providers, and the differences here are tens
+  of milliseconds.
+
+methodology:
+  - "Race, not latency: all providers wait for the same slot, so only who delivers it first belongs to them. The published figure is each provider's share of the slots it received that it delivered first in its region, pooled over 24h. A provider at 0% received the slots, never first."
+  - "One socket per provider per region, slotSubscribe, opened for the same ten minutes of every hour across the whole cohort and closed with the window. Every frame is timestamped on receipt. The window is aligned to the clock rather than to each connection, because a race only means something if every provider is listening to the same slots."
+  - "Sampled rather than continuous since 2026-10-17, and the reason is ours: a permanent subscription on nine chains pushed about 138 million messages a month per provider against 583 thousand HTTP probes, and one vendor reached its monthly limit. The three fastest chains left the arm and the rest listen a sixth of the time. Solana, about 19% of those pushes, returned on 2026-11-05 under the same ten-minute window, roughly a million slots per provider per region a month."
+  - "Reconnections are a published result, not an implementation detail: a provider that drops twice in two minutes is unusable to a subscriber whatever its share of wins says."
+  - "GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
+  - "FluxRPC serves New York and Amsterdam and nothing in Asia, so it races from us-east and eu-west only and its Singapore cell is empty. Its socket is the same account as its HTTP row, billed by bandwidth rather than per message."
+  - "Helius is measured on the HTTP cohort but not here: its Free plan key carries 1M credits a month, which a million slot pushes per region would spend several times over, and the key is shared with the HTTP probes."
+  - "Alchemy joined this race on 13 November 2026. Its endpoint bills a subscription by the byte it pushes, so the probe holds a monthly byte budget per region for Alchemy and closes its sockets when the budget is spent; the HTTP rows on the same key are unaffected. A month in which the budget trips shows Alchemy with fewer slots seen, which the coverage column makes visible."
+  - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
+
+expected_n: 100000
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_ws_head_seen_total
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is fixed for
+# the whole bench, so cells key on provider and region.
+rank_matrix_query: 100 * sum by (provider, region) (ocb:rpc_ws_head_first:increase_24h{chain="solana",tier="keyed"}) / sum by (provider, region) (ocb:rpc_ws_head_seen:increase_24h{chain="solana",tier="keyed"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+faq:
+  - q: "Which private RPC provider pushes new Solana slots first over WebSocket?"
+    a: "{{best_name}}, first on {{best_p50}} of the slots it received over 24h. {{worst_name}} wins the fewest races, at {{worst_p50}}. The board re-scores on every Solana slot. Read the coverage column too: a provider can win the races it runs and still skip slots."
+  - q: "Why a share of wins rather than a lag in milliseconds?"
+    a: "Because the race is relative. The earliest arrival starts the clock for each slot, so the winner's lag is zero by construction and a median lag mostly says how often a provider wins. The share of first arrivals says it directly. It is read per provider over the slots it received, so a provider raced from one region compares fairly with one raced from three."
+  - q: "Is this the same as the HTTP latency cohort on this chain?"
+    a: "Same providers, same keys, same regions (FluxRPC: US-East and EU-West), different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
+  - q: "Could a provider win by pushing slots before they are confirmed?"
+    a: "slotSubscribe reports a slot as the node processes it, before it is confirmed, so an early push is the expected behaviour rather than a shortcut. Coverage is published next to the share of wins: a provider that skips slots shows gaps, and the coverage column counts slots seen against the cohort maximum."
+
+providers:
+  - slug: alchemy
+    name: Alchemy
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Share of the Solana slots this provider received over slotSubscribe that it delivered first in its region, from one socket per provider per region, pooled over 24h."
+    queries:
+      p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="alchemy",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="alchemy",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="solana",tier="keyed"}[24h]))
+      series: 100 * sum(increase(rpc_ws_head_first_total{provider="alchemy",chain="solana",tier="keyed"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="alchemy",chain="solana",tier="keyed",region="us-east"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="alchemy",chain="solana",tier="keyed",region="us-east"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="alchemy",chain="solana",tier="keyed",region="us-east"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="alchemy",chain="solana",tier="keyed",region="eu-west"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="alchemy",chain="solana",tier="keyed",region="eu-west"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="alchemy",chain="solana",tier="keyed",region="eu-west"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="alchemy",chain="solana",tier="keyed",region="sgp"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="alchemy",chain="solana",tier="keyed",region="sgp"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="alchemy",chain="solana",tier="keyed",region="sgp"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: chainstack
+    name: Chainstack
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Share of the Solana slots this provider received over slotSubscribe that it delivered first in its region, from one socket per provider per region, pooled over 24h."
+    queries:
+      p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="chainstack",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="chainstack",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed"}[24h]))
+      series: 100 * sum(increase(rpc_ws_head_first_total{provider="chainstack",chain="solana",tier="keyed"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="chainstack",chain="solana",tier="keyed",region="us-east"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="chainstack",chain="solana",tier="keyed",region="us-east"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="chainstack",chain="solana",tier="keyed",region="us-east"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="chainstack",chain="solana",tier="keyed",region="eu-west"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="chainstack",chain="solana",tier="keyed",region="eu-west"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="chainstack",chain="solana",tier="keyed",region="eu-west"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="chainstack",chain="solana",tier="keyed",region="sgp"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="chainstack",chain="solana",tier="keyed",region="sgp"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="chainstack",chain="solana",tier="keyed",region="sgp"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: getblock
+    name: GetBlock
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Share of the Solana slots this provider received over slotSubscribe that it delivered first in its region, from one socket per provider per region, pooled over 24h."
+    queries:
+      p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="getblock",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="getblock",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="solana",tier="keyed"}[24h]))
+      series: 100 * sum(increase(rpc_ws_head_first_total{provider="getblock",chain="solana",tier="keyed"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="getblock",chain="solana",tier="keyed",region="us-east"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="getblock",chain="solana",tier="keyed",region="us-east"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="getblock",chain="solana",tier="keyed",region="us-east"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="getblock",chain="solana",tier="keyed",region="eu-west"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="getblock",chain="solana",tier="keyed",region="eu-west"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="getblock",chain="solana",tier="keyed",region="eu-west"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="getblock",chain="solana",tier="keyed",region="sgp"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="getblock",chain="solana",tier="keyed",region="sgp"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="getblock",chain="solana",tier="keyed",region="sgp"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: quicknode
+    name: Quicknode
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Share of the Solana slots this provider received over slotSubscribe that it delivered first in its region, from one socket per provider per region, pooled over 24h."
+    queries:
+      p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="quicknode",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="quicknode",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed"}[24h]))
+      series: 100 * sum(increase(rpc_ws_head_first_total{provider="quicknode",chain="solana",tier="keyed"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="quicknode",chain="solana",tier="keyed",region="us-east"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="quicknode",chain="solana",tier="keyed",region="us-east"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="quicknode",chain="solana",tier="keyed",region="us-east"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="quicknode",chain="solana",tier="keyed",region="eu-west"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="quicknode",chain="solana",tier="keyed",region="eu-west"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="quicknode",chain="solana",tier="keyed",region="eu-west"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="quicknode",chain="solana",tier="keyed",region="sgp"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="quicknode",chain="solana",tier="keyed",region="sgp"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="quicknode",chain="solana",tier="keyed",region="sgp"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: fluxrpc
+    name: FluxRPC
+    tag: Private WS, same account as the HTTP cohort; New York from us-east, Amsterdam from eu-west, not raced from Singapore
+    formula: "Share of the Solana slots this provider received over slotSubscribe that it delivered first in its region, from one socket per provider per region, pooled over 24h."
+    queries:
+      p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="fluxrpc",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="fluxrpc",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="fluxrpc",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="fluxrpc",chain="solana",tier="keyed"}[24h]))
+      series: 100 * sum(increase(rpc_ws_head_first_total{provider="fluxrpc",chain="solana",tier="keyed"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="fluxrpc",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="fluxrpc",chain="solana",tier="keyed",region="us-east"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="fluxrpc",chain="solana",tier="keyed",region="us-east"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="fluxrpc",chain="solana",tier="keyed",region="us-east"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="fluxrpc",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: 100 * sum(ocb:rpc_ws_head_first:increase_24h{provider="fluxrpc",chain="solana",tier="keyed",region="eu-west"}) / sum(ocb:rpc_ws_head_seen:increase_24h{provider="fluxrpc",chain="solana",tier="keyed",region="eu-west"})
+          series: 100 * sum(increase(rpc_ws_head_first_total{provider="fluxrpc",chain="solana",tier="keyed",region="eu-west"}[1h])) / sum(increase(rpc_ws_head_seen_total{provider="fluxrpc",chain="solana",tier="keyed",region="eu-west"}[1h]))

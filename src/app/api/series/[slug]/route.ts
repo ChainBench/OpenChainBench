@@ -9,7 +9,11 @@ import {
   panelMetricQuery,
   publishesPanelOnView,
   specToBenchmark,
+  withFeesRemoved,
 } from "@/lib/materialize/load";
+import { feesFilter } from "@/lib/fees-filter";
+import type { FeesView } from "@/lib/spec-schema";
+import type { BenchmarkFilters } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
 import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -46,6 +50,7 @@ const getSeriesMapCached = unstable_cache(
     venue: string | undefined,
     panelId: string | undefined,
     tier: string | undefined,
+    fees: FeesView | undefined,
   ): Promise<Record<string, (number | null)[]> | null> => {
     // ── Harness-backfilled history (bench 266 and friends) ──────────────
     // Prom only holds samples since the first scrape; a bench whose
@@ -66,7 +71,7 @@ const getSeriesMapCached = unstable_cache(
 
     // ── Standard ranges (7d / 30d): blob → Redis → live build ──────────
     if (range === "7d" || range === "30d") {
-      const sig = filterSig({ chain, region, kind, venue, tier });
+      const sig = filterSig({ chain, region, kind, venue, tier, fees });
       const stored =
         (await loadSnapshotFromBlob(slug, sig)) ??
         (await readMaterialized(slug, sig));
@@ -96,9 +101,9 @@ const getSeriesMapCached = unstable_cache(
         // and times out on large benches like hyperliquid-frontends).
         const panel = spec.metric_panels?.find((mp) => mp.id === panelId);
         if (!panel) return null;
-        // A per-chain or tier-scoped panel has no pooled form, and this
-        // route is reachable by URL whether or not the board offers it.
-        if (!publishesPanelOnView(panel, { chain, tier })) return null;
+        // A per-chain panel has no pooled form, and this route is reachable
+        // by URL whether or not the board offers the view.
+        if (!publishesPanelOnView(panel, { chain, fees })) return null;
         const promUrl = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
         if (!promUrl) return null;
         const prom = new Prometheus(promUrl);
@@ -123,7 +128,7 @@ const getSeriesMapCached = unstable_cache(
         return Object.keys(result).length > 0 ? result : null;
       }
 
-      const b = await specToBenchmark(spec, { chain, region, kind, venue, tier });
+      const b = await specToBenchmark(spec, { chain, region, kind, venue, tier, fees });
       return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
     }
 
@@ -148,14 +153,15 @@ const getSeriesMapCached = unstable_cache(
     // available history shows at full fidelity regardless of the window width.
     const numPoints = range === "90d" ? 360 : 480;
 
+    const viewSpec = fees === "removed" ? withFeesRemoved(spec) : spec;
     const result: Record<string, (number | null)[]> = {};
     await Promise.all(
-      spec.providers.map(async (p) => {
+      viewSpec.providers.map(async (p) => {
         let q: string | undefined;
         if (panelId) {
           const panel = spec.metric_panels?.find((mp) => mp.id === panelId);
           if (!panel) return;
-          if (!publishesPanelOnView(panel, { chain, tier })) return;
+          if (!publishesPanelOnView(panel, { chain, fees })) return;
           const labelKey = panel.label_key ?? "builder";
           const sel = `${labelKey}="${escapePromLabelValue(p.slug)}"`;
           // Same raw spec, same reason as the 7d/30d path above.
@@ -175,7 +181,8 @@ const getSeriesMapCached = unstable_cache(
   // v8: denser 90d/1y resolution (6h / 18h step) so young benches render at full fidelity.
   // v10: panel series carry the reader's chain/region. Entries written
   // before this hold one cross-chain average under a per-chain key.
-  ["series-by-range-v10"],
+  // v11: entries keyed by the fees view.
+  ["series-by-range-v11"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -258,7 +265,7 @@ export async function GET(
     );
   }
 
-  const filters: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string } = {};
+  const filters: Omit<BenchmarkFilters, "bucket" | "amount_usd"> = {};
   for (const dim of ["chain", "region", "kind", "venue", "tier"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
@@ -278,7 +285,24 @@ export async function GET(
     }
     filters[dim] = known.value;
   }
+  const fees = feesFilter(url.searchParams.get("fees"), aggregate);
+  if (!fees) {
+    return NextResponse.json(
+      { error: "unknown_fees" },
+      { status: 400, headers: { "cache-control": "public, s-maxage=60" } },
+    );
+  }
+  Object.assign(filters, fees);
   const hasFilters = Object.keys(filters).length > 0;
+  const benchForView = hasFilters
+    ? getBenchmark(slug, filters)
+    : Promise.resolve(aggregate);
+  if (filters.fees && !(await benchForView)) {
+    return NextResponse.json(
+      { error: "variant_not_ready", slug },
+      { status: 404, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   // 24h is served from the slim cached Benchmark (cheap). 7d / 30d / 90d / 1y
   // come from the dedicated getSeriesMapCached above (Prom fan-out the
@@ -299,11 +323,12 @@ export async function GET(
         filters.venue,
         panelId,
         filters.tier,
+        filters.fees,
       ),
-      hasFilters ? getBenchmark(slug, filters) : Promise.resolve(aggregate),
+      benchForView,
     ]);
   } else {
-    bench = hasFilters ? await getBenchmark(slug, filters) : aggregate;
+    bench = await benchForView;
     if (panelId) {
       const panel = bench?.metricPanels?.find((p) => p.id === panelId);
       seriesMap = panel?.seriesByProvider;

@@ -11,6 +11,8 @@ import {
   fieldValue,
   headlineSentence,
   leader,
+  viewHeadlineSentence,
+  viewLabels,
   leaders,
   rankedCandidates,
   sparklineFor,
@@ -57,12 +59,19 @@ export async function GET(
     kind?: string;
     venue?: string;
     tier?: string;
+    bucket?: string;
   } = {};
   const chainParam = url.searchParams.get("chain");
   const regionParam = url.searchParams.get("region");
   const kindParam = url.searchParams.get("kind");
   const venueParam = url.searchParams.get("venue");
   const tierParam = url.searchParams.get("tier");
+  // The size on the pricing benches (309, 310, 312). Ignored before
+  // 2026-10-30, so ?kind=trading&bucket=100k answered with the 10k cell
+  // while echoing only the kind (SEO audit): the silent substitution the
+  // comment above forbids.
+  const bucketParam = url.searchParams.get("bucket");
+  if (bucketParam && bucketParam !== "all") filters.bucket = bucketParam;
   if (chainParam && chainParam !== "all") filters.chain = chainParam;
   if (regionParam && regionParam !== "all") filters.region = regionParam;
   if (kindParam && kindParam !== "all") filters.kind = kindParam;
@@ -98,6 +107,7 @@ export async function GET(
 
   const top = leader(b);
   const insufficient = b.dataConfidence === "insufficient";
+  const view = viewLabels(b, filters);
   // Publish value + leader.value in the declared unit. Unit "s" benches
   // store ms internally (fmtUnit convention); do not leak that here.
   const raw = insufficient ? null : fieldValue(b);
@@ -148,10 +158,20 @@ export async function GET(
       value: valueInDeclaredUnit(r.ms.p50, b.unit),
       unit: b.unit,
       ms: r.ms,
-      successRate: r.successRate,
+      // A bench that sends no traffic has no success rate to report, and
+      // load.ts defaults successRate to 100 when a spec declares no `success`
+      // query. Both ledger renderers and mcp-tools honour ledger_reliability;
+      // this route did not, so /api/stat/rpc-cost published successRate 100 on
+      // production for a bench whose own spec says a success rate there
+      // "measures nothing". Same guard as mcp-tools.ts:315, same reason.
+      successRate: b.ledgerReliability === false ? null : r.successRate,
       sampleSize: r.sampleSize,
       sampleHealth: r.sampleHealth,
       dataConfidence: r.dataConfidence,
+      // "at most" / "at least" / "ambiguous price" on the pricing benches:
+      // the page badges these bills, and a reader of the JSON must not get
+      // Privy's floor as a plain $6,500 (audit 2026-10-30).
+      ...(r.priceReading ? { priceReading: r.priceReading } : {}),
     })),
     sparkline: sparklineFor(b, top?.slug),
     sampleSize: b.sampleSize,
@@ -172,8 +192,14 @@ export async function GET(
     // The cohort `rankings` and `leader` describe (50 % success floor,
     // rank and sample gates); `measured` is the wider display cohort.
     ranked: rankedCandidates(b).length,
-    headline: headlineSentence(b),
-    quote: citationQuote(b, SITE.url),
+    // A kind or bucket tab names its own view: the metric names the
+    // headline cell, so the generic sentence would put this view's leader
+    // under the headline's label.
+    headline: view.length > 0 ? viewHeadlineSentence(b, view) : headlineSentence(b),
+    quote:
+      view.length > 0
+        ? `${viewHeadlineSentence(b, view)} Source: OpenChainBench (${SITE.url}${benchPath(b)}).`
+        : citationQuote(b, SITE.url),
     cite: citeBundle(b, SITE.url),
     pageUrl: `${SITE.url}${benchPath(b)}`,
     ogImage: `${SITE.url}/api/og/${b.slug}`,

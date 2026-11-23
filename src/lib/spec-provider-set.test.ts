@@ -53,99 +53,188 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-11-13 on main with bench-unfiltered-v123,
-    // all-benchmarks-v116, providers-v37: MOJO joins bench 030 as its
-    // 108th Hyperliquid builder (#3601), opened by the operator. New to
-    // the site, so providers-v moves; bench 030 declares no dimensions,
-    // so bench-filters does NOT. Every figure in the request was
-    // recomputed from the public builder-fills bucket before merge:
-    // 1,365 fills, $142,513 of notional, $71.26 of builder fees, 113
-    // wallets, exactly 5.0 bp on all 1,365 fills, and zero fills whose
+    // An ADDITION on 2026-11-16: True Markets joins bench 030 as its
+    // 109th Hyperliquid builder (#3615), opened by the operator. New to
+    // the SITE, so providers-v moves with the other two; bench 030
+    // declares no dimensions, so bench-filters does NOT move. v200/v193
+    // and providers-v70. Recomputed from the public builder-fills bucket
+    // before merge: 2,904 fills, $51,610 of notional, $11.32 of builder
+    // fees, 24 wallets over the 30 files to 2026-11-15, zero fills
+    // between those wallets, 2.0 bp on 2,589 of them.
+    //
+    // An ADDITION on 2026-11-13: MOJO joins bench 030 as its 108th
+    // Hyperliquid builder (#3601), opened by the operator. New to the
+    // SITE, so providers-v moves with the other two; bench 030 declares
+    // no dimensions, so bench-filters does NOT move. v198/v191 and
+    // providers-v68. Every figure in the request was recomputed from the
+    // public builder-fills bucket before merge rather than read: 1,365
+    // fills, $142,513 of notional, $71.26 of builder fees, 113 wallets,
+    // exactly 5.0 bp on all 1,365 fills, and zero fills whose
     // counterparty is another wallet of that cohort.
     //
-    // Previously recorded on 2026-11-12 on main with bench-unfiltered-v122,
-    // all-benchmarks-v115, bench-filters-v60, providers-v36: BlockVectra
-    // joins the public Boba and World Chain cohorts (#3594). Two more
-    // appearances for a provider already on the site, all three region
-    // tabs on each. Probed before merge: chain id 0x120 and 0x1e0, heads
-    // 0 and 1 s old, a batch of ten accepted.
+    // An ADDITION on 2026-11-12: BlockVectra joins the public Boba and
+    // World Chain cohorts (#3594), with all three region tabs on each.
+    // An existing provider gains two appearances: v197/v190/v115 and
+    // providers-v67. Both endpoints were probed before merge rather than
+    // taken from the issue, which only claimed an identity check: chain
+    // id 0x120 and 0x1e0, heads 0 and 1 s old, a batch of ten accepted.
     //
-    // Previously recorded on 2026-11-12 on main with bench-unfiltered-v120,
-    // all-benchmarks-v113, bench-filters-v58, providers-v35: BlockVectra
-    // joins the public Optimism cohort (#3585), an outside contribution.
-    // A provider already on the site, one more appearance, and all three
-    // region tabs. The endpoint was probed before merge: chain id 0xa, a
-    // head 0 s old, a batch of ten accepted, 230 ms. The numbering is
-    // main's own, not dev's: the branches diverged in October.
+    // An ADDITION on 2026-11-11: BlockVectra joins the public Optimism
+    // cohort (#3585), with all three region tabs. An existing provider
+    // gains one appearance: v195/v188/v113 and providers-v66.
     //
-    // Previously recorded on 2026-11-10 on main with bench-unfiltered-v118,
-    // all-benchmarks-v111, bench-filters-v56, providers-v34: Thyme Gate
-    // joins the public cohorts on ethereum, polygon, optimism and bnb
-    // (#3586, an outside contribution). New to the site, so providers-v
-    // moves with the other three, and all four benches declare regions so
-    // every region tab moves with the unfiltered view. The four endpoints
-    // were checked before merge rather than taken on the contributor's
-    // word: right chain id, a head block 0 to 10 s old, a batch of ten
-    // accepted. The numbering here is main's own, not the numbering the
-    // same change carries on dev, because the branches diverged in
-    // October.
+    // An ADDITION on 2026-11-07: BlockVectra joins the public cohorts on
+    // ethereum-rpc and arbitrum-rpc (issue #3573). A provider already on
+    // the site, two more appearances: v189/v182/v107 and providers-v62.
     //
-    // Previously recorded on 2026-11-07 on main with bench-unfiltered-v116,
-    // all-benchmarks-v109, bench-filters-v55, providers-v32: BlockVectra
-    // joins the public cohorts on ethereum-rpc and arbitrum-rpc (#3573).
+    // A REMOVAL on 2026-11-06: thirteen chain RPC pages retire (celo,
+    // taiko, kaia, bob, bitlayer, gravity, axelar, hedera, litecoin,
+    // soneium, zircuit, merlin, comdex), every row on them with them. No
+    // human visitor since tracking began and no outside page pointing at
+    // them; see removed-benches.ts. v187/v180/v105 and providers-v61.
     //
-    // Previously recorded on 2026-11-06 on main with bench-unfiltered-v115,
-    // all-benchmarks-v108, bench-filters-v54, providers-v31: thirteen chain
-    // RPC pages retire (celo, taiko, kaia, bob, bitlayer, gravity, axelar,
-    // hedera, litecoin, soneium, zircuit, merlin, comdex).
+    // An ADDITION on 2026-11-05: bench 314 solana-rpc-ws returns, the
+    // private Solana WebSocket race (chainstack, fluxrpc, getblock,
+    // quicknode). A new bench with a region dimension: v168/v161/v93 and
+    // providers-v55.
     //
-    // Previously recorded on 2026-10-29 on main with bench-unfiltered-v106,
-    // all-benchmarks-v99, bench-filters-v46, providers-v22: bench 309
-    // wallet-cost released with thirteen embedded wallet vendors.
+    // An ADDITION on 2026-11-05: FluxRPC joins the keyed Solana cohort,
+    // warm and cold (fluxrpc, fluxrpc-cold). New to the site, so a product
+    // page too: v166/v159/v91 and providers-v54.
     //
-    // Previously recorded on 2026-10-28 on main, with bench-unfiltered-v102,
-    // all-benchmarks-v95, bench-filters-v43, providers-v21, none of which
-    // moved. Read the next paragraph before copying that as a precedent.
+    // An ADDITION on 2026-11-03: bench 026 validator-yield goes from 7
+    // chains to 15 (aptos, near, kaia, algorand, icp, gram, sei, cronos,
+    // the slugs the coordinator's registry PR uses). Rows on a board of
+    // chains, no dimensions, so bench-filters stays; v149/v142 and
+    // providers-v46 for the appearances.
     //
-    // Two merges moved the set and neither bumped a key: #3311 stopped
-    // scoring Mobula on Solana in token-quote-coverage, and #3312 added
-    // Perpex to hyperliquid-frontends. Both touched only benchmarks/*.yml,
-    // so this guard went red on main on 2026-10-27 and stayed red, which is
-    // exactly what it exists to do.
+    // An ADDITION on 2026-11-03: bench 313 token-sellability, as a draft.
+    // Its two rows are the two sell timings rather than two vendors, so
+    // nobody gains a product page, but the provider index still carries the
+    // appearances: v147/v140 and providers-v44. bench-filters does NOT move,
+    // because the bench declares no dimensions and nothing is invisible on
+    // a tab it does not have.
     //
-    // The keys are NOT moved retroactively, and that is a judgement about
-    // timing rather than a softening of the rule. A key bump invalidates
-    // entries written BEFORE the change; by 2026-10-28 the cache had already
-    // turned over on its own, verified rather than assumed: production
-    // serves 106 providers on hyperliquid-frontends including Perpex, and
-    // /products/perpex answers 200 carrying its hyperliquid-frontends
-    // appearance. Bumping now would flush healthy entries and surface
-    // nothing new. Had this been caught the same day, the keys would have
-    // had to move, and for the next change they still do.
-    // An ARRIVAL on 2026-11-03: BlockVectra joins the Ink, Unichain and
-    // Fraxtal RPC pages (issue #3462). New to the site, so all four keys
-    // move: v108/v101/v48 and providers-v24.
+    // An ARRIVAL on 2026-11-10: Thyme Gate joins the public cohorts on
+    // ethereum, polygon, optimism and bnb (#3586), contributed from
+    // outside. The four endpoints were checked before merge rather
+    // than taken on the contributor's word: right chain id, a head
+    // block 0 to 10 s old, a batch of ten accepted. New to the SITE,
+    // so a product page arrives with it: v193/v186/v111 and
+    // providers-v65.
+    //
+    // An ARRIVAL on 2026-11-09: Bubblemaps joins bench 008 with a key
+    // Leo issued in the shared thread. Six of that bench's eleven
+    // chains are in scope, because their endpoint answers by address
+    // with no chain and rejects a TON address outright while their
+    // /v0/chains lists TON. New to the SITE, so a product page
+    // arrives with it: v191/v184/v109 and providers-v63.
+    //
+    // A RETURN on 2026-11-06: Trnch is back on 033 and 304, reversing the
+    // withdrawal below with their agreement. The ordering was the
+    // withdrawal's in reverse, and for the same reason: the Railway key
+    // went back on all three quote probes FIRST, because buildProviders
+    // does not construct the provider without it, so the rows would have
+    // published nothing had the spec landed first. v184/v177/v102 and
+    // providers-v60; the product page did not move this time, because it
+    // came back with bench 313 in #3511.
+    //
+    // A REMOVAL on 2026-11-03, one day after the arrival below: Trnch asked
+    // not to be published on quote or latency for now, so both rows go and
+    // the registry entry with them. The withdrawal happened in two steps and
+    // the order mattered: the Railway key was deleted FIRST, which stops the
+    // provider being constructed at all, so we stopped spending their rate
+    // limit when they asked rather than when this merged. v142/v135/v80 and
+    // providers-v40, which moves because a product page leaves too.
+    //
+    // Re-recorded on 2026-11-02 with bench-unfiltered-v139,
+    // all-benchmarks-v132, bench-filters-v77, providers-v38: Trnch joins
+    // benches 033 and 304 on Robinhood Chain. An ADDITION, and a provider
+    // new to the site rather than to one bench, so providers-v moves for a
+    // product page as well as for the appearances. It is key-gated: without
+    // TRNCH_API_KEY the harness never builds it, which is how the row is
+    // withdrawn if their terms are settled the other way.
+    //
+    // Re-recorded on 2026-11-02 with bench-unfiltered-v137,
+    // all-benchmarks-v130, bench-filters-v75, providers-v36: SushiSwap
+    // joins the two EVM quote benches, 033 and 304. An ADDITION, and the
+    // case this test exists for. Both benches declare a chain dimension so
+    // bench-filters moves, and the row gains two bench appearances under
+    // the registry's existing `sushi` slug, so providers moves too or
+    // /products, compare and answers keep listing it two benches short.
+    //
+    // Re-recorded on 2026-10-30 with bench-unfiltered-v129,
+    // all-benchmarks-v122, bench-filters-v67, providers-v34: bench 312
+    // paymaster-cost adds nine paymaster vendors.
+    //
+    // Re-recorded on 2026-10-29 with bench-unfiltered-v118,
+    // all-benchmarks-v111, bench-filters-v56, providers-v31.
+    //
+    // Later the same evening the first three moved again, to v119/v112/v57,
+    // for three rounds of bench 311 editorial. This hash did NOT move and
+    // must not: it watches the provider SET, and no set changed. A hash that
+    // tracked key bumps would have to be re-recorded for every copy edit and
+    // would stop meaning anything.
+    //
+    // The change is an ADDITION, bench 311 rpc-api-coverage. All four keys
+    // moved: it declares a chain dimension, so bench-filters is not optional,
+    // and its six providers gain an appearance in the RPCs category, so
+    // providers-v moves too or /products, compare and answers keep listing
+    // them one bench short.
+    //
+    // Second ADDITION: Helius enters the keyed Solana cohort of
+    // solana-rpc, warm and cold, on 2026-10-30. It is the one
+    // Solana-native provider the review named that we can actually use,
+    // Triton being paid only, and it had never been probed: the harness
+    // listed it and budgeted it, the Railway URL variable was simply never
+    // set, so the published cohort was Alchemy, Chainstack, GetBlock and
+    // Quicknode. All four keys moved again, providers-v32 included, since a
+    // provider ENTERING is the case that key exists for. The `-cold` twin
+    // needed its alias in BOTH tables, logo-manifest and providers, which
+    // three sibling tests caught before this one did.
+    // A REMOVAL this time, on 2026-11-02: bench 311 rpc-api-coverage is
+    // retired and its API capability matrix moves onto the eight chain RPC
+    // pages, under the Private tab. The data is per (provider, chain), which
+    // is the granularity of a chain page, so a cross-chain board was the
+    // wrong home for it and its all-chains view had to average a provider
+    // over whichever chains it served. Six providers therefore LOSE an
+    // appearance in the RPCs category, which is the case providers-v exists
+    // for as much as an arrival is: v38 to v39, with the other three at
+    // v140/v133/v78.
+    // An ARRIVAL on 2026-11-03: BlockVectra's keyless endpoints join the
+    // Ink, Unichain and Fraxtal RPC pages (issue #3462). New to the site,
+    // so providers-v moves with the other three: v41, v143/v136/v81.
+    // An ADDITION on 2026-11-03: a keyed-heavy tier on the eight chain RPC
+    // pages, six providers each under a `-heavy` slug, measured on a
+    // Multicall3 of fifty state reads. Both alias tables gained a line per
+    // vendor in the same change, for the reason the cold tier's comment in
+    // providers.ts spells out: a tier slug without an alias builds its own
+    // /products page with the vendor's title. All four keys moved.
     // 2026-11-03: BlockVectra joins the Katana RPC page (issue #3462), one
-    // more appearance for a provider already on the site: v27, v110/v103/v50.
-    // An ADDITION on production, 2026-11-04: the eight chain RPC pages gain
-    // a keyed-heavy tier, six providers each under a `-heavy` slug, measured
-    // on a Multicall3 of fifty state reads. Both alias tables gained a line
-    // per vendor in the same change, for the reason the cold tier's comment
-    // in providers.ts spells out: a tier slug without an alias builds its own
-    // /products page carrying the vendor's title. All four keys moved,
-    // v110/v103/v50/v27 to v111/v104/v51/v28.
-    // 2026-11-13: Alchemy joins the six keyed WebSocket races on this
-    // deployment, a provider already on the site: v124/v117/v61, providers-v38.
-    // An ADDITION on production, 2026-11-16: True Markets joins bench 030
-    // as its 109th Hyperliquid builder (#3615). New to the site, so
-    // providers-v moves; bench 030 declares no dimensions, so
-    // bench-filters does not: v125/v118, providers-v39.
-    // An ADDITION on 2026-11-20: FiatBear joins bench 030 (#3627):
-    // v126/v119, providers-v40.
-    // An ADDITION on 2026-11-23: Metastreams on 001, 004, 305 and 008, and
-    // 004 gains Base and Robinhood tabs: v127/v120/v62, providers-v41.
-    // An ADDITION on 2026-11-23: Codex joins bench 008 (#3618 on dev), a
-    // provider already on the site: v129/v122/v64, providers-v42.
+    // more appearance for a provider already on the site: v52, v157/v150/v87.
+    // 2026-11-13: Alchemy joins the seven keyed WebSocket races, a provider
+    // already on the site: v199/v192/v116, providers-v69.
+    // An ARRIVAL on 2026-11-17: Metastreams joins bench 001 and bench 004,
+    // new to the site: v201/v194/v117, providers-v71.
+    // An ADDITION on 2026-11-18: Codex joins bench 008 on seven of its
+    // eleven chains, a provider already on the site: v202/v195/v118,
+    // providers-v72.
+    // An ARRIVAL on 2026-11-19: RpcNode joins ten public RPC benches and
+    // the rpc-capabilities aggregate, new to the site: v203/v196/v119,
+    // providers-v73.
+    // A REMOVAL on 2026-11-19: RpcNode leaves four of those chains, whose
+    // public tier refuses the probe: v204/v197/v120, providers-v74.
+    // An ADDITION on 2026-11-19: RpcNode joins the Bitcoin, Bitcoin Cash,
+    // Dogecoin and Aptos RPC benches: v206/v199/v122, providers-v75.
+    // A CHAIN change on 2026-11-19: bench 004 adds Base and Robinhood
+    // tabs, so its per-chain provider set moves: v207/v200/v123,
+    // providers-v76.
+    // An ADDITION on 2026-11-20: FiatBear joins bench 030 (no
+    // dimensions): v208/v201, providers-v77.
+    // An ADDITION on 2026-11-22: seven CEX rows join bench 007, which
+    // has chain tabs: v210/v203/v125, providers-v78.
+    // An ADDITION on 2026-11-23: Metastreams joins benches 305 and 008:
+    // v211/v204/v126, providers-v80.
     expect(
       hash,
       [
@@ -164,6 +253,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("6c33da8b37829e00");
+    ).toBe("7efe1dcde38553b5");
   });
 });

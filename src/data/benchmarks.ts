@@ -13,6 +13,7 @@ import { leader } from "@/lib/citation";
 import { valueQualifier } from "@/lib/value-window";
 import { downsample, MINI_CHART_MAX_LINES, MINI_CHART_POINTS } from "@/lib/downsample";
 import type { Benchmark, BenchIndexEntry } from "@/types/benchmark";
+import type { BenchmarkFilters } from "@/lib/materialize/load";
 import { loadBenchIndexFromBlob } from "@/lib/bench-blob";
 import { isDevOnlyBench } from "@/lib/removed-benches";
 import {
@@ -188,7 +189,7 @@ export const getBenchIndexSafe = cache(async (): Promise<BenchIndexEntry[]> => {
 
 export async function getBenchmark(
   slug: string,
-  options: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string } = {}
+  options: BenchmarkFilters = {}
 ): Promise<Benchmark | undefined> {
   return loadBenchmark(slug, options);
 }

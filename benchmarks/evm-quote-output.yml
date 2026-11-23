@@ -19,9 +19,11 @@ row_noun: { one: quote source, many: quote sources }
 ledger_reliability: false
 zero_is_a_value: true
 
-# Only three of the ten reach Robinhood Chain, so it is not the ground
-# the field shares. It keeps its own tab where the comparison is like for
-# like, and stays out of the all-chains figure.
+# Five of the ten reach Robinhood Chain, so it is not the ground the field
+# shares. It keeps its own tab where the comparison is like for like, and
+# stays out of the all-chains figure. SushiSwap joined that tab on
+# 2026-11-02; 0x, 1inch, Uniswap, Odos, OpenOcean and Enso were each asked
+# on chain 4663 the same day and none of them serves it.
 score_scope: full_coverage
 
 disclaimer: |
@@ -58,6 +60,7 @@ methodology:
   - "The comparison is within a tick, never across them. Every provider that supports the pair is fired in parallel on the same 60 second tick, and each is scored against the best output of that tick. Measured 2026-10-19 across five probes a minute apart, the market drifted 30 to 37 bps while the field sat inside 25, so a cross-tick comparison would measure the market rather than the provider."
   - "Zero means the provider held the best quote of that tick. The published figure is the median over 24 hours, not the mean, so one outlying round cannot move a row. The near-best column counts the ticks a provider came within half a basis point of the best, which is the tiebreaker when medians sit within a basis point of each other. Several providers can clear it in the same tick, so the column does not sum to 100."
   - "Declared fees get their own column and are measured, not quoted: the figure is read out of the provider's own quote response on every tick. Only some declare one, and the column is blank for the rest. Compare it against the shortfall beside it rather than assuming they match, because they need not: a declared fee is what the provider takes, the shortfall is what the route and the fee together cost. A provider that declares nothing publishes no fee, which is not the same as charging nothing."
+  - "The routing-only column is the shortfall with the provider's own declared fee taken back out, which is the comparison a provider that charges one is entitled to: on 2026-11-02 LI.FI gave up 26.2 bps of which 25.0 were its declared fee, so its route cost 1.2. The column is blank wherever nothing is declared, and the blank is the honest answer rather than a clean score, because this board cannot see a cut a provider does not declare."
   - "Not every row is an aggregator. CoW and Bebop are RFQ or batch-auction venues and LI.FI is a cross-chain relayer, so all three are listed with their numbers and kept out of the ranking. Route quotes Robinhood Chain alone and is kept out of the all-chains order for the same reason; its own tab carries the comparison."
   - "An RFQ quote is not a router quote. A market maker prices its own spread and its settlement into the number it returns, and a small clip pays for both in full: Bebop gives up around a hundred basis points on a $1,200 swap, and the figure barely moves between chains whose gas differs by orders of magnitude, so it is the spread and not the gas. Both RFQ rows are listed and neither is ranked."
   - "Gas is not subtracted yet. KyberSwap reports it in USD, ParaSwap in wei, Nordstern in gas units, and the USD figures of three providers on the same pair at the same block differ by a factor of 3.5. Until gas is computed on our side rather than theirs, this page measures gross output."
@@ -69,7 +72,7 @@ findings:
   - "The top of this board is tight. The leaders sit within a couple of basis points of each other, which is inside the round-to-round noise, so read the near-best column before treating the order as settled."
   - "Two of the largest names carry most of their shortfall as a fee they declare themselves. The declared-fee column names them and says how much of the gap is a toll rather than a route."
   - "Quote output and quote latency rank differently. The fastest answer is not the best answer, and bench 033 measures the other half."
-  - "Two rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, and {{name:lifi}} aggregates seven of this board's providers. Choosing well among upstreams is an aggregator's job, so their figures are real, but they are an envelope over competitors rather than a like for like quote against them."
+  - "Three rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, {{name:lifi}} aggregates seven of this board's providers, and {{name:trnch}} names the five it polled in every response: Kyber, Sushi, LI.FI, 0x and Uniswap. Choosing well among upstreams is an aggregator's job, so their figures are real, but none of the three can beat the best of the set it polls, and that set is measured here row by row."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/evm-swap-quoting
 
@@ -99,6 +102,7 @@ ledger_columns:
   - { label: "p90", slot: p90 }
   - { label: "p99", slot: p99 }
   - { label: "Declared fee", panel: declared_fee }
+  - { label: "Routing only", panel: routing_only }
   - { label: "Within 0.5 bps of best", panel: best_rate, unit: pct }
 
 metric_panels:
@@ -114,6 +118,14 @@ metric_panels:
     label: Declared fee
     description: The fee the provider returns inside its own quote response, in basis points, averaged over 24h. Measured from the response, not read off a pricing page. A provider that declares nothing publishes no figure here, which is not the same as charging nothing.
     metric: avg by (provider) (evm_swap_quote_fee_bps{} >= 0)
+    label_key: provider
+    unit: bp
+    higher_is_better: false
+    tab: false
+  - id: routing_only
+    label: Routing only
+    description: The shortfall with the provider's own declared fee taken back out, so it describes the route and not the toll. Blank where no fee is declared, because subtracting nothing would read as a clean route. Negative means the route beat the tick's best quote once the fee was removed.
+    metric: avg by (provider) (ocb:evm_swap_quote_shortfall_bps:p50_24h{}) - on(provider) avg by (provider) (evm_swap_quote_fee_bps{} >= 0)
     label_key: provider
     unit: bp
     higher_is_better: false
@@ -235,3 +247,31 @@ providers:
       mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="route"})
       sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="route"})
       series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="route"}[1h])))
+
+  - slug: trnch
+    name: Trnch
+    tag: Robinhood Chain only, quote is net of a declared 0.5% fee
+    # No `unranked:` for the same reason Route carries none: score_scope
+    # full_coverage already keeps a single-chain provider out of the
+    # all-chains order, and a spec-declared label would also pull it from
+    # the one tab where the comparison is like for like.
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h. Robinhood Chain only, and the amount is net of Trnch's own fee, so the Routing only column is where its route is judged without the toll."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="trnch"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="trnch"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="trnch"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="trnch"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="trnch"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="trnch"}[1h])))
+
+  - slug: sushi
+    name: SushiSwap
+    tag: No auth, the fourth quote on Robinhood Chain
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="sushi"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="sushi"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="sushi"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="sushi"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="sushi"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="sushi"}[1h])))

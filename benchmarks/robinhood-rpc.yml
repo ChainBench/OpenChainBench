@@ -192,23 +192,23 @@ metric_panels:
   - id: cap_archive_ms
     label: "Archive read, 5M blocks back"
     label_key: provider
-    metric: avg by (provider) (ocb:rpc_api_archive_heavy_milliseconds:mean_24h{chain="robinhood"})
+    metric: avg by (provider) (ocb:rpc_api_archive_heavy_milliseconds:p50_24h{chain="robinhood"})
     unit: ms
     higher_is_better: false
     tab: false
     tiers: [keyed-heavy]
     carry: false
-    description: "Mean round trip for a balance read five million blocks behind the head. Providers cache the tip and index history differently, so this is the column where a fast headline can come apart. Blank means the provider does not serve the call."
+    description: "Median round trip for a balance read five million blocks behind the head. Providers cache the tip and index history differently, so this is the column where a fast headline can come apart. Blank means the provider does not serve the call."
   - id: cap_getlogs_ms
     label: "eth_getLogs, address filter"
     label_key: provider
-    metric: avg by (provider) (ocb:rpc_api_getlogs_heavy_milliseconds:mean_24h{chain="robinhood"})
+    metric: avg by (provider) (ocb:rpc_api_getlogs_heavy_milliseconds:p50_24h{chain="robinhood"})
     unit: ms
     higher_is_better: false
     tab: false
     tiers: [keyed-heavy]
     carry: false
-    description: "Mean round trip for an address-filtered eth_getLogs inside the width each provider accepts. This is the call where indexing quality shows, and the order here is not the order on the cheap call."
+    description: "Median round trip for an address-filtered eth_getLogs inside the width each provider accepts. This is the call where indexing quality shows, and the order here is not the order on the cheap call."
 
 ledger_columns:
   # The default latency columns, re-declared: any ledger_columns block
@@ -390,8 +390,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -415,8 +415,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -440,8 +440,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -465,8 +465,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -487,8 +487,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="chainstack",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -511,8 +511,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="dwellir",chain="robinhood",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="dwellir",chain="robinhood",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="dwellir",chain="robinhood",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="robinhood",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="robinhood",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="robinhood",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="robinhood",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="dwellir",chain="robinhood",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -536,8 +536,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="alchemy",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -560,8 +560,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="quicknode",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -584,8 +584,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="robinhood",tier="keyed",region!="sgp",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="getblock",chain="robinhood",tier="keyed",region!="sgp"}[1h]))
       regions:
         - region: us-east
@@ -605,8 +605,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="dwellir",chain="robinhood",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="dwellir",chain="robinhood",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="dwellir",chain="robinhood",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="robinhood",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="robinhood",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="robinhood",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="robinhood",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="robinhood",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -630,8 +630,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="robinhood",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="robinhood",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="robinhood",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockmachine",chain="robinhood",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -655,8 +655,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="robinhood",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="robinhood",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="robinhood",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="robinhood",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="blockmachine",chain="robinhood",tier="keyed"}[1h]))
       regions:
         - region: us-east

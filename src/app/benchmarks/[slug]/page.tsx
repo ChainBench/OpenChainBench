@@ -10,10 +10,19 @@ import { BenchInfobox } from "@/components/bench-infobox";
 import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
-import { RpcCostSlider, RpcCostWinnersGrid } from "@/components/rpc-cost-slider";
-import { WalletCostCalculator, WalletCostGrid } from "@/components/wallet-cost-calculator";
-import { ServerWalletCostCalculator, ServerWalletCostGrid } from "@/components/server-wallet-cost-calculator";
+// Lazy: each calculator is its own client chunk, loaded only by its bench.
+import {
+  RpcCostSlider,
+  RpcCostWinnersGrid,
+  WalletCostCalculator,
+  WalletCostGrid,
+  ServerWalletCostCalculator,
+  ServerWalletCostGrid,
+  PaymasterCostCalculator,
+  PaymasterCostGrid,
+} from "@/components/cost-calculators-lazy";
 import { linkifyParts } from "@/lib/linkify";
+import { splitMethodology } from "@/lib/methodology-split";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
@@ -54,7 +63,7 @@ import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import type { Benchmark } from "@/types/benchmark";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 // ISR with a 60 s revalidate window. The page is prerendered by
 // generateStaticParams below and served from the CDN until 60 s after
@@ -239,6 +248,44 @@ export async function generateMetadata({
   };
 }
 
+/** The methodology bullets, rendered the same way wherever they appear.
+ *
+ *  Extracted because they now appear twice: the lead bullets above the board
+ *  and the remainder below it. See METHODOLOGY_SPLIT_WORDS. */
+function MethodologyBullets({ bullets }: { bullets: string[] }) {
+  if (bullets.length === 0) return null;
+  return (
+    <ul className="mt-4 space-y-2 border-t border-ink/10 pt-4 max-w-3xl">
+      {bullets.map((bullet, i) => (
+        <li
+          key={i}
+          className="flex gap-2.5 text-sm leading-relaxed text-ink-soft break-words"
+        >
+          <span aria-hidden className="text-ink-faint select-none">
+            &middot;
+          </span>
+          <span>
+            {linkifyParts(bullet).map((part, j) =>
+              part.kind === "link" ? (
+                <OutboundLink
+                  key={j}
+                  href={part.href}
+                  target="_blank"
+                  className="underline decoration-ink/25 underline-offset-2 hover:decoration-ink/60"
+                >
+                  {part.label}
+                </OutboundLink>
+              ) : (
+                <span key={j}>{part.value}</span>
+              ),
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default async function BenchmarkPage({
   params,
 }: {
@@ -358,6 +405,11 @@ export default async function BenchmarkPage({
   const benchmark = aggregate;
 
   const isDraft = benchmark.status === "draft";
+  // A long methodology is split so the board is not buried under it in
+  // DOM order. See splitMethodology for the measurement that motivated it.
+  const { lead: leadBullets, notes: methodologyNotes } = splitMethodology(
+    benchmark.methodology,
+  );
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
   // Insufficient: editorially live, runtime might say "live" too, but the
   // shared predicate decided no provider has a usable p50. Drives the
@@ -408,6 +460,7 @@ export default async function BenchmarkPage({
     metric: benchmark.metric,
     unit: benchmark.unit,
     ledgerColumns: benchmark.ledgerColumns,
+    ledgerReliability: benchmark.ledgerReliability,
     leader:
       currentLeader && leaderResult
         ? {
@@ -930,12 +983,17 @@ export default async function BenchmarkPage({
           the findings quote. Its generic body would offer a three-volume
           ledger under two rows of selectors, which is the answer assembled
           by hand. */}
-      {!isDraft && (benchmark.slug === "wallet-cost" || benchmark.slug === "server-wallet-cost") && (
+      {!isDraft && (benchmark.slug === "wallet-cost" || benchmark.slug === "server-wallet-cost" || benchmark.slug === "paymaster-cost") && (
         <>
           {benchmark.slug === "wallet-cost" ? (
             <>
               <WalletCostCalculator />
               <WalletCostGrid />
+            </>
+          ) : benchmark.slug === "paymaster-cost" ? (
+            <>
+              <PaymasterCostCalculator />
+              <PaymasterCostGrid />
             </>
           ) : (
             <>
@@ -969,7 +1027,12 @@ export default async function BenchmarkPage({
 
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
-          visitors who already know the harness. */}
+          visitors who already know the harness.
+
+          A long methodology is SPLIT rather than shortened: the lead bullets
+          stay here and the remainder moves below the board, because a text
+          extractor reads in DOM order and bench 311's Results heading sat at
+          word 1,986 of 2,898 (SEO audit 2026-10-30). */}
       {!isDraft && (
         <details
           open
@@ -998,37 +1061,7 @@ export default async function BenchmarkPage({
                 upstream they read from and its URL, which is how seven
                 benches came to be built on tehcscreener's free API while
                 linking to it nowhere. */}
-            {benchmark.methodology.length > 0 && (
-              <ul className="mt-4 space-y-2 border-t border-ink/10 pt-4 max-w-3xl">
-                {benchmark.methodology.map((bullet, i) => (
-                  <li
-                    key={i}
-                    className="flex gap-2.5 text-sm leading-relaxed text-ink-soft break-words"
-                  >
-                    <span aria-hidden className="text-ink-faint select-none">
-                      &middot;
-                    </span>
-                    <span>
-                      {linkifyParts(bullet).map((part, j) =>
-                        part.kind === "link" ? (
-                          <a
-                            key={j}
-                            href={part.href}
-                            target="_blank"
-                            rel="noopener"
-                            className="underline decoration-ink/25 underline-offset-2 hover:decoration-ink/60"
-                          >
-                            {part.label}
-                          </a>
-                        ) : (
-                          <span key={j}>{part.value}</span>
-                        ),
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <MethodologyBullets bullets={leadBullets} />
           </div>
         </details>
       )}
@@ -1036,7 +1069,7 @@ export default async function BenchmarkPage({
       {/* Body: chain tabs + summary + chart + ledger + share. Receives every
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
-      {!isDraft && benchmark.slug !== "rpc-cost" && benchmark.slug !== "wallet-cost" && benchmark.slug !== "server-wallet-cost" && (
+      {!isDraft && benchmark.slug !== "rpc-cost" && benchmark.slug !== "wallet-cost" && benchmark.slug !== "server-wallet-cost" && benchmark.slug !== "paymaster-cost" && (
         <Suspense
           // The served HTML is this fallback (useSearchParams in the body
           // bails out of static rendering): the endpoint URLs must be in
@@ -1168,6 +1201,29 @@ export default async function BenchmarkPage({
         </section>
       )}
 
+      {/* The rest of a long methodology, below the board rather than above
+          it. Closed by default: a reader who wanted the method has already
+          read the lead bullets, and a reader who wants the detail is
+          deliberately looking for it. The heading says how much is in
+          here, so it does not read as a hidden section. */}
+      {!isDraft && methodologyNotes.length > 0 && (
+        <details id="methodology-notes" className="mt-8 group card-soft px-5 py-1">
+          <summary className="flex cursor-pointer items-center justify-between py-3 list-none">
+            <h2 className="label-mono text-ink">
+              Methodology notes ({methodologyNotes.length} more)
+            </h2>
+            <ChevronDown
+              size={16}
+              strokeWidth={2}
+              className="text-ink-muted transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="pb-4 pt-1">
+            <MethodologyBullets bullets={methodologyNotes} />
+          </div>
+        </details>
+      )}
+
       {/* Source code link. bottom of page. The URL goes 'github.com/Org/Repo/tree/main/harnesses/<slug>'
           which can run to 80+ chars and overflows the viewport on mobile when uppercase + tracked.
           `break-all` wraps it character-by-character (no natural word boundaries inside a path);
@@ -1175,10 +1231,10 @@ export default async function BenchmarkPage({
       {!isDraft && (
         <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted break-all">
           Source code{" "}
-          <a className="lnk inline max-w-full" href={withUtm(benchmark.source)}>
+          <OutboundLink className="lnk inline max-w-full" href={benchmark.source}>
             {benchmark.source.replace("https://github.com/", "github.com/")}
             <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
-          </a>
+          </OutboundLink>
         </p>
       )}
 
@@ -1316,13 +1372,13 @@ function DraftNotice({ source }: { source: string }) {
         The spec is published. Numbers will appear here as soon as the harness
         starts emitting metrics.
       </p>
-      <a
-        href={withUtm(source)}
+      <OutboundLink
+        href={source}
         className="mt-4 inline-flex items-center gap-1 text-sm font-medium lnk"
       >
         Source code
         <ArrowUpRight size={12} strokeWidth={2} />
-      </a>
+      </OutboundLink>
     </div>
   );
 }

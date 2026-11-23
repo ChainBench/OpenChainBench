@@ -17,6 +17,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,6 +29,7 @@ var pulseChains = []string{
 	"solana:solana",
 	"evm:56",
 	"evm:8453",
+	"evm:4663", // Robinhood Chain, added 2026-11-19
 }
 
 // Source names emitted by Mobula Pulse V2 we treat as "interesting" launchpads.
@@ -47,14 +50,56 @@ var pulseLaunchpadSources = map[string]bool{
 	"bags":         true,
 	"moonshot":     true,
 	"raydium_cpmm": true,
+	// Base and Robinhood launchpads, as Pulse names them on 2026-11-19.
+	"bankr":             true,
+	"clanker":           true,
+	"doppler":           true,
+	"pons":              true,
+	"long-xyz":          true,
+	"lift":              true,
+	"flywheel":          true,
+	"fobo":              true,
+	"lunchfun":          true,
+	"raydium-launchlab": true,
+}
+
+// pulseSourceKey drops the version suffix Pulse puts on a source name.
+// On 2026-11-18 at 20:00 UTC "zora" became "zora-v4", the allow-list
+// stopped matching anything on Base, and Base got no checks at all.
+func pulseSourceKey(src string) string {
+	if i := strings.LastIndex(src, "-v"); i > 0 {
+		rest := src[i+2:]
+		if rest != "" && strings.Trim(rest, "0123456789") == "" {
+			return src[:i]
+		}
+	}
+	return src
+}
+
+var (
+	pulseUnknownMu   sync.Mutex
+	pulseUnknownSeen = map[string]bool{}
+)
+
+// logUnknownPulseSource prints each source the allow-list rejects, once,
+// so the next rename shows up in the logs instead of as a silent zero.
+func logUnknownPulseSource(chain, src string) {
+	pulseUnknownMu.Lock()
+	defer pulseUnknownMu.Unlock()
+	k := chain + "|" + src
+	if pulseUnknownSeen[k] {
+		return
+	}
+	pulseUnknownSeen[k] = true
+	fmt.Printf("[PULSE-FEEDER] source not in allow-list, skipped: chain=%s source=%q\n", chain, src)
 }
 
 type pulseSubscribePayload struct {
-	Model      string                  `json:"model"`
-	AssetMode  bool                    `json:"assetMode"`
-	ChainID    []string                `json:"chainId"`
-	Compressed bool                    `json:"compressed"`
-	Views      []map[string]any        `json:"views,omitempty"`
+	Model      string           `json:"model"`
+	AssetMode  bool             `json:"assetMode"`
+	ChainID    []string         `json:"chainId"`
+	Compressed bool             `json:"compressed"`
+	Views      []map[string]any `json:"views,omitempty"`
 }
 
 type pulseSubscribeMsg struct {
@@ -175,7 +220,10 @@ func pulseFeederSession(config *Config, stopChan <-chan struct{}) error {
 		if src == "" {
 			src = t.Source
 		}
-		if !pulseLaunchpadSources[src] {
+		if !pulseLaunchpadSources[pulseSourceKey(src)] {
+			if src != "" {
+				logUnknownPulseSource(t.ChainID, src)
+			}
 			continue
 		}
 

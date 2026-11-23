@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { variantCombos } from "./variant-combos";
+import { filterSig } from "@/lib/materialize/load";
 import type { Spec } from "@/lib/spec-schema";
 
 // The app never builds a filtered view on demand: loadBenchmarkFiltered
@@ -10,12 +11,6 @@ import type { Spec } from "@/lib/spec-schema";
 
 const spec = (dimensions: Spec["dimensions"]): Spec =>
   ({ slug: "t", dimensions, providers: [] }) as unknown as Spec;
-
-const sig = (f: Record<string, string | undefined>) =>
-  Object.keys(f)
-    .sort()
-    .map((k) => `${k}=${f[k]}`)
-    .join("&");
 
 describe("variantCombos covers every declared dimension", () => {
   test("a bucket dimension produces its own variants", () => {
@@ -28,10 +23,10 @@ describe("variantCombos covers every declared dimension", () => {
         ],
       }),
     );
-    const sigs = combos.map((c) => sig(c as Record<string, string>));
+    const sigs = combos.map(filterSig);
     expect(sigs).toContain("bucket=under25");
     expect(sigs).toContain("bucket=over250");
-    expect(sigs).not.toContain("bucket=all"); // the aggregate is the "all" view
+    expect(combos.some((c) => c.bucket === "all")).toBe(false); // the aggregate is the "all" view
   });
 
   test("bucket is crossed with chain, so Solana + Under $25 exists", () => {
@@ -47,7 +42,7 @@ describe("variantCombos covers every declared dimension", () => {
         ],
       }),
     );
-    const sigs = combos.map((c) => sig(c as Record<string, string>));
+    const sigs = combos.map(filterSig);
     expect(sigs).toContain("bucket=under25&chain=solana");
     expect(sigs).toContain("chain=solana");
     expect(sigs).toContain("bucket=under25");
@@ -59,5 +54,34 @@ describe("variantCombos covers every declared dimension", () => {
       spec({ chain: [{ value: "all", label: "All" }, { value: "base", label: "Base" }] }),
     );
     expect(combos).toEqual([{ chain: "base" }]);
+  });
+});
+
+describe("variantCombos on a bench with a fees-removed view", () => {
+  const chains: Spec["dimensions"] = {
+    chain: [
+      { value: "ETH", label: "ETH" },
+      { value: "BTC", label: "BTC" },
+    ],
+  };
+
+  test("every chain tab also exists with fees removed", () => {
+    const combos = variantCombos({
+      ...spec(chains),
+      fees_removed: {
+        metric: "Spread + impact",
+        panel_main_label: "Spread + impact at $1k",
+        formula: "Half-spread plus impact.",
+        metric_rename: { perp_fees_all_in_bps: "perp_fees_spread_bps" },
+      },
+    } as unknown as Spec);
+    const sigs = combos.map(filterSig).sort();
+    expect(sigs).toEqual([
+      "chain=BTC",
+      "chain=BTC&fees=removed",
+      "chain=ETH",
+      "chain=ETH&fees=removed",
+      "fees=removed",
+    ]);
   });
 });

@@ -11,7 +11,9 @@ type Config struct {
 	CoinGeckoAPIKey      string
 	MobulaAPIKey         string
 	SerializedAPIKey     string
+	MetastreamsAPIKey    string
 	DefinedSessionCookie string
+	CodexAPIKey          string // Codex API key; preferred over the Defined session path
 	MonitorRegion        string // Deployment region: us-west, us-east, singapore, etc.
 	MobulaWSURL          string // Mobula fast-trade WebSocket endpoint (allows staging to use EU-specific cluster)
 }
@@ -23,7 +25,9 @@ func loadEnv() (*Config, error) {
 	config.CoinGeckoAPIKey = strings.TrimSpace(os.Getenv("COINGECKO_API_KEY"))
 	config.MobulaAPIKey = strings.TrimSpace(os.Getenv("MOBULA_API_KEY"))
 	config.SerializedAPIKey = strings.TrimSpace(os.Getenv("SERIALIZED_API_KEY"))
+	config.MetastreamsAPIKey = strings.TrimSpace(os.Getenv("METASTREAMS_API_KEY"))
 	config.DefinedSessionCookie = strings.TrimSpace(os.Getenv("DEFINED_SESSION_COOKIE"))
+	config.CodexAPIKey = strings.TrimSpace(os.Getenv("CODEX_API_KEY"))
 	config.MonitorRegion = strings.TrimSpace(os.Getenv("MONITOR_REGION"))
 	config.MobulaWSURL = strings.TrimSpace(os.Getenv("MOBULA_WS_URL"))
 
@@ -71,6 +75,10 @@ func loadEnv() (*Config, error) {
 		case "MOBULA_API_KEY":
 			if config.MobulaAPIKey == "" {
 				config.MobulaAPIKey = value
+			}
+		case "CODEX_API_KEY":
+			if config.CodexAPIKey == "" {
+				config.CodexAPIKey = value
 			}
 		case "DEFINED_SESSION_COOKIE":
 			if config.DefinedSessionCookie == "" {

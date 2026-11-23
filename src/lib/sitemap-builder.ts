@@ -170,8 +170,12 @@ function reportsRoutes(): MetadataRoute.Sitemap {
         priority: 0.85,
       });
     }
-  } catch {
-    // content dir may not exist yet
+  } catch (err) {
+    // A silent catch here is not cheap: the reports loader throwing takes
+    // every report URL out of the sitemap at once, and nothing says so.
+    // Log it the way safeLoad does, so a missing content dir and a broken
+    // loader stop looking identical.
+    console.error("[sitemap] reports loader threw", err);
   }
   return entries;
 }

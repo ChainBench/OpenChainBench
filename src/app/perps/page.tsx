@@ -8,6 +8,7 @@ import { perpProductSlug } from "@/lib/perp-product-slug";
 import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { perpHeadToHead } from "@/lib/perp-head-to-head";
+import { getReportsByCategory } from "@/lib/reports/loader";
 
 /**
  * Hub landing page for the perpetual DEX cohort. SSR'd against the
@@ -67,6 +68,11 @@ export default async function PerpsHubPage() {
     fetchPerpByAssetMatrix(),
     perpHeadToHead().catch(() => []),
   ]);
+
+  // Research about perps, discoverable from the perps hub rather than only
+  // from the reports archive. Same loader as the index and the sitemap, so
+  // a draft never appears.
+  const perpReports = getReportsByCategory("perps").filter((r) => !r.draft);
 
   // Measured rows only: the CEX reference (venue-reported) sits behind the
   // selector and never leads the hub's own sentences.
@@ -394,7 +400,7 @@ export default async function PerpsHubPage() {
           <PerpHubTabs cohort={cohort} byAsset={byAsset} />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
-            A blank cell (…) is a figure the venue publishes through no public endpoint, or a bench that does not cover the venue yet: the 30-day fee column needs a DefiLlama fee adapter (12 venues), the all-in and slippage columns the perp-fees order-book walk (11 venues), funding a native or aggregator feed (23 venues). Volume-only rows (Backpack, Orderly, SynFutures, KiloEx) come from CoinGecko listings and have no OI or market count to show.
+            A blank cell (…) is a figure the venue publishes through no public endpoint, or a bench that does not cover the venue yet: the 30-day fee column needs a DefiLlama fee adapter (12 venues), the all-in column the perp-fees bench (18 venues) and the slippage column its order-book walk (the 16 with a book), funding a native or aggregator feed (23 venues). Volume-only rows (Backpack, Orderly, SynFutures, KiloEx) come from CoinGecko listings and have no OI or market count to show.
           </p>
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Sources: live cohort harness perp-cohort-stats (volume, OI,
@@ -424,6 +430,30 @@ export default async function PerpsHubPage() {
           </Link>
           .
         </p>
+      )}
+
+      {perpReports.length > 0 && (
+        <section className="mt-12 max-w-3xl">
+          <h2 className="display text-xl sm:text-2xl text-ink mb-3">Reports</h2>
+          <p className="text-sm text-ink-soft mb-3">
+            Long-form analysis built on the boards above, each stating its
+            measurement window and linking the data behind every figure.
+          </p>
+          <ul className="space-y-3 text-sm">
+            {perpReports.map((r) => (
+              <li key={r.slug}>
+                <Link
+                  href={`/reports/perps/${r.slug}`}
+                  className="text-ink underline underline-offset-2 hover:text-teal-700"
+                >
+                  {r.title}
+                </Link>
+                <span className="text-ink-faint">, {r.period}</span>
+                <p className="text-ink-soft mt-1">{r.summary}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {headToHead.length > 0 && (

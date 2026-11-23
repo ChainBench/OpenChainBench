@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/page-metadata";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Partners and integrations page. Documents the public assets a provider,
@@ -207,23 +207,21 @@ export default function PartnersPage() {
             contact@openchainbench.com
           </a>{" "}
           or DM{" "}
-          <a
+          <OutboundLink
             className="lnk"
-            href={withUtm("https://x.com/OpenChainBench")}
+            href="https://x.com/OpenChainBench"
             target="_blank"
-            rel="noopener"
           >
             @OpenChainBench
-          </a>{" "}
+          </OutboundLink>{" "}
           on X. Source code lives on{" "}
-          <a
+          <OutboundLink
             className="lnk"
-            href={withUtm("https://github.com/ChainBench/OpenChainBench")}
+            href={SITE.github}
             target="_blank"
-            rel="noopener"
           >
             GitHub
-          </a>
+          </OutboundLink>
           .
         </p>
       </Section>

@@ -51,50 +51,7 @@ export default function PrivacyPage() {
         </p>
       </header>
 
-      <SectionRule label="What is collected" />
-      <p className="text-base sm:text-lg leading-relaxed text-ink-soft">
-        Reading the site produces ordinary web analytics. The categories are:
-      </p>
-      <ul className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft">
-        <li>
-          <strong className="text-ink">Your IP address</strong>, recorded by our
-          analytics processor when a request arrives, and the approximate
-          location it derives from that: country and city, nothing finer.
-        </li>
-        <li>
-          <strong className="text-ink">Your browser and device</strong>: the
-          user-agent string, screen size, and the page performance timings
-          behind our Core Web Vitals.
-        </li>
-        <li>
-          <strong className="text-ink">What you looked at</strong>: the pages
-          you opened, the page you arrived from, and three deliberate actions,
-          an outbound link click, a copy, and a site search.
-        </li>
-        <li>
-          <strong className="text-ink">A random device identifier</strong>{" "}
-          stored in your browser, so two pageviews can be recognised as one
-          visit. It is tied to no identity, and we never call the function that
-          would create a user profile.
-        </li>
-      </ul>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Three machine-readable surfaces are counted on the server instead,
-        because no browser renders them: the Markdown views,{" "}
-        <code>/api/stat</code> and <code>/api/citable</code>. There the
-        identifier is a daily hash of the requesting user agent, and no profile
-        is created.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        We never ask for and never want: your name, your email, a wallet
-        address, a private key, a seed phrase or an API key. No feature of this
-        site requires one.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Automatic event capture is off, so nothing is recorded except the
-        events named above. Session recording is off: no replays, no heatmaps,
-        no keystroke or form capture.
-      </p>
+      <WhatIsCollected />
 
       <SectionRule label="Why" />
       <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
@@ -105,9 +62,11 @@ export default function PrivacyPage() {
           To measure whether pages load well, which is what the performance
           timings are for.
         </li>
+        <li>To count how many times links to each provider are opened.</li>
         <li>
-          To rate limit the public API per address, so one caller cannot deny
-          the service to everyone else.
+          To rate limit the public API per IP address, so one caller cannot
+          deny the service to everyone else, and to limit how many clicks one
+          IP address can add to the count on <code>/go</code>.
         </li>
       </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
@@ -128,40 +87,41 @@ export default function PrivacyPage() {
           <strong className="text-ink">Vercel</strong>, which hosts and serves
           the site and necessarily handles requests to it.
         </li>
+        <li>
+          <strong className="text-ink">Upstash</strong>, which hosts the
+          database holding the repeat markers and Continue codes described
+          below.
+        </li>
       </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         Nobody else. We do not sell data, share it with advertisers or data
-        brokers, or pass it to any third party beyond those two processors.
+        brokers, or pass it to any third party beyond those three processors.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        The site a link takes you to is separate from this. It sees the{" "}
+        <code>utm_source</code> tag on most links and, unless your browser
+        withholds it, our domain in the referrer header. It learns that you came
+        from OpenChainBench, not from which page.
       </p>
 
-      <SectionRule label="How long it is kept" />
-      <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
-        <li>
-          <strong className="text-ink">Analytics events: one year</strong>, the
-          retention configured on our analytics project, after which they are
-          deleted by the processor.
-        </li>
-        <li>
-          <strong className="text-ink">Rate-limit counters: minutes.</strong>{" "}
-          They live in the memory of the serving process, are never written to
-          disk, and are discarded whenever the site is redeployed.
-        </li>
-        <li>
-          <strong className="text-ink">Benchmark measurements: indefinitely</strong>,
-          because they describe infrastructure providers rather than visitors
-          and contain no personal data.
-        </li>
-      </ul>
+      <Retention />
 
       <SectionRule label="What you can turn off" />
       <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
         <li>
-          Analytics can be blocked in your browser, or by any content blocker,
-          or by enabling Do Not Track. Nothing on the site stops working.
+          Analytics in your browser stop if you turn off JavaScript. A content
+          blocker stops PostHog only if it blocks <code>/ingest</code> on this
+          site, because those events go through our own origin. Vercel&rsquo;s
+          web analytics use a separate script. Blocking either breaks nothing
+          on the site.
         </li>
         <li>
-          Clearing your browser storage removes the random device identifier,
-          and the next visit starts a new one.
+          The count of clicks through <code>/go</code> cannot be turned off. It
+          happens on the server, so a content blocker does not stop it.
+        </li>
+        <li>
+          Clearing your browser storage and cookies removes the random
+          identifiers, and the next visit starts new ones.
         </li>
         <li>
           Because we hold no name, email or account, we cannot look up, export
@@ -215,5 +175,114 @@ export default function PrivacyPage() {
         .
       </p>
     </article>
+  );
+}
+
+function Retention() {
+  return (
+    <>
+      <SectionRule label="How long it is kept" />
+      <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          <strong className="text-ink">Analytics events: one year</strong>, the
+          retention configured on our analytics project, after which they are
+          deleted by the processor.
+        </li>
+        <li>
+          <strong className="text-ink">
+            Rate-limit counters: until the serving process ends.
+          </strong>{" "}
+          Each is keyed by IP address, lives in that process&rsquo;s memory and
+          is never written to disk. It can be dropped sooner when the table
+          fills up or the site is redeployed.
+        </li>
+        <li>
+          <strong className="text-ink">Repeat markers: three seconds.</strong>{" "}
+          So that a double click counts once, <code>/go</code> stores a hash of
+          your identifier and of the destination, then lets it expire. If you
+          had no identifier yet, a hash of your IP address and user agent is
+          stored with it.
+        </li>
+        <li>
+          <strong className="text-ink">Continue codes: one hour at most.</strong>{" "}
+          So that pressing Continue on the confirmation page counts once,{" "}
+          <code>/go</code> stores a hash of a random code and of the
+          destination, and deletes it when the code is used or after an hour.
+        </li>
+        <li>
+          <strong className="text-ink">Benchmark measurements: indefinitely</strong>,
+          because they describe infrastructure providers rather than visitors
+          and contain no personal data.
+        </li>
+      </ul>
+    </>
+  );
+}
+
+function WhatIsCollected() {
+  return (
+    <>
+      <SectionRule label="What is collected" />
+      <p className="text-base sm:text-lg leading-relaxed text-ink-soft">
+        Reading the site produces ordinary web analytics. The categories are:
+      </p>
+      <ul className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          <strong className="text-ink">Your IP address</strong>, recorded by our
+          analytics processor when a request arrives, and the approximate
+          location it derives from that: country and city, nothing finer.
+        </li>
+        <li>
+          <strong className="text-ink">Your browser and device</strong>: the
+          user-agent string, screen size, and the page performance timings
+          behind our Core Web Vitals.
+        </li>
+        <li>
+          <strong className="text-ink">What you looked at</strong>: the pages
+          you opened, the page you arrived from, and three deliberate actions,
+          an outbound link click, a copy, and a site search.
+        </li>
+        <li>
+          <strong className="text-ink">A random device identifier</strong>{" "}
+          stored in your browser, so two pageviews can be recognised as one
+          visit. It is tied to no identity, and we never call the function that
+          would create a user profile.
+        </li>
+      </ul>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Three machine-readable surfaces are counted on the server instead,
+        because no browser renders them: the Markdown views,{" "}
+        <code>/api/stat</code> and <code>/api/citable</code>. There the
+        identifier is a daily hash of the requesting user agent, and no profile
+        is created.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Opening most links to other sites is counted on the server too, because
+        those links pass through <code>/go</code> on the way out. A link
+        opened from another site or pasted into your browser first shows a
+        confirmation page, and is counted only if you continue. That event
+        records the destination, the address of the page of this site you came
+        from, and your browser&rsquo;s user agent and accept header. Its
+        identifiers are the random device identifier above and the current
+        visit&rsquo;s session identifier, both read from the cookie our
+        analytics set. When that cookie is absent, <code>/go</code> sets its
+        own, <code>ocb_vid</code>: another random identifier, kept for a year
+        and readable only by our server. The event carries no IP address, and
+        no profile is created.
+        Links to a Creative Commons license, a DOI or our own subdomains skip{" "}
+        <code>/go</code> and are counted in your browser, like the actions
+        above.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        We never ask for and never want: your name, your email, a wallet
+        address, a private key, a seed phrase or an API key. No feature of this
+        site requires one.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Automatic event capture is off, so nothing is recorded except the
+        events named above. Session recording is off: no replays, no heatmaps,
+        no keystroke or form capture.
+      </p>
+    </>
   );
 }

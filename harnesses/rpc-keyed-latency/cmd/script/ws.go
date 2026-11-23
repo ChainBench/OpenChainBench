@@ -174,7 +174,13 @@ func wsEnvURL(provider, chain string) string {
 // because a provider's monthly limit was reached, and a lost variable must
 // not be able to restore that bill in silence. RPC_KEYED_WS_SKIP_CHAINS
 // overrides it, and the value "none" empties it.
-var wsSkipChainsDefault = []string{"robinhood", "solana", "arbitrum"}
+//
+// Solana came back on 2026-11-05 (bench 314, solana-rpc-ws). Under the
+// ten-minute window it pushes about a million slots per provider per region
+// a month, against the 138 million a month the whole arm cost before the
+// window existed, and Alchemy and Helius stay off it (their Solana WS
+// variables are unset or "disabled") because they bill per message.
+var wsSkipChainsDefault = []string{"robinhood", "arbitrum"}
 
 func wsSkipChains() map[string]bool {
 	list := wsSkipChainsDefault

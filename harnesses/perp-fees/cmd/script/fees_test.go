@@ -88,12 +88,10 @@ func TestWalkBook_SpreadBpsCalculation(t *testing.T) {
 	}
 }
 
-func TestWalkBook_99PctThreshold(t *testing.T) {
-	// 98% fill should fail (threshold is 99%).
-	levels := []bookLevel{{Px: 2000, Sz: 0.49}} // $980 of $1000
-	_, err := walkBookForNotional(levels, 1000)
-	if err == nil {
-		t.Fatal("expected error for <99% fill")
+func TestWalkBook_BookShortOfNotional(t *testing.T) {
+	levels := []bookLevel{{Px: 2000, Sz: 499.999995}}
+	if eff, err := walkBookForNotional(levels, 1_000_000); err == nil {
+		t.Fatalf("effective = %v on a book one cent short, want insufficient_depth", eff)
 	}
 }
 
@@ -137,30 +135,6 @@ func TestTotalBookNotional(t *testing.T) {
 	got := totalBookNotional(levels)
 	if abs(got-want) > 0.001 {
 		t.Errorf("totalBookNotional = %v, want %v", got, want)
-	}
-}
-
-// ── applyFlatTiers ─────────────────────────────────────────────────────────
-
-func TestApplyFlatTiers(t *testing.T) {
-	s := &PerpSample{TakerFeeBps: 6, SpreadBps: 0, AllInBps: 6}
-	applyFlatTiers(s)
-	if len(s.Tiers) != 4 {
-		t.Fatalf("expected 4 tiers, got %d", len(s.Tiers))
-	}
-	for _, tier := range s.Tiers {
-		if tier.AllInBps != 6 {
-			t.Errorf("tier %s AllInBps = %v, want 6", tier.Notional, tier.AllInBps)
-		}
-		if tier.SpreadBps != 0 {
-			t.Errorf("tier %s SpreadBps = %v, want 0", tier.Notional, tier.SpreadBps)
-		}
-	}
-	labels := []string{"1000", "10000", "100000", "1000000"}
-	for i, tier := range s.Tiers {
-		if tier.Notional != labels[i] {
-			t.Errorf("tier[%d].Notional = %q, want %q", i, tier.Notional, labels[i])
-		}
 	}
 }
 
@@ -233,38 +207,41 @@ func TestFactor1e30ToBps(t *testing.T) {
 	}
 }
 
-// ── Gains fee math ─────────────────────────────────────────────────────────
-
-func TestGainsFeeConversion(t *testing.T) {
-	// openFeeP = 350_000_000 → 350000000 / 1e8 = 3.5 bps
-	openFeeP := new(big.Int)
-	openFeeP.SetString("350000000", 10)
-	openFeeF, _ := new(big.Float).Quo(new(big.Float).SetInt(openFeeP), big.NewFloat(1e8)).Float64()
-	if abs(openFeeF-3.5) > 0.0001 {
-		t.Errorf("openFeeF = %v, want 3.5 bps", openFeeF)
+func TestGMXFundingPerHourBps(t *testing.T) {
+	cases := []struct {
+		raw     string
+		want    float64
+		wantErr bool
+	}{
+		{"-154805582986790877669024357207", -0.17671870203, false},
+		{"137303400000000000000000000000", 0.15673904110, false},
+		{"", 0, true},
+		{"1.5e29", 0, true},
 	}
-
-	// spreadP = 100_000_000 (full spread) → half-spread = 1e8/(2×1e8) = 0.5 bps
-	spreadP := new(big.Int)
-	spreadP.SetString("100000000", 10)
-	spreadF, _ := new(big.Float).Quo(new(big.Float).SetInt(spreadP), big.NewFloat(2e8)).Float64()
-	if abs(spreadF-0.5) > 0.0001 {
-		t.Errorf("spreadF = %v, want 0.5 bps", spreadF)
-	}
-
-	// AllIn = 3.5 + 0.5 = 4.0
-	allIn := openFeeF + spreadF
-	if abs(allIn-4.0) > 0.0001 {
-		t.Errorf("allIn = %v, want 4.0 bps", allIn)
+	for _, c := range cases {
+		got, err := gmxFundingPerHourBps(c.raw)
+		if (err != nil) != c.wantErr || abs(got-c.want) > 1e-9 {
+			t.Errorf("gmxFundingPerHourBps(%q) = %v, %v; want %v, err %v",
+				c.raw, got, err, c.want, c.wantErr)
+		}
 	}
 }
 
-func TestGainsSpreadPZero(t *testing.T) {
-	// spreadP = 0 (SOL on Gains) → half-spread = 0 bps
-	spreadP := big.NewInt(0)
-	spreadF, _ := new(big.Float).Quo(new(big.Float).SetInt(spreadP), big.NewFloat(2e8)).Float64()
-	if spreadF != 0 {
-		t.Errorf("spreadF = %v, want 0", spreadF)
+// ── Gains fee math ─────────────────────────────────────────────────────────
+
+func TestGainsPToBps(t *testing.T) {
+	cases := []struct {
+		raw  int64
+		want float64
+	}{
+		{350_000_000, 3.5},
+		{100_000_000, 1},
+		{0, 0},
+	}
+	for _, c := range cases {
+		if got := gainsPToBps(big.NewInt(c.raw)); abs(got-c.want) > 1e-9 {
+			t.Errorf("gainsPToBps(%d) = %v, want %v", c.raw, got, c.want)
+		}
 	}
 }
 
@@ -421,23 +398,6 @@ func TestParadex_ThickTierAccepted_ThinTierSkipped(t *testing.T) {
 	}
 	if len(s.Tiers) != 3 {
 		t.Errorf("expected 3 tiers, got %d", len(s.Tiers))
-	}
-}
-
-// ── GMX: factor1e30ToBps real-world value ─────────────────────────────────
-
-func TestGMX_NegativeImpactFactor_RealisticValue(t *testing.T) {
-	// GMX v2 ETH market on Arbitrum. The on-chain positionFeeFactorForNegativeImpact
-	// is typically ~6×10^26 (6 bps). Verify the conversion is stable.
-	raw := "600000000000000000000000000"
-	got := factor1e30ToBps(raw)
-	if abs(got-6.0) > 0.0001 {
-		t.Errorf("factor1e30ToBps(%q) = %v, want 6.0 bps", raw, got)
-	}
-	// AllIn: no spread on GMX (oracle), so allIn = takerBps.
-	allIn := got + 0.0 // SpreadBps = 0
-	if abs(allIn-6.0) > 0.0001 {
-		t.Errorf("GMX allIn = %v bps, want 6.0", allIn)
 	}
 }
 

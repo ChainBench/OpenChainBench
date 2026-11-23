@@ -1,8 +1,5 @@
 import type { ProviderResult } from "@/types/benchmark";
 
-/** Rows the ranking orders: spec-unranked rows (an on-chain feed on bench
- *  305) stay out of Best / Median / Worst, as on dev. Falls back to every
- *  row when all are unranked. */
 export function rankedRows<T extends ProviderResult>(results: T[]): T[] {
   const ranked = results.filter((r) => !r.unrankedLabel);
   return ranked.length > 0 ? ranked : results;

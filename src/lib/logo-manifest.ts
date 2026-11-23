@@ -12,6 +12,38 @@
  */
 
 const RAW: Record<string, string> = {
+  // Bubblemaps' mark as an SVG: the icon group of the wordmark in
+  // bubblemaps.io's own header, cropped to a square. Replaces the 180 px
+  // apple-touch-icon PNG.
+  bubblemaps: "/logos/bubblemaps.svg",
+  // Bench 318's launchpads drew initials chips for six of seven rows, and
+  // four of those already had a file in this directory that nothing pointed
+  // at. The slug on that bench is pumpfun and the entry below it is
+  // pump-fun, so one hyphen was the whole bug.
+  //
+  // LetsBonk and BONK.fun are the same mark: letsbonk.fun serves
+  // /logos/bonk_fun.png as its own icon, and the file already here is that
+  // dog with the bat, cropped. One brand, one file.
+  pumpfun: "/logos/pump-fun.jpg",
+  "pons-family": "/logos/pons.webp",
+  letsbonk: "/logos/bonk-fun.webp",
+  // Their own marks, from the icon each site declares about itself: Argus'
+  // 180 px apple-icon and Flap's 32 px icon.svg.
+  arguspad: "/logos/arguspad.png",
+  flap: "/logos/flap.svg",
+  // long-xyz has no entry on purpose. long.xyz answers 403 to every path,
+  // page and icons alike, from this machine and its subdomains, so there is
+  // no mark to take without going around their own block.
+  // Trnch's own 400 px square brand mark, from trnch.fun/brand. It sat on
+  // the initials chip until now: the alias for its same-block row existed
+  // but nothing pointed at a file, so bench 313 drew "TR".
+  trnch: "/logos/trnch.png",
+  // Paymaster vendors new with bench 312 (2026-10-30): Pimlico's web clip
+  // (its mark on its own purple ground), Etherspot's 192 px site icon, and
+  // Candide's favicon.svg.
+  pimlico: "/logos/pimlico.png",
+  etherspot: "/logos/etherspot.png",
+  candide: "/logos/candide.svg",
   // Server and agent wallet vendors new with bench 310 (2026-10-29): Lit's
   // header lettermark in its brand orange, Portal's glyph cut from its header
   // SVG in the blue of its own app icon, Dfns' symbol from its brand page.
@@ -372,6 +404,9 @@ const RAW: Record<string, string> = {
   // BlockVectra: the square vector mark they supplied (#3464), paths only.
   blockvectra: "/logos/blockvectra.svg",
   thyme: "/logos/thyme.svg",
+  // FluxRPC (FluxBeam): the mark they supplied, white background cut to
+  // transparent so it sits on both themes, 256px square.
+  fluxrpc: "/logos/fluxrpc.png",
   // ─── Sui providers (bench 211) ───
   fullnode: "/logos/mysten.svg",
   blockvision: "/logos/blockvision.svg",
@@ -389,6 +424,7 @@ const RAW: Record<string, string> = {
   // ─── Gram/TON providers (bench 215) ───
   toncenter: "/logos/ton.svg",
   nownodes: "/logos/nownodes.svg",
+  rpcnode: "/logos/rpcnode.svg",
   lukso: "/logos/lukso.svg",
   "lukso-official": "/logos/lukso.svg",
   tatum: "/logos/tatum.svg",
@@ -574,6 +610,19 @@ const RAW: Record<string, string> = {
   chainlink: "/logos/chainlink.svg",
   dogecoin: "/logos/dogecoin.png",
   blockcypher: "/logos/blockcypher.svg",
+  xmr: "/logos/xmr.png",
+  firo: "/logos/firo.png",
+  pivx: "/logos/pivx.png",
+  wow: "/logos/wow.svg",
+  part: "/logos/part.png",
+  // Particl's blind mode is the same chain with the privacy mode on, so it
+  // shares the mark. A separate logo would invent a project that does not
+  // exist; the row name carries the distinction the board compares.
+  "part-blind": "/logos/part.png",
+  thorchain: "/logos/thorchain.png",
+  maya: "/logos/maya.png",
+  zec: "/logos/zcash.svg",
+  dash: "/logos/dash.png",
   zcash: "/logos/zcash.svg",
   "tatum-zebra": "/logos/tatum.svg",
   "bitcoin-cash": "/logos/bitcoin-cash.svg",
@@ -707,6 +756,7 @@ const RAW: Record<string, string> = {
   hyperx: "/logos/hyperx.png",
   miracle: "/logos/miracle.jpg",
   xbit: "/logos/xbit.png",
+  // Proliquid (formerly tuleep.trade): the shark mark from proliquid.xyz/brand.
   "tuleep-trade": "/logos/tuleep-trade.png",
   "aura-money": "/logos/aura-money.jpg",
   "cro-trade": "/logos/cro-trade.png",
@@ -1112,6 +1162,15 @@ const ALIASES: Record<string, string> = {
   // providers.ts ALIASES, which also needs a line per cold vendor.
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
+  // Bench 313 measures every aggregator at two sell timings, and the
+  // schema makes tier a partition of providers, so the second timing is
+  // a second row per vendor. Without these each `-same-block` slug
+  // builds its own /products page carrying the vendor's title, which is
+  // what the cold tier did before its aliases landed.
+  "kyberswap-same-block": "kyberswap",
+  "paraswap-same-block": "paraswap",
+  "lifi-same-block": "lifi",
+  "trnch-same-block": "trnch",
   "alchemy-cold": "alchemy",
   "blockmachine-cold": "blockmachine",
   "alchemy-heavy": "alchemy",
@@ -1123,6 +1182,7 @@ const ALIASES: Record<string, string> = {
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
   "helius-cold": "helius",
+  "fluxrpc-cold": "fluxrpc",
   "validationcloud-cold": "validationcloud",
   "validation-cloud": "validationcloud",
   "dwellir-unlimited": "dwellir",
@@ -1132,10 +1192,25 @@ const ALIASES: Record<string, string> = {
   "helius-dedicated": "helius",
 };
 
-export function logoPath(slug: string): string | null {
+/** The slug whose logo file a given slug actually renders.
+ *
+ *  Callers that style a mark (the chip sets in provider-logo) must key on
+ *  this, not on the raw slug: an alias inherits the FILE, so it has to
+ *  inherit the treatment that file needs. "lighter-rh" shipped lighter.svg,
+ *  a near-black mark on transparent, with no chip behind it and therefore
+ *  invisible on a dark page. */
+/** The alias map, exposed for the guard in provider-logo.test.ts that
+ *  asserts every alias inherits its target's chip treatment. Not for
+ *  callers: use resolveLogoSlug. */
+export const LOGO_ALIASES_FOR_TEST: Readonly<Record<string, string>> = ALIASES;
+
+export function resolveLogoSlug(slug: string): string {
   const key = slug.toLowerCase();
-  const aliased = ALIASES[key] ?? key;
-  return RAW[aliased] ?? null;
+  return ALIASES[key] ?? key;
+}
+
+export function logoPath(slug: string): string | null {
+  return RAW[resolveLogoSlug(slug)] ?? null;
 }
 
 /** True when a logo file is registered. Cheap check used by the chip

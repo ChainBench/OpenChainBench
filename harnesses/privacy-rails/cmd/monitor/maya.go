@@ -17,6 +17,7 @@ type mayaQuote struct {
 	ExpectedAmountOut string `json:"expected_amount_out"`
 	TotalSwapSeconds  int    `json:"total_swap_seconds"`
 	OutboundDelay     int    `json:"outbound_delay_seconds"`
+	StreamingSeconds  int    `json:"streaming_swap_seconds"`
 	InboundAddress    string `json:"inbound_address"`
 	Error             string `json:"error"`
 	Fees              struct {
@@ -48,24 +49,6 @@ func mayaQuoteSwap(cfg *Config, from, to string, amount int64, dest string) (*ma
 	return &q, code, err
 }
 
-// notionalRung is one point on the size selector. The label is what a reader
-// sees on the tab, the amount is in the source asset's smallest unit.
-//
-// Sizes are expressed in BTC because that is the deepest side of these pools
-// and keeps one source asset across the rungs; a rung priced in USD would
-// move with BTC and make yesterday's board incomparable with today's.
-type notionalRung struct {
-	Label string
-	SatIn int64 // 1e8 = 1 BTC
-	ZatIn int64 // for the exit leg, 1e8 = 1 ZEC
-}
-
-var rungs = []notionalRung{
-	{Label: "sat100k", SatIn: 100_000, ZatIn: 100_000_000},
-	{Label: "sat1m", SatIn: 1_000_000, ZatIn: 1_000_000_000},
-	{Label: "sat10m", SatIn: 10_000_000, ZatIn: 10_000_000_000},
-}
-
 // probeMayaRoundTrip measures the thing a user actually experiences: in and
 // back out. Two chained quotes, the second one sized by the first one's
 // output, so the number is a round trip and not two unrelated legs.
@@ -73,8 +56,9 @@ var rungs = []notionalRung{
 // Both legs must succeed or nothing is published. A half-measured round trip
 // is worse than a gap, because it looks like a cheap one.
 func probeMayaRoundTrip(cfg *Config, asset string) {
-	for _, r := range rungs {
-		lbl := []string{"maya", asset, r.Label, cfg.MonitorRegion}
+	var costs, secs []float64
+	for _, r := range tiers {
+		lbl := []string{"maya", asset, r.Bucket, cfg.MonitorRegion}
 
 		in, _, err := mayaQuoteSwap(cfg, "BTC.BTC", asset, r.SatIn, "")
 		if err != nil {
@@ -106,11 +90,19 @@ func probeMayaRoundTrip(cfg *Config, asset string) {
 			probeTotal.WithLabelValues("maya", "round_trip", "negative_cost").Inc()
 			continue
 		}
-		roundTripBps.WithLabelValues(lbl...).Observe(lost)
-		roundTripSec.WithLabelValues(lbl...).Observe(float64(in.TotalSwapSeconds + back.TotalSwapSeconds))
+		roundTripBps.WithLabelValues(lbl...).Set(lost)
+		eta := float64(in.TotalSwapSeconds + back.TotalSwapSeconds)
+		roundTripSec.WithLabelValues(lbl...).Set(eta)
+		// Published for Maya too, where it reads 0. A zero here is the
+		// statement that this rail did NOT stream, which is what makes the
+		// other rail's low cost readable instead of suspicious.
+		streamSeconds.WithLabelValues(lbl...).Set(float64(in.StreamingSeconds + back.StreamingSeconds))
+		costs = append(costs, lost)
+		secs = append(secs, eta)
 		probeTotal.WithLabelValues("maya", "round_trip", "ok").Inc()
 		lastSuccess.WithLabelValues("maya", "round_trip").Set(float64(time.Now().Unix()))
 	}
+	publishPooled("maya", asset, cfg.MonitorRegion, costs, secs)
 }
 
 // probeMayaExitCost asks the narrower question: what does it cost to get OUT,
@@ -130,7 +122,7 @@ func probeMayaExitCost(cfg *Config, asset string) {
 		out   int64
 	}
 	var legs []leg
-	for _, r := range rungs {
+	for _, r := range tiers {
 		q, _, err := mayaQuoteSwap(cfg, asset, "BTC.BTC", r.ZatIn, "")
 		if err != nil {
 			probeTotal.WithLabelValues("maya", "exit_cost", "transport_error").Inc()
@@ -141,7 +133,7 @@ func probeMayaExitCost(cfg *Config, asset string) {
 			probeTotal.WithLabelValues("maya", "exit_cost", "refused").Inc()
 			continue
 		}
-		legs = append(legs, leg{r.Label, r.ZatIn, outSat})
+		legs = append(legs, leg{r.Bucket, r.ZatIn, outSat})
 	}
 	if len(legs) < 2 {
 		// One size alone has nothing to be compared against, and publishing
@@ -159,13 +151,22 @@ func probeMayaExitCost(cfg *Config, asset string) {
 	// The reference rung is NOT published. Measured against itself it is 0 by
 	// construction, and a row reading 0 bps would be read as a frictionless
 	// exit rather than as the baseline the other sizes are measured from.
+	var impacts []float64
 	for _, l := range legs[1:] {
 		expected := baseRate * float64(l.in)
 		impact := (expected - float64(l.out)) / expected * 10000
 		if impact < 0 {
 			impact = 0
 		}
-		exitCostBps.WithLabelValues("maya", asset, l.label, cfg.MonitorRegion).Observe(impact)
+		exitCostBps.WithLabelValues("maya", asset, l.label, cfg.MonitorRegion).Set(impact)
+		impacts = append(impacts, impact)
+	}
+	// The pooled series the default tab reads, for the same reason the round
+	// trip needs one: an unpinned selector matches every tier at once and the
+	// board cannot pick a value, while pinning a real tier would survive into
+	// every filtered tab because injectLabels only replaces bucket="all".
+	if len(impacts) >= 2 {
+		exitCostBps.WithLabelValues("maya", asset, "all", cfg.MonitorRegion).Set(medianOf(impacts))
 	}
 	probeTotal.WithLabelValues("maya", "exit_cost", "ok").Inc()
 	lastSuccess.WithLabelValues("maya", "exit_cost").Set(float64(time.Now().Unix()))

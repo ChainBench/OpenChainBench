@@ -8,7 +8,9 @@
 # recorded sum/count rate pair.
 groups:
   - name: ocb_evm_quote_latency
-    interval: 60s
+    # 300s: every rule here is a [24h] window, which does not move in a
+    # minute. See ocb_rpc_capabilities.yml for the measurement behind this.
+    interval: 300s
     rules:
       - record: ocb:evm_swap_quote_latency_ms:p50_24h
         expr: histogram_quantile(0.50, sum by (provider, chain, region, le) (rate(evm_swap_quote_latency_ms_bucket[24h])))

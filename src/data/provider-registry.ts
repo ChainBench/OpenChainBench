@@ -48,7 +48,7 @@ export type ProviderClaim = {
   verifiedAt: string;
 };
 
-export type ProviderRegistryEntry = {
+type ProviderRegistryEntry = {
   /**
    * Optional since 2026-10-09, for the opposite reason to `description`
    * below. A sweep of all 341 published URLs found domains that had simply
@@ -80,7 +80,7 @@ export type ProviderRegistryEntry = {
    * product page's outbound link. `url` stays the canonical address shown
    * as the link text and served in the API, citations and structured data,
    * the same rule utm.ts follows for the utm tag. The rendered href still
-   * goes through withUtm, so it carries both the provider's referral code
+   * goes through outboundHref, so it carries both the provider's referral code
    * and our utm_source. Rendered with rel="sponsored".
    */
   referralUrl?: string;
@@ -111,6 +111,59 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
+  thorchain: {
+    url: "https://thorchain.org",
+    description:
+      "Cross-chain liquidity protocol settling native swaps between Bitcoin, Ethereum, Zcash and others without wrapped assets. Streams large swaps into hundreds of sub-swaps to cut slippage, trading time for price.",
+  },
+
+  xmr: {
+    url: "https://www.getmonero.org",
+    description:
+      "Privacy chain using ring signatures, stealth addresses and confidential amounts, where every transaction is private by default rather than by choice.",
+  },
+  firo: {
+    url: "https://firo.org",
+    description:
+      "Privacy chain built on the Lelantus Spark protocol, offering direct anonymous payments without a trusted setup.",
+  },
+  pivx: {
+    url: "https://pivx.org",
+    description:
+      "Proof-of-stake chain with optional shielded transactions based on the Sapling protocol.",
+  },
+  wow: {
+    url: "https://wownero.org",
+    description:
+      "A Monero fork with no premine and a fixed supply, sharing Monero's ring signature and stealth address privacy.",
+  },
+  part: {
+    url: "https://particl.io",
+    description:
+      "Privacy-focused chain and marketplace offering transparent, blind and anonymous transaction modes on the same ledger.",
+  },
+  "part-blind": {
+    url: "https://particl.io",
+    description:
+      "Particl's blind transaction mode, which hides amounts using Confidential Transactions on the same chain as its transparent mode.",
+  },
+
+  maya: {
+    url: "https://www.mayaprotocol.com",
+    description:
+      "Cross-chain liquidity protocol forked from THORChain, settling native swaps between Bitcoin, Ethereum, Dash, Zcash and others without wrapped assets. Its ZEC pool carried about half the protocol's volume in October 2026.",
+  },
+  dash: {
+    url: "https://www.dash.org",
+    description:
+      "Payments-focused fork of Bitcoin with a masternode layer, offering optional coin mixing through CoinJoin and near-instant settlement via InstantSend.",
+  },
+  zec: {
+    url: "https://z.cash",
+    description:
+      "Privacy chain using zk-SNARKs, where balances can be held transparently or in a shielded pool. Shielded addresses and amounts never appear on the public ledger.",
+  },
+
   // Rollup-as-a-service operator. Runs the Katana public RPC that Katana's own
   // network documentation lists alongside the official and Tenderly endpoints.
   conduit: {
@@ -189,20 +242,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Onchain data aggregator covering 80+ chains. WebSocket fast-trade feed, REST market and metadata, wallet portfolio APIs. Its swap endpoint routes multi-hop across named pools, so it is typed as an aggregator on the quote benches.",
     twitter: "@MobulaIO",
-  },
-  metastreams: {
-    url: "https://metastreams.io",
-    description:
-      "Real-time on-chain market data API for spot, perps and prediction markets. REST token endpoints plus a WebSocket stream of trades filtered by chain and pool.",
-    longDescription:
-      "Metastreams streams enriched on-chain market data over one WebSocket (wss://api.metastreams.io/v1/stream): a spot.trades channel takes chain and pool filters, so a subscriber receives only the pools it asked for. The REST side (api.metastreams.io/v1/tokens) returns token price, market cap, liquidity, holders, security flags and metadata (logo, description, socials) in one call. Spot coverage is Solana, BNB Chain, Robinhood Chain and Elysium; Base is not indexed. Auth is a Bearer API key.",
-    docs: "https://docs.metastreams.io",
-    chains: ["solana", "bnb", "robinhood"],
-    features: [
-      "WebSocket spot.trades stream filtered by chain and pool",
-      "Token endpoint with price, liquidity, holders, security and metadata",
-      "Token metadata: logo, description, twitter and website",
-    ],
   },
   codex: {
     url: "https://www.codex.io",
@@ -322,6 +361,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     pricing:
       "Credit-metered. Free 15k credits/month, Starter 150k, Growth 2M, Enterprise unlimited. Most endpoints cost 1 credit; token/security costs 10 and a fresh contract audit 750.",
   },
+  metastreams: {
+    url: "https://metastreams.io",
+    description:
+      "Real-time on-chain market data API for spot, perps and prediction markets. REST token endpoints plus a WebSocket stream of trades filtered by chain and pool.",
+    longDescription:
+      "Metastreams streams enriched on-chain market data over one WebSocket (wss://api.metastreams.io/v1/stream): a spot.trades channel takes chain and pool filters, so a subscriber receives only the pools it asked for. The REST side (api.metastreams.io/v1/tokens) returns token price, market cap, liquidity, holders, security flags and metadata (logo, description, socials) in one call. Spot coverage is Solana, BNB Chain, Robinhood Chain and Elysium; Base is not indexed. Auth is a Bearer API key.",
+    docs: "https://docs.metastreams.io",
+    chains: ["solana", "bnb", "robinhood"],
+    features: [
+      "WebSocket spot.trades stream filtered by chain and pool",
+      "Token endpoint with price, liquidity, holders, security and metadata",
+      "Token metadata: logo, description, twitter and website",
+    ],
+  },
   dexpaprika: {
     url: "https://dexpaprika.com",
     description:
@@ -404,6 +457,23 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "DeFi shared engine that maps onchain interactions into composable actions. The Route API computes optimal multi-step paths across protocols and chains, abstracting approvals, swaps, vault entries, and bridges into a single call.",
     twitter: "@EnsoBuild",
+  },
+  trnch: {
+    url: "https://trnch.fun",
+    description:
+      "Aggregator for Robinhood Chain, chain ID 4663, and no other chain. Its bot API polls several routers and returns the best, and it refuses outright to quote a token its own agent classifies as a rug, honeypot or imitation.",
+    twitter: "@trnchfun",
+    longDescription:
+      "Trnch quotes Robinhood Chain by polling several routers and returning the best, naming each one it asked and whether that route was usable. Before it polls anyone it screens the token with its own agent, TIA, and answers a refusal rather than a price when that screen fails; it publishes the honeypots and rugs that screen identifies at trnch.fun/tia. This site measures that refusal on the token sellability bench, where a low score means the router declined to route into tokens an independent simulation could not sell back out of, and measures its quote and its latency on the two aggregator boards. The 0.5% it takes is reported per route in the quote response, and measured against a direct KyberSwap quote on the same pair at the same moment on 2026-11-02 the gap was 49.3 to 51.2 basis points, so the declaration matches what it costs.",
+  },
+  bubblemaps: {
+    url: "https://bubblemaps.io",
+    description:
+      "Token holder visualization and an address label graph. The maps are the product traders know; the Data API also answers a label and entity for a single address, on a custom plan.",
+    twitter: "@bubblemaps",
+    docs: "https://docs.bubblemaps.io",
+    longDescription:
+      "Bubblemaps draws the holder graph of a token, clustering wallets that move together, and the labels on those nodes come from a database it describes as 1B+ identified addresses. This site measures that database directly through the Data API's address metadata endpoint, which returns a label, an entity id and whether the address is a contract, a CEX or a DEX. One thing shapes how that reads on the wallet labeling bench: the endpoint takes an address and no chain, so an address that exists on several chains gets a single answer. Measured here on 2026-11-09, WETH on Base returns Mantle and the Venus Comptroller on BNB returns Ethereum Foundation Congress, both being addresses shared across chains. Their chain list also advertises TON while the address endpoint rejects a TON address, so six of that bench's eleven chains are in scope for them.",
   },
   route: {
     url: "https://route.fun",
@@ -1212,6 +1282,16 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "MegaETH's official public RPC (mainnet.megaeth.com). Compute-unit and bandwidth limited; WebSocket endpoint exposes the 10 ms mini-block realtime API.",
     twitter: "@megaeth_labs",
   },
+  zan: {
+    url: "https://zan.top",
+    description:
+      "Web3 node service from Ant Digital Technologies (zan.top). Its keyless public Starknet endpoint is the one measured on the Starknet RPC page.",
+  },
+  fluxrpc: {
+    url: "https://fluxrpc.com",
+    description:
+      "Solana and Fogo RPC from the FluxBeam team, billed by bandwidth rather than per call, with WebSocket and Yellowstone gRPC. Endpoints in New York and Amsterdam. Measured in the private cohort of the Solana RPC page.",
+  },
   thyme: {
     url: "https://gate.thymelabs.io",
     description:
@@ -1222,11 +1302,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://blockvectra.com",
     description:
       "RPC gateway with keyless public endpoints (3 requests per second per IP, 1,000-block history window). Listed on the Ink, Unichain, Fraxtal, Katana, Ethereum, Arbitrum, Optimism, Boba and World Chain RPC pages.",
-  },
-  zan: {
-    url: "https://zan.top",
-    description:
-      "Web3 node service from Ant Digital Technologies (zan.top). Its keyless public Starknet endpoint is the one measured on the Starknet RPC page.",
   },
   au: {
     url: "https://au.cc",
@@ -1611,7 +1686,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   sushi: {
     url: "https://www.sushi.com",
     description:
-      "Sushi is a multichain DEX whose Sushi Perps v2 frontend routes orders into the Hyperliquid orderbook via a builder code, layering Sushi points incentives on top.",
+      "Sushi is a multichain DEX and router. Its keyless swap API quotes across the chains measured here, Robinhood Chain included, where it is one of five sources that answer. Separately, the Sushi Perps v2 frontend routes orders into the Hyperliquid orderbook via a builder code, layering Sushi points incentives on top.",
     twitter: "@SushiSwap",
   },
   dreamcash: {
@@ -1851,10 +1926,10 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@XBITDEX",
   },
   "tuleep-trade": {
-    url: "https://tuleep.trade",
+    url: "https://www.proliquid.xyz",
     description:
-      "tuleep.trade is a multi exchange trading terminal focused on news trading; its Hyperliquid orders carry a registered builder code.",
-    twitter: "@tuleep_trade",
+      "Proliquid is a multi-venue crypto trading terminal for Hyperliquid, RISEx, Lighter, Extended, Binance, Bybit, OKX and BloFin, with keys kept on the user's device; its Hyperliquid orders carry a registered builder code starting at 2 bps.",
+    twitter: "@proliquid_xyz",
   },
   "aura-money": {
     url: "https://aura.money",
@@ -2949,6 +3024,19 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "The LUKSO Foundation's official mainnet RPC endpoint for the LUKSO EVM chain (chain ID 42), served with no API key.",
     twitter: "@lukso_io",
   },
+  rpcnode: {
+    url: "https://rpcnode.dev",
+    description:
+      "Multi-chain RPC provider with keyless public endpoints on 20 mainnets (EVM chains, Solana, Bitcoin, Tron, TON, Sui, Aptos and more), rate-limited to 5 requests per second per IP, plus key-based paid plans.",
+    docs: "https://docs.rpcnode.dev/getting-started",
+    chains: ["ethereum", "bnb", "avalanche", "monad", "arc", "solana", "bitcoin", "bitcoin-cash", "dogecoin", "aptos"],
+    features: [
+      "Keyless public endpoints, no sign-up",
+      "20 mainnets, EVM and non-EVM",
+      "5 requests per second per IP on the public tier",
+      "Key-based paid plans for higher limits",
+    ],
+  },
   nownodes: {
     url: "https://nownodes.io",
     description:
@@ -3682,6 +3770,22 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://www.dfns.co",
     description: "Wallet-as-a-service and key-management API for banks, fintechs and institutions, sold on annual plans.",
     twitter: "@dfnsHQ",
+  },
+  // Paymaster and bundler vendors, bench 312 (2026-10-30).
+  pimlico: {
+    url: "https://www.pimlico.io",
+    description: "ERC-4337 bundler and paymaster infrastructure: sponsored gas and ERC-20 gas payment on 100+ EVM chains.",
+    twitter: "@pimlicoHQ",
+  },
+  etherspot: {
+    url: "https://etherspot.io",
+    description: "Account abstraction stack with the Skandha bundler and the Arka paymaster, billed in prepaid API credits.",
+    twitter: "@etherspot",
+  },
+  candide: {
+    url: "https://www.candide.dev",
+    description: "Open-source ERC-4337 bundler, paymaster and Safe-based smart account SDK.",
+    twitter: "@candidelabs",
   },
 };
 

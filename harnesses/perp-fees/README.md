@@ -10,9 +10,10 @@ Exposes Prometheus metrics on `:2112/metrics`.
 |---|---|
 | Hyperliquid | `POST /info` orderbook + userFees + funding |
 | dYdX v4 | indexer orderbook + perpetualMarkets funding + Cosmos REST fee tier |
-| GMX v2 (Arbitrum) | Subsquid GraphQL `positionFeeFactorForNegativeImpact` + gmxinfra REST funding |
+| GMX v2 (Arbitrum) | Subsquid GraphQL position fee factors (positive and negative impact) + gmxinfra REST oracle prices + Reader `getExecutionPrice` for spread and impact |
 | Lighter | `/orderBookDetails` taker fee + `/orderBookOrders` orderbook walk |
-| Gains (v8 on Base) | `eth_call` on the on-chain fee oracle |
+| Gains (v8 on Arbitrum) | `eth_call` on the on-chain fee oracle + cumulative-volume price impact |
+| Binance, Bybit, OKX, Bitget, MEXC, Gate, KuCoin (CEX) | Public order book of the USDT-margined perpetual, contracts converted with each instrument's contract size; taker fee from the public contract row (Bitget, MEXC, KuCoin) or the documented base tier (Binance, Bybit, OKX, Gate) |
 
 Cadence: every 5 minutes, in parallel across all venues. Failed scrapes leave the previous gauge in place and increment `perp_fees_fetch_errors_total`.
 
@@ -45,6 +46,7 @@ No API keys required. All sources are public REST / RPC.
 |---|---|---|
 | `PROM_LISTEN_ADDR` | `:2112` | listen address for the Prometheus scrape endpoint |
 | `LOGS_TOKEN` | (unset) | optional, gates `/logs?tail=N` for remote log inspection |
+| `RPC_ARBITRUM` | `https://arb1.arbitrum.io/rpc` | JSON-RPC for the GMX v2 Reader and the Gains reads |
 
 See [`.env.example`](./.env.example) for the template.
 

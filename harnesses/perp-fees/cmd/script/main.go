@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -67,7 +68,7 @@ func fetchAll(cfg *Config) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s := fetchOne(v, cfg)
+			s := fetchOne(v, cfg, http.DefaultClient)
 			recordSample(s)
 			recordDebugSnapshot(s)
 			if s.Err != "" {
@@ -87,18 +88,18 @@ func fetchAll(cfg *Config) {
 	wg.Wait()
 }
 
-func fetchOne(v VenueConfig, cfg *Config) PerpSample {
+func fetchOne(v VenueConfig, cfg *Config, cexClient *http.Client) PerpSample {
 	switch v.Slug {
 	case "hyperliquid":
 		return fetchHyperliquid(v, hyperliquidURL)
 	case "dydx":
 		return fetchDYdX(v)
 	case "gmx":
-		return fetchGMX(v)
+		return fetchGMX(v, cfg.ArbitrumRPC)
 	case "lighter":
 		return fetchLighter(v)
 	case "gains":
-		return fetchGains(v, cfg.MobulaAPIKey)
+		return fetchGains(v, cfg.ArbitrumRPC)
 	case "polymarket":
 		return fetchPolymarket(v)
 	case "paradex":
@@ -111,7 +112,9 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchEdgex(v)
 	case "ondo":
 		return fetchOndo(v)
-	default:
-		return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 	}
+	if quote, ok := cexQuotes[v.Slug]; ok {
+		return fetchCEX(v, quote, cexClient)
+	}
+	return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 }

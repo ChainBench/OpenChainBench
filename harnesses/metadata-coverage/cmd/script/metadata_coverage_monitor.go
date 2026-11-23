@@ -65,22 +65,26 @@ type ProviderCoverage struct {
 
 // MetadataCoverageStats holds overall stats
 type MetadataCoverageStats struct {
-	mu         sync.Mutex
-	Mobula     ProviderCoverage
-	Codex      ProviderCoverage
-	Jupiter    ProviderCoverage
-	Serialized ProviderCoverage
-	LastPrint  time.Time
+	mu          sync.Mutex
+	Mobula      ProviderCoverage
+	Codex       ProviderCoverage
+	Jupiter     ProviderCoverage
+	Serialized  ProviderCoverage
+	Metastreams ProviderCoverage
+	LastPrint   time.Time
 }
 
 var (
 	coverageStats = &MetadataCoverageStats{
-		Mobula:     ProviderCoverage{Provider: "mobula"},
-		Codex:      ProviderCoverage{Provider: "codex"},
-		Jupiter:    ProviderCoverage{Provider: "jupiter"},
-		Serialized: ProviderCoverage{Provider: "serialized"},
+		Mobula:      ProviderCoverage{Provider: "mobula"},
+		Codex:       ProviderCoverage{Provider: "codex"},
+		Jupiter:     ProviderCoverage{Provider: "jupiter"},
+		Serialized:  ProviderCoverage{Provider: "serialized"},
+		Metastreams: ProviderCoverage{Provider: "metastreams"},
 	}
-	tokenQueue     = make(chan TokenToCheck, 500)
+	// 30 per chain: at Solana's share of the workers that is a few
+	// minutes of backlog, so a check stays close to the token's launch.
+	tokenQueue     = newFairQueue(30)
 	metadataClient = &http.Client{Timeout: 10 * time.Second}
 )
 
@@ -236,21 +240,24 @@ func getCodexNetworkID(chainID string) int {
 		return 56
 	case "evm:42161":
 		return 42161
+	case "evm:4663":
+		return 4663
 	default:
 		return 0
 	}
 }
 
-func checkCodexMetadata(token TokenToCheck, sessionCookie string) MetadataFields {
+func checkCodexMetadata(token TokenToCheck, codexAPIKey, sessionCookie string) MetadataFields {
 	// Try once. If Codex returns 401 / UNAUTHENTICATED, invalidate the JWT
 	// cache and retry once. This recovers automatically when the cached JWT
 	// expired between mint and use, without waiting for a manual cookie reset.
-	result := codexMetadataAttempt(token, sessionCookie)
-	if codexAuthFailed(result) {
+	result := codexMetadataAttempt(token, codexAPIKey, sessionCookie)
+	// With an API key there is no JWT to refresh, so a 401 is final.
+	if codexAPIKey == "" && codexAuthFailed(result) {
 		fmt.Printf("[META][CODEX][retry] %s | %s | invalidating JWT cache after %s\n",
 			token.ChainID, token.Symbol, result.Error)
 		InvalidateTokenCache()
-		result = codexMetadataAttempt(token, sessionCookie)
+		result = codexMetadataAttempt(token, codexAPIKey, sessionCookie)
 	}
 	return result
 }
@@ -261,7 +268,7 @@ func codexAuthFailed(r MetadataFields) bool {
 		strings.Contains(r.Error, "Not authorized")
 }
 
-func codexMetadataAttempt(token TokenToCheck, sessionCookie string) MetadataFields {
+func codexMetadataAttempt(token TokenToCheck, codexAPIKey, sessionCookie string) MetadataFields {
 	result := MetadataFields{}
 
 	networkID := getCodexNetworkID(token.ChainID)
@@ -273,13 +280,23 @@ func codexMetadataAttempt(token TokenToCheck, sessionCookie string) MetadataFiel
 	// Codex GraphQL no longer accepts the raw Defined session cookie as Bearer
 	// (returns 401 UNAUTHENTICATED). Mint a JWT from the cookie via defined.fi/api
 	// and use that as Bearer — same path as the head_lag WS monitor.
-	apiKey, err := GetDefinedJWTToken(sessionCookie)
-	if err != nil {
-		recordCodexJWT(0, err.Error())
-		result.Error = fmt.Sprintf("jwt_mint_error: %v", err)
-		return result
+	//
+	// A Codex API key, when set, is used instead. It goes in Authorization
+	// as-is, without "Bearer". The session path died on 2026-11-13 (every
+	// call 401) and Codex reported nothing on this bench for six days.
+	authHeader := ""
+	if codexAPIKey != "" {
+		authHeader = codexAPIKey
+	} else {
+		jwt, err := GetDefinedJWTToken(sessionCookie)
+		if err != nil {
+			recordCodexJWT(0, err.Error())
+			result.Error = fmt.Sprintf("jwt_mint_error: %v", err)
+			return result
+		}
+		recordCodexJWT(len(jwt), "")
+		authHeader = "Bearer " + jwt
 	}
-	recordCodexJWT(len(apiKey), "")
 
 	// Use token query which returns EnhancedToken with socialLinks and info
 	// https://docs.codex.io/api-reference/queries/token
@@ -330,9 +347,7 @@ func codexMetadataAttempt(token TokenToCheck, sessionCookie string) MetadataFiel
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	if apiKey != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	}
+	req.Header.Set("Authorization", authHeader)
 
 	startTime := time.Now()
 	resp, err := metadataClient.Do(req)
@@ -557,6 +572,8 @@ func updateStats(provider string, fields MetadataFields) {
 		stats = &coverageStats.Jupiter
 	case "serialized":
 		stats = &coverageStats.Serialized
+	case "metastreams":
+		stats = &coverageStats.Metastreams
 	default:
 		return
 	}
@@ -605,7 +622,7 @@ func printCoverageStats() {
 	fmt.Printf("║ Provider │ Checks │ Logo  │ Name  │ Symbol│ Desc  │Twitter│Website│Telegram│ Errors │\n")
 	fmt.Printf("╠══════════════════════════════════════════════════════════════════════════════╣\n")
 
-	for _, stats := range []*ProviderCoverage{&coverageStats.Mobula, &coverageStats.Codex, &coverageStats.Jupiter, &coverageStats.Serialized} {
+	for _, stats := range []*ProviderCoverage{&coverageStats.Mobula, &coverageStats.Codex, &coverageStats.Jupiter, &coverageStats.Serialized, &coverageStats.Metastreams} {
 		if stats.TotalChecks == 0 {
 			fmt.Printf("║ %-8s │ %6d │   -   │   -   │   -   │   -   │   -   │   -   │   -    │ %6d ║\n",
 				stats.Provider, stats.TotalChecks, stats.ErrorCount)
@@ -647,6 +664,8 @@ func chainNameFromPulseChainID(chainID string) string {
 		return "base"
 	case "evm:143":
 		return "monad"
+	case "evm:4663":
+		return "robinhood"
 	default:
 		return chainID
 	}
@@ -659,29 +678,43 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 	mobulaResult := checkMobulaMetadata(token, config.MobulaAPIKey)
 	updateStats("mobula", mobulaResult)
 
-	// Record Prometheus metrics for Mobula
-	RecordMetadataCoverage("mobula", chainName, "logo", mobulaResult.HasLogo, config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "logo_resolved", mobulaResult.HasLogo && logoResolves(mobulaResult.LogoURL), config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "description", mobulaResult.HasDescription, config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "twitter", mobulaResult.HasTwitter, config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "website", mobulaResult.HasWebsite, config.MonitorRegion)
-	RecordMetadataLatency("mobula", chainName, mobulaResult.ResponseTimeMs, config.MonitorRegion)
+	// A call that failed is not a measurement of what Mobula serves. See
+	// the note on RecordMetadataError: recording the empty fields of a
+	// failed call publishes our inability to ask as their absence.
+	if mobulaResult.Error != "" {
+		RecordMetadataError("mobula", chainName, mobulaResult.Error, config.MonitorRegion)
+	} else {
+		RecordMetadataCoverage("mobula", chainName, "logo", mobulaResult.HasLogo, config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "logo_resolved", mobulaResult.HasLogo && logoResolves(mobulaResult.LogoURL), config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "description", mobulaResult.HasDescription, config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "twitter", mobulaResult.HasTwitter, config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "website", mobulaResult.HasWebsite, config.MonitorRegion)
+		RecordMetadataLatency("mobula", chainName, mobulaResult.ResponseTimeMs, config.MonitorRegion)
+	}
 
 	// Check Codex
-	codexResult := checkCodexMetadata(token, config.DefinedSessionCookie)
+	codexResult := checkCodexMetadata(token, config.CodexAPIKey, config.DefinedSessionCookie)
 	if codexResult.Error != "" {
 		fmt.Printf("[META][CODEX][%s] %s | %s | err=%s\n",
 			chainName, token.Symbol, token.Address, codexResult.Error)
 	}
 	updateStats("codex", codexResult)
 
-	// Record Prometheus metrics for Codex
-	RecordMetadataCoverage("codex", chainName, "logo", codexResult.HasLogo, config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "logo_resolved", codexResult.HasLogo && logoResolves(codexResult.LogoURL), config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "description", codexResult.HasDescription, config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "twitter", codexResult.HasTwitter, config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "website", codexResult.HasWebsite, config.MonitorRegion)
-	RecordMetadataLatency("codex", chainName, codexResult.ResponseTimeMs, config.MonitorRegion)
+	// This is the branch that cost fifteen days. The Codex session cookie
+	// expired on 2026-10-28 at 21:15 UTC, every call answered 401, and the
+	// five fields below were recorded as five failed checks per token. The
+	// board published Codex at 0% coverage on three chains, which was a
+	// statement about our credential and not about their data.
+	if codexResult.Error != "" {
+		RecordMetadataError("codex", chainName, codexResult.Error, config.MonitorRegion)
+	} else {
+		RecordMetadataCoverage("codex", chainName, "logo", codexResult.HasLogo, config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "logo_resolved", codexResult.HasLogo && logoResolves(codexResult.LogoURL), config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "description", codexResult.HasDescription, config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "twitter", codexResult.HasTwitter, config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "website", codexResult.HasWebsite, config.MonitorRegion)
+		RecordMetadataLatency("codex", chainName, codexResult.ResponseTimeMs, config.MonitorRegion)
+	}
 
 	// Check Jupiter (Solana only - scraping frontend)
 	var jupiterResult MetadataFields
@@ -689,13 +722,17 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 		jupiterResult = checkJupiterMetadata(token)
 		updateStats("jupiter", jupiterResult)
 
-		// Record Prometheus metrics for Jupiter
-		RecordMetadataCoverage("jupiter", chainName, "logo", jupiterResult.HasLogo, config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "logo_resolved", jupiterResult.HasLogo && logoResolves(jupiterResult.LogoURL), config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "description", jupiterResult.HasDescription, config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "twitter", jupiterResult.HasTwitter, config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "website", jupiterResult.HasWebsite, config.MonitorRegion)
-		RecordMetadataLatency("jupiter", chainName, jupiterResult.ResponseTimeMs, config.MonitorRegion)
+		// Same rule as the two above.
+		if jupiterResult.Error != "" {
+			RecordMetadataError("jupiter", chainName, jupiterResult.Error, config.MonitorRegion)
+		} else {
+			RecordMetadataCoverage("jupiter", chainName, "logo", jupiterResult.HasLogo, config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "logo_resolved", jupiterResult.HasLogo && logoResolves(jupiterResult.LogoURL), config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "description", jupiterResult.HasDescription, config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "twitter", jupiterResult.HasTwitter, config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "website", jupiterResult.HasWebsite, config.MonitorRegion)
+			RecordMetadataLatency("jupiter", chainName, jupiterResult.ResponseTimeMs, config.MonitorRegion)
+		}
 	}
 
 	// Check Serialized (18 EVM chains + Solana; skipped elsewhere)
@@ -708,12 +745,38 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 		}
 		updateStats("serialized", serializedResult)
 
-		RecordMetadataCoverage("serialized", chainName, "logo", serializedResult.HasLogo, config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "logo_resolved", serializedResult.HasLogo && logoResolves(serializedResult.LogoURL), config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "description", serializedResult.HasDescription, config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "twitter", serializedResult.HasTwitter, config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "website", serializedResult.HasWebsite, config.MonitorRegion)
-		RecordMetadataLatency("serialized", chainName, serializedResult.ResponseTimeMs, config.MonitorRegion)
+		// Same rule as the three above.
+		if serializedResult.Error != "" {
+			RecordMetadataError("serialized", chainName, serializedResult.Error, config.MonitorRegion)
+		} else {
+			RecordMetadataCoverage("serialized", chainName, "logo", serializedResult.HasLogo, config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "logo_resolved", serializedResult.HasLogo && logoResolves(serializedResult.LogoURL), config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "description", serializedResult.HasDescription, config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "twitter", serializedResult.HasTwitter, config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "website", serializedResult.HasWebsite, config.MonitorRegion)
+			RecordMetadataLatency("serialized", chainName, serializedResult.ResponseTimeMs, config.MonitorRegion)
+		}
+	}
+
+	// Check Metastreams (Solana and BNB; skipped elsewhere). Same rule as
+	// the four above: a failed call is an error, not five misses.
+	if _, supported := metastreamsChainSlug(token.ChainID); supported {
+		msResult := checkMetastreamsMetadata(token, config.MetastreamsAPIKey)
+		if msResult.Error != "" {
+			fmt.Printf("[META][METASTREAMS][%s] %s | %s | err=%s\n",
+				chainName, token.Symbol, token.Address, msResult.Error)
+		}
+		updateStats("metastreams", msResult)
+		if msResult.Error != "" {
+			RecordMetadataError("metastreams", chainName, msResult.Error, config.MonitorRegion)
+		} else {
+			RecordMetadataCoverage("metastreams", chainName, "logo", msResult.HasLogo, config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "logo_resolved", msResult.HasLogo && logoResolves(msResult.LogoURL), config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "description", msResult.HasDescription, config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "twitter", msResult.HasTwitter, config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "website", msResult.HasWebsite, config.MonitorRegion)
+			RecordMetadataLatency("metastreams", chainName, msResult.ResponseTimeMs, config.MonitorRegion)
+		}
 	}
 
 	// Single condensed log line
@@ -758,13 +821,7 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 
 // QueueTokenForMetadataCheck adds a token to the check queue
 func QueueTokenForMetadataCheck(token TokenToCheck) {
-	select {
-	case tokenQueue <- token:
-		// Token queued successfully
-	default:
-		// Queue full, skip this token
-		fmt.Printf("[METADATA] Queue full, skipping token: %s\n", token.Address)
-	}
+	tokenQueue.push(token)
 }
 
 // metadataCheckDelay is how long we wait after a Pulse detection before
@@ -813,13 +870,12 @@ func runMetadataCoverageMonitor(config *Config, stopChan <-chan struct{}) {
 	for i := 0; i < workers; i++ {
 		go func() {
 			for {
-				select {
-				case <-stopChan:
+				token, ok := tokenQueue.pop(stopChan)
+				if !ok {
 					return
-				case token := <-tokenQueue:
-					time.Sleep(delay)
-					checkTokenMetadata(token, config)
 				}
+				time.Sleep(delay)
+				checkTokenMetadata(token, config)
 			}
 		}()
 	}
@@ -836,6 +892,8 @@ func runMetadataCoverageMonitor(config *Config, stopChan <-chan struct{}) {
 			return
 		case <-statsTicker.C:
 			printCoverageStats()
+			depth, drops := tokenQueue.lengths()
+			fmt.Printf("[METADATA] queue depth per chain %v, oldest-dropped since start %v\n", depth, drops)
 		}
 	}
 }

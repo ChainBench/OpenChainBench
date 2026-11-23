@@ -13,7 +13,7 @@ import os
 import sys
 import threading
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -77,18 +77,28 @@ def aggregate_day(date_str: str, is_today: bool) -> dict | None:
 
 
 def backfill_worker():
-    """Pre-aggregate all past days not yet cached."""
+    """Pre-aggregate all past days not yet cached, then keep doing it.
+
+    The HTTP handler only serves cached past days, so a single pass at start
+    froze the series at the day before the process started: started on
+    2026-10-24, it served nothing after 2026-10-23 for eleven days. Re-scan
+    hourly so each day is cached once it is over. A day is cached only two
+    hours after it ends in UTC, so a node running a few minutes behind cannot
+    freeze a 23-hour day into the cache.
+    """
     time.sleep(5)
-    today = date.today()
-    d = date(2026, 6, 1)
-    while d < today:
-        ds = d.strftime("%Y%m%d")
-        cache_file = os.path.join(CACHE_DIR, f"{ds}.json")
-        if not os.path.exists(cache_file):
-            print(f"backfill: aggregating {ds}", flush=True)
-            aggregate_day(ds, False)
-        d += timedelta(days=1)
-    print("backfill: done", flush=True)
+    while True:
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=2)).date()
+        d = date(2026, 6, 1)
+        while d < cutoff:
+            ds = d.strftime("%Y%m%d")
+            cache_file = os.path.join(CACHE_DIR, f"{ds}.json")
+            if not os.path.exists(cache_file):
+                print(f"backfill: aggregating {ds}", flush=True)
+                aggregate_day(ds, False)
+            d += timedelta(days=1)
+        print("backfill: done", flush=True)
+        time.sleep(3600)
 
 
 class Handler(BaseHTTPRequestHandler):

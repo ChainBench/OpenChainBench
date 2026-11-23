@@ -145,6 +145,31 @@ export const REMOVED_ANSWER_SLUGS = new Set([
  * Moving a bench to production = remove its slug here.
  */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // 308 privacy coin books: same gate, and one extra reason. Four of its
+  // seven rows had exactly ONE maker when it was written (dash, firo, pivx,
+  // part-blind), so the board is one person's decision away from changing
+  // shape. That is the finding, but it needs more than a few hours of
+  // samples before a 24h figure means anything.
+  //
+  // Un-gate condition: a day of data, and the maker counts holding their
+  // order of magnitude across it. Measured 2026-10-26: Monero 51 makers
+  // across two venues, everything else 1 to 6.
+  "privacy-coin-books",
+  // 307 shielded payout coverage and 301 privacy exit cost: same gate and
+  // the same reason as 306 below. Both read series the probe only started
+  // publishing today, so a 24h window is a window over a few hours.
+  //
+  // Un-gate condition for 307: at least two source chains with the
+  // transparent control passing on each rail, so the share has a
+  // denominator worth printing. Measured today, Maya is 0 of 2 with
+  // memo_too_long on both and NEAR Intents is 1 of 1, which is the finding,
+  // but one chain is a thin denominator for a percentage.
+  //
+  // Un-gate condition for 301: both assets quoting at both published sizes
+  // for a full day. Measured today, ZEC 223 bps and DASH 105 bps at ~$1k,
+  // and 2,057 against 1,206 at ~$10k.
+  "shielded-payout-coverage",
+  "privacy-exit-cost",
   // 306 privacy round trip: the spec exists and the harness exists, but the
   // harness is not deployed, so Prometheus holds no privacy_round_trip_bps
   // series yet. A metric_panel with no value DELETES its row rather than
@@ -204,9 +229,12 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 310 server-wallet-cost: new 2026-10-29, server and agent wallet
   // pricing. Un-gate after a harness cycle and its audit rounds.
   "server-wallet-cost",
+  // 312 paymaster-cost: new 2026-10-30, gas sponsorship pricing on Base,
+  // Arbitrum and Ethereum. Un-gate after a harness cycle and its audit rounds.
+  "paymaster-cost",
   // 309 wallet-cost left this list on 2026-10-29, after its harness had
   // run all day and three audit rounds (data and code twice, SEO once) had
-  // their findings fixed (#3361, #3365, #3367, #3369).
+  // their findings fixed (#3361, #3365, #3367, #3369). Released in #3374.
   // Benches 203, 206, 207 and 232 left this list on 2026-10-07.
   //
   // They were gated on 2026-10-02 when the Dune trial ended, under a note

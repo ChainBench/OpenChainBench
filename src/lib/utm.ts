@@ -1,4 +1,5 @@
 import { SITE } from "@/data/site";
+import { bareHost, isSameOrSubdomain, parseHttpUrl } from "@/lib/url-host";
 
 /**
  * Tags an outbound link so the destination can see the traffic came from
@@ -26,29 +27,29 @@ import { SITE } from "@/data/site";
  *
  * It is NOT applied to RPC endpoint URLs. Those are shown so a reader can
  * paste them into a config; a utm_source in one would be copied straight
- * into production. They never pass through here, and the test in
- * utm.test.ts pins that.
+ * into production. They never pass through here, and an ESLint rule on
+ * their renderers enforces that.
  */
-const SITE_HOST = new URL(SITE.url).hostname.replace(/^www\./, "");
+const SITE_HOST = bareHost(new URL(SITE.url).hostname);
 
 /** Hosts whose URLs are identifiers, not destinations. */
 const IDENTIFIER_HOSTS = new Set(["doi.org", "dx.doi.org", "creativecommons.org"]);
 
-export const UTM_SOURCE = "openchainbench";
+const UTM_SOURCE = "openchainbench";
 
-export function withUtm(href: string | null | undefined): string {
+export function isOwnOrIdentifierHost(hostname: string): boolean {
+  return (
+    isSameOrSubdomain(hostname, SITE_HOST) ||
+    IDENTIFIER_HOSTS.has(bareHost(hostname))
+  );
+}
+
+export function withUtm(href: string | undefined): string {
   if (!href) return "";
-  let u: URL;
-  try {
-    u = new URL(href);
-  } catch {
-    return href; // relative path, #anchor, or malformed: leave it alone
-  }
-  if (u.protocol !== "https:" && u.protocol !== "http:") return href;
+  const u = parseHttpUrl(href);
+  if (!u) return href;
 
-  const host = u.hostname.replace(/^www\./, "");
-  if (host === SITE_HOST || host.endsWith(`.${SITE_HOST}`)) return href;
-  if (IDENTIFIER_HOSTS.has(host)) return href;
+  if (isOwnOrIdentifierHost(u.hostname)) return href;
   if (u.searchParams.has("utm_source")) return href;
 
   u.searchParams.set("utm_source", UTM_SOURCE);

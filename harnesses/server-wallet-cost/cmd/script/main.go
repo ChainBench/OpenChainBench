@@ -71,8 +71,21 @@ func main() {
 	run(cat)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	// The site curves are re-read far more often than the prices: a release
+	// that ships a new catalogue to one branch opens a window where the two
+	// sites price from different catalogues, and an hourly check with a 2h
+	// alert could not see the 30 minutes production spent that way on
+	// 2026-10-30 (audit). The fetch is two small raw files.
+	siteEvery, err := time.ParseDuration(envDefault("SERVER_WALLET_COST_SITE_CURVES_INTERVAL", "5m"))
+	if err != nil {
+		log.Fatalf("bad SERVER_WALLET_COST_SITE_CURVES_INTERVAL: %v", err)
+	}
+	siteTicker := time.NewTicker(siteEvery)
+	defer siteTicker.Stop()
 	for {
 		select {
+		case <-siteTicker.C:
+			checkSiteCurves(cat)
 		case <-ticker.C:
 			if fresh, err := LoadCatalogue(cataloguePath); err != nil {
 				log.Printf("catalogue reload failed, keeping previous: %v", err)

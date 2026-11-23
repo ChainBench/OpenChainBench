@@ -99,4 +99,12 @@ describe("access tiers", () => {
     expect(filterSig({ region: "us-east", tier: "keyed" })).toBe("region=us-east&tier=keyed");
     expect(parseFilterSig("region=us-east&tier=keyed")).toEqual({ region: "us-east", tier: "keyed" });
   });
+
+  test("the fees view reads back only as removed", () => {
+    expect(parseFilterSig("chain=BTC&fees=removed")).toEqual({
+      chain: "BTC",
+      fees: "removed",
+    });
+    expect(parseFilterSig("chain=BTC&fees=maybe")).toEqual({ chain: "BTC" });
+  });
 });

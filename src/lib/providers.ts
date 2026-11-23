@@ -71,13 +71,23 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // a 200 with the same title as /products/dwellir and a sitemap entry, while
   // the original four redirected. Keep this list in step with the
   // `tier: keyed-cold` blocks in the `-rpc` specs.
+  // Bench 313 measures every aggregator at two sell timings, and the
+  // schema makes tier a partition of providers, so the second timing is
+  // a second row per vendor. Without these each `-same-block` slug
+  // builds its own /products page carrying the vendor's title, which is
+  // what the cold tier did before its aliases landed.
+  "kyberswap-same-block": "kyberswap",
+  "paraswap-same-block": "paraswap",
+  "lifi-same-block": "lifi",
+  "trnch-same-block": "trnch",
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
-  "blockmachine-cold": "blockmachine",
   "helius-cold": "helius",
+  "fluxrpc-cold": "fluxrpc",
+  "blockmachine-cold": "blockmachine",
   // The heavy-call arm, added 2026-11-03: the same endpoints measured on a
   // Multicall3 of fifty state reads. A measurement arm, not a product, and
   // the same rule as the cold tier above: without a line here each slug
@@ -122,6 +132,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // query on the property (273 impressions, position 8.31, zero clicks,
   // 90 days to 2026-09-19).
   tuleep: "tuleep-trade",
+  // tuleep.trade rebranded to Proliquid (tuleep.trade 301s to
+  // www.proliquid.xyz); the slug stays for its label and history.
+  proliquid: "tuleep-trade",
   "mass-money": "mass-dot-money",
   // Chain official RPC → chain brand
   "arbitrum-official": "arbitrum",
@@ -929,64 +942,150 @@ const buildProvidersCached = unstable_cache(
   // v21: Enso leaves bench 033 and so is measured nowhere, same as 0x at
   // v20. /products/enso retires and the nine aggregators left on that
   // board are ranked against a cohort one smaller again.
-  // v22: bench 309 released: thirteen embedded wallet vendors, eleven new
-  // to production, and appearances carry `defaultView`. Numbered for THIS
-  // branch; dev carried the same change as v27 and v28.
-  // v23 (main): wallet pricing release 2026-10-30 (Portal, Lit and Dfns
-  // marks, re-priced appearances).
-  // v24: BlockVectra is new to the site: a product page and three bench
-  //      appearances. Lockstep with bench-unfiltered-v108.
-  // v25: appearances on the nine race benches carry the provider's share
+  // v22: maya, dash and zec gain a registry entry and a logo. Three rows
+  // on the two new privacy boards were rendering as initials, and a
+  // provider with a mark but no registry entry still gets a product page
+  // with no official link and no description, which is the gap nordstern
+  // sat in until #3273.
+  // v23: six coin marks and six registry entries for bench 308, whose rows
+  // were all rendering as initials.
+  // v24: thorchain gains a mark and a registry entry; it was the last row on
+  // the privacy boards still rendering as initials.
+  // v27: bench 309 adds thirteen embedded wallet vendors, eleven of them
+  // new to the site, each with a mark and a registry entry.
+  // v28: appearances carry `defaultView`, so the badges of benches ranked
+  // per profile or volume name the slice; a cached index lacks the field.
+  // v29: the registry spells the brand Quicknode; a cached index would keep
+  // the old QuickNode name for its whole TTL.
+  // v30: bench 310 adds server wallet appearances (Lit, Portal and Dfns
+  // new to the site) and bench 309 adds Portal.
+  // v31: lockstep with bench-unfiltered-v118. Bench 311 adds six providers to
+  //      the RPCs category's appearance set.
+  // v32: Helius enters the keyed Solana cohort, warm and cold. A provider
+  //      ENTERING is exactly what this key exists for: the index drives
+  //      /products/helius, the compare pages and the answers, and a cached
+  //      one would keep a Helius with no Solana appearance for its whole
+  //      900 s TTL. Lockstep with bench-unfiltered-v122.
+  // v33: wallet pricing audit 2026-10-30 (Dynamic and Circle re-priced,
+  // the price reading on appearance rows).
+  // v34: bench 312 adds paymaster appearances; Pimlico, Etherspot and
+  //      Candide are new to the site. Lockstep with bench-unfiltered-v129.
+  // v35: the per-chain leader stash no longer crowns a row the board
+  //      publishes outside its ranking, and elects nobody on a tie. This
+  //      index embeds the "#1 of N on <chain>" chip, so a cached one keeps
+  //      claiming a rank the bench itself declines to give. Lockstep with
+  //      bench-unfiltered-v130.
+  // v37: Sushi's description described only its Hyperliquid perps frontend,
+  //      which is not the product the two quote benches now rank it on. The
+  //      description rides in this index, and a text change that never
+  //      appeared despite a green deploy is on the record here, so the key
+  //      moves rather than trusting the 900 s TTL to carry it.
+  // v38: Trnch is new to the site, not just new to a bench, so it needs a
+  //      product page and two bench appearances that this index carries.
+  //      Lockstep with bench-unfiltered-v139.
+  // v40: Trnch withdrawn. It was new to the site, so it LOSES a product
+  //      page as well as two bench appearances, and this index carries
+  //      both. Lockstep with bench-unfiltered-v142.
+  // v41: BlockVectra is new to the site: a product page and three bench
+  //      appearances. Lockstep with bench-unfiltered-v143.
+  // v42: tuleep.trade is Proliquid: the product page's name, description
+  //      and links ride in this index. Lockstep with bench-unfiltered-v144.
+  // v44: bench 313 adds two rows that are timings rather than vendors, so
+  //      no company gains a product page, but the index still carries the
+  //      appearances. Lockstep with bench-unfiltered-v147.
+  // v45: appearances on the nine race benches carry the provider's share
   //      of wins (raceShare); a cached index without it shows the ~0 ms
   //      lag behind the first arrival on product pages.
-  // v26: discussion #2270 release: new chain appearances on four benches
-  //      and registry entries for the requested chains. Lockstep with
-  //      bench-unfiltered-v109.
-  // v27: BlockVectra joins the Katana RPC page (issue #3462), a new
-  //      appearance. Lockstep with bench-unfiltered-v110.
-  // v28: the keyed-heavy tier arrives on the eight chain RPC pages, six
-  //      providers each under a `-heavy` slug. An ARRIVAL: both alias
-  //      tables gain a line per vendor, because a tier slug without an
-  //      alias builds its own /products page carrying the vendor's title.
-  //      Lockstep with bench-unfiltered-v111.
-  // v29: Helius joins the keyed cohort on solana-rpc, warm and cold. An
-  //      ARRIVAL: both alias tables gain a line, because a tier slug
-  //      without an alias builds its own /products page carrying the
-  //      vendor's title. Lockstep with bench-unfiltered-v112.
-  // v30: QuickNode becomes Quicknode. Not an arrival, the slug is
-  //      unchanged, but the provider index carries the DISPLAY name
-  //      onto /products, /compare and /answers, so a cached index
-  //      keeps the old spelling. Lockstep with bench-unfiltered-v113.
-  // v31: thirteen chain RPC pages retire, so every provider on them loses
-  //      that appearance. Lockstep with bench-unfiltered-v115.
-  // v32: BlockVectra gains two appearances, ethereum-rpc and arbitrum-rpc.
-  //      Lockstep with bench-unfiltered-v116.
-  // v33: Afterbell gains its first appearance, bench 030.
-  //      Lockstep with bench-unfiltered-v117.
-  // v34: Thyme Gate is new to the SITE, not only to a bench: it gains a
-  //      product page as well as the four public RPC appearances this index
-  //      carries (#3586, an outside contribution). Lockstep with
-  //      bench-unfiltered-v118.
-  // v37: MOJO is new to the SITE, so it gains a product page as well as
-  //      the bench 030 appearance this index carries. Lockstep with
-  // v38: WebSocket race appearances carry the first-to-push share as their
-  //      value, and Alchemy gains six of them. Lockstep with
-  //      bench-unfiltered-v124.
-  // v39: True Markets is new to the SITE, so it gains a product page as
-  //      well as the bench 030 appearance this index carries (#3615).
-  //      Lockstep with bench-unfiltered-v125.
-  // v40: FiatBear is new to the SITE (bench 030 builder, #3627).
-  //      Lockstep with bench-unfiltered-v126.
-  // v41: Metastreams is new to the site (benches 001, 004, 305, 008), and
-  //      appearances carry pinnedChain. Lockstep with bench-unfiltered-v127.
-  // v42: Codex gains its bench 008 appearance. Already on the site, so
-  //      no new product page. Lockstep with bench-unfiltered-v129.
-  ["providers-v42"],
-  // v35: BlockVectra gains its Optimism appearance (#3585). An existing
-  //      provider, one more bench on its product page. Lockstep with
-  //      bench-unfiltered-v120.
-  // v36: BlockVectra gains two appearances, boba-rpc and world-chain-rpc.
-  //      Lockstep with bench-unfiltered-v122.
+  // v46: registry entries for Algorand, Aptos, Near, Somnia, ICP, Sei,
+  //      Cronos and Kaia (discussion #2270), whose product pages had no
+  //      link or description; the description rides in this index.
+  // v47: bench 031 network-fees gains eight chain rows, each a new bench
+  //      appearance. Lockstep with bench-unfiltered-v149.
+  // v48: bench 034 token-deployment-cost gains twelve chain rows, each a new
+  //      bench appearance this index carries. Lockstep with
+  //      bench-unfiltered-v150.
+  // v49: l1-finality adds six chain rows (sei, cronos, kaia, near, icp,
+  //      algorand). Chains, not vendors, but the index carries the
+  //      appearances. Lockstep with bench-unfiltered-v151.
+  // v50: bench 026 gains eight chain rows (Aptos, NEAR, Kaia, Algorand,
+  //      ICP, Gram, Sei, Cronos); the index carries their appearances.
+  //      Lockstep with bench-unfiltered-v152.
+  // v51: bench 313 rebuilt around aggregators. Four vendors gain an
+  //      appearance and four `-same-block` aliases land in both tables.
+  //      Lockstep with bench-unfiltered-v153.
+  // v52: BlockVectra joins the Katana RPC page (issue #3462), a new
+  //      appearance. Lockstep with bench-unfiltered-v157.
+  // v53: Trnch returns, and it is new to the SITE again rather than to
+  //      one bench: it regains a product page as well as two bench
+  //      appearances, and this index carries both.
+  //      Lockstep with bench-unfiltered-v159.
+  // v54: FluxRPC is new to the site: a product page and a keyed Solana
+  //      appearance, warm and cold. Lockstep with bench-unfiltered-v166.
+  // v55: bench 314 solana-rpc-ws gives four providers a Solana WebSocket
+  //      appearance. Lockstep with bench-unfiltered-v168.
+  // v56: bench 313 drops SushiSwap, so Sushi loses two appearances and
+  //      this index carries them. Lockstep with bench-unfiltered-v170.
+  // v57: bench 313 declares LI.FI unranked on both tiers, so it leaves the
+  //      leader pool (citationCandidates filters unrankedLabel). LI.FI loses
+  //      its rank chip for this bench and ParaSwap's card goes from #1 of 4
+  //      to #1 of 3, which is the point: LI.FI's row divides by 20 tokens
+  //      where the others divide by 27, so ranking it ranked who we managed
+  //      to ask. Lockstep with bench-unfiltered-v180.
+  // v58: an unranked row with no reading stays unresponsive instead of
+  //      being promoted to live with zeros, so its product-page appearance
+  //      changes shape. Lockstep with bench-unfiltered-v181.
+  // v59: LI.FI re-enters bench 313's leader pool (its unranked label is
+  //      gone), and Trnch gets its brand mark where it had initials.
+  //      Lockstep with bench-unfiltered-v183.
+  // v60: Trnch returns to benches 033 and 304, so it gains two appearances
+  //      that this index carries. Its product page never left this time: it
+  //      came back with bench 313 in #3511. Lockstep with
+  //      bench-unfiltered-v184.
+  // v61: thirteen chain RPC pages retire, so every provider on them loses
+  //      that appearance. Lockstep with bench-unfiltered-v187.
+  // v62: BlockVectra gains two appearances, ethereum-rpc and arbitrum-rpc.
+  //      Lockstep with bench-unfiltered-v189.
+  // v63: Afterbell gains its first appearance, bench 030.
+  // v64: Bubblemaps is new to the SITE and not only to a bench, so it
+  //      needs a product page and the bench appearances this index carries.
+  //      Lockstep with bench-unfiltered-v191.
+  // v65: Thyme Gate is new to the SITE, so it needs a product page as well
+  //      as the four bench appearances this index carries. Lockstep with
+  //      bench-unfiltered-v193.
+  // v66: BlockVectra gains its Optimism appearance (#3585).
+  //      Lockstep with bench-unfiltered-v195.
+  // v67: BlockVectra gains two appearances, boba-rpc and
+  //      world-chain-rpc. Lockstep with bench-unfiltered-v197.
+  // v68: MOJO is new to the SITE, not only to a bench: it gains a
+  //      product page as well as the bench 030 appearance this index
+  //      carries. Lockstep with bench-unfiltered-v198.
+  // v69: WebSocket race appearances carry the first-to-push share as
+  //      their value, and Alchemy gains seven of them. Lockstep with
+  //      bench-unfiltered-v199.
+  // v70: True Markets is new to the SITE, not only to a bench: it gains
+  //      a product page as well as the bench 030 appearance this index
+  //      carries. Lockstep with bench-unfiltered-v200.
+  // v71: Metastreams is new to the SITE: a product page plus its bench
+  //      001 and 004 appearances. Lockstep with bench-unfiltered-v201.
+  // v72: Codex gains its bench 008 appearance. Already on the site, so
+  //      no new product page. Lockstep with bench-unfiltered-v202.
+  // v73: RpcNode is new to the SITE: a product page plus eleven RPC
+  //      appearances. Lockstep with bench-unfiltered-v203.
+  // v74: RpcNode loses four appearances (Polygon, Arbitrum, Optimism,
+  //      Base). Lockstep with bench-unfiltered-v204.
+  // v75: RpcNode gains four appearances (Bitcoin, BCH, Dogecoin, Aptos).
+  //      Lockstep with bench-unfiltered-v206.
+  // v76: bench 004 per-chain appearances on Base and Robinhood.
+  //      Lockstep with bench-unfiltered-v207.
+  // v77: FiatBear is new to the site (bench 030 builder).
+  //      Lockstep with bench-unfiltered-v208.
+  // v78: Binance, Bybit, OKX, Bitget, MEXC, Gate and KuCoin gain a
+  //      bench 007 appearance. Lockstep with bench-unfiltered-v210.
+  // v79: appearances carry the bench's pinned chain, so a provider with
+  //      no figure there reads "not measured on Base" (off-pin-coverage).
+  // v80: Metastreams gains bench 305 and 008 appearances.
+  //      Lockstep with bench-unfiltered-v211.
+  ["providers-v80"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

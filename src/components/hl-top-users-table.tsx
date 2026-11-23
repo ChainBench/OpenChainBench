@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Per-builder top-traders table. Mirrors HyperTracker's
@@ -140,14 +140,13 @@ export function HlTopUsersTable({ slug }: { slug: string }) {
                   {page * PAGE_SIZE + i + 1}
                 </Td>
                 <Td mono>
-                  <a
-                    href={withUtm(`https://app.hyperliquid.xyz/explorer/address/${r.address}`)}
+                  <OutboundLink
+                    href={`https://app.hyperliquid.xyz/explorer/address/${r.address}`}
                     target="_blank"
-                    rel="noopener noreferrer"
                     className="hover:underline"
                   >
                     {shortAddr(r.address)}
-                  </a>
+                  </OutboundLink>
                 </Td>
                 <Td mono>{fmtUSD(r.volume_30d)}</Td>
                 <Td mono tone={r.pnl_30d > 0 ? "pos" : r.pnl_30d < 0 ? "neg" : undefined}>

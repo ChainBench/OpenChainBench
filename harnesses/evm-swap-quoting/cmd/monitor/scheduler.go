@@ -51,6 +51,10 @@ func buildProviders(cfg *Config) []Provider {
 		// block that makes a quote provably contemporaneous.
 		NewParaSwapProvider(cfg.MonitorRegion),
 		NewNordsternProvider(cfg.MonitorRegion),
+		// Keyless too, and the only addition that answers on Robinhood
+		// Chain: 0x, 1inch, Uniswap, Odos, OpenOcean and Enso were each
+		// asked on 4663 on 2026-11-02 and none of them serves it.
+		NewSushiSwapProvider(cfg.MonitorRegion),
 	}
 	if cfg.ZeroExAPIKey != "" {
 		providers = append(providers, NewZeroExProvider(cfg.MonitorRegion, cfg.ZeroExAPIKey))
@@ -63,6 +67,9 @@ func buildProviders(cfg *Config) []Provider {
 	}
 	if cfg.RouteAPIKey != "" {
 		providers = append(providers, NewRouteProvider(cfg.MonitorRegion, cfg.RouteAPIKey))
+	}
+	if cfg.TrnchAPIKey != "" {
+		providers = append(providers, NewTrnchProvider(cfg.MonitorRegion, cfg.TrnchAPIKey))
 	}
 	return providers
 }
