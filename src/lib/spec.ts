@@ -1087,7 +1087,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Robinhood is new, with Mobula, Codex, Serialized and Metastreams.
   // v209: bench 007 declares a fees-removed view and two panels.
   // v210: bench 007 gains seven CEX rows and every row a venue type.
-  ["bench-unfiltered-v210", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v211: Metastreams joins benches 305 and 008.
+  ["bench-unfiltered-v211", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1476,7 +1477,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v201: lockstep with bench-unfiltered-v208 (bench 030 adds FiatBear).
   // v202: lockstep with bench-unfiltered-v209 (bench 007 fees-removed view).
   // v203: lockstep with bench-unfiltered-v210 (bench 007 CEX rows).
-  ["all-benchmarks-v203", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v204: lockstep with bench-unfiltered-v211 (Metastreams on 305 and 008).
+  ["all-benchmarks-v204", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1765,7 +1767,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v123: lockstep with bench-unfiltered-v207. Bench 004 declares two new chain tabs.
   // v124: lockstep with bench-unfiltered-v209. Bench 007 gains fees=removed tabs.
   // v125: lockstep with bench-unfiltered-v210. Bench 007 CEX rows, all tabs.
-  ["bench-filters-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v126: lockstep with bench-unfiltered-v211. 305 and 008 declare kind tabs.
+  ["bench-filters-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -50,6 +50,7 @@ methodology:
   - "Each provider is polled on the cadence its quota allows: every 30 seconds to every 20 minutes. Fewer polls give fewer samples of the same distribution, not a different score, and the Samples column shows how many answers each row rests on."
   - "Price age comes from the provider's own last-updated stamp, read at the moment the answer arrived. A provider that publishes no stamp shows a dash, which does not mean its price is fresh."
   - "Serialized is an on-chain DEX price feed and is listed unranked. It prices WETH, wSOL, WBNB and LINK in their pools. BTC is left out because WBTC trades 15 to 20 bps under BTC, measured on Binance's WBTC/BTC book and on a KyberSwap quote, and scoring it against BTC would charge it for the wrapper's discount. Serialized does not index Avalanche."
+  - "Metastreams is listed unranked for the same reason: its native-price read is an on-chain price of each chain's gas asset, so it covers SOL, ETH (read on Ethereum mainnet) and BNB, with its own observedAt stamp."
   - "Mobula is addressed by its numeric asset id. Looked up by name, Bitcoin resolved to a different token priced at 9e-14 USD in three of 66 internal polls, a lookup artefact this page does not charge to anyone."
   - "CoinGecko is read through its keyless public API, reached through a proxy because it answers 429 to the host's shared address. Paid CoinGecko plans may refresh faster than the keyless tier measured here. CoinPaprika is read keyless at 27 calls an hour, under its 60 an hour and 25,000 a month limits. POL was measured internally and left out: one ranked provider does not list it."
   - "Absent and why: CoinMarketCap and CoinDesk (formerly CryptoCompare) require an API key we have not been issued. Neither is excluded on performance."
@@ -226,3 +227,17 @@ providers:
       success: ocb:price_api_success:ratio_24h{provider="serialized",kind="all"}
       sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="serialized",kind="all"}
       series: ocb:price_api_deviation_bps:p50_1h{provider="serialized",kind="all"}
+
+  - slug: metastreams
+    name: Metastreams
+    tag: On-chain native-price read, SOL, ETH and BNB
+    unranked: "On-chain DEX price"
+    formula: "Median absolute gap in basis points between Metastreams' native-price read (the USD price of SOL, ETH and BNB as gas assets) and the exchange mid of the same moment, over 24h, pooled across the three."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="metastreams",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="metastreams",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="metastreams",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="metastreams",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="metastreams",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="metastreams",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="metastreams",kind="all"}
