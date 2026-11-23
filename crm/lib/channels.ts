@@ -1,3 +1,5 @@
+import { SITE_HOST } from "@/lib/site";
+
 /**
  * Referrer and path classification. Pure functions, unit tested.
  *
@@ -81,7 +83,7 @@ export const SOCIAL_DOMAINS = [
   "paragraph.xyz",
 ] as const;
 
-const siteHost = (process.env.SITE_HOST ?? "openchainbench.com").toLowerCase();
+const siteHost = SITE_HOST.toLowerCase();
 
 export function classifyReferrer(domain: string | null | undefined): Channel {
   const d = (domain ?? "").toLowerCase().trim();
