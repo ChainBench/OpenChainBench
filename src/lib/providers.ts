@@ -437,7 +437,7 @@ function raceShareField(b: Benchmark, slug: string): { raceShare?: { share: numb
   return rs ? { raceShare: rs } : {};
 }
 
-function rankProviders(b: Benchmark): ProviderResult[] {
+export function rankProviders(b: Benchmark): ProviderResult[] {
   // Drives the /products hub `wins` count and per-chain leadership
   // chips. Shares the reliability + insufficient-sample filters with
   // `leader()` (citation.ts) so a provider that is filtered from the
