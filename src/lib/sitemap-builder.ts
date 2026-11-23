@@ -19,7 +19,7 @@ import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { canonicalize, getProvider, getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
 import { isPairLinkable } from "@/lib/related-providers";
-import { isExpiredPage } from "@/lib/provider-filters";
+import { isExpiredPage, THIN_RPC_MIN_RESULTS } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
 // Was previously `force-static` + `revalidate: false`, which baked the
@@ -373,6 +373,16 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // audit 2026-09-21).
   const servedSpecs = await getSpecs();
   const servedSlugs = new Set(servedSpecs.map((s) => s.slug));
+  // A chain RPC page this build's spec gives fewer than THIN_RPC_MIN_RESULTS
+  // providers renders noindex whatever the data (isThinRpcBench), and the
+  // blob cannot tell: the worker builds from dev, where the same bench can
+  // declare more. aptos-rpc has 2 providers on main and 3 on dev; the smoke
+  // test drew it and rolled production back (2026-11-23).
+  const thinBySpec = new Set(
+    servedSpecs
+      .filter((s) => s.category === "RPCs" && (s.providers?.length ?? 0) < THIN_RPC_MIN_RESULTS)
+      .map((s) => s.slug),
+  );
   // Same reasoning for the per-chain sub-pages: the blob's perChainSlugs
   // come from the worker's checkout, so a chain this build dropped from a
   // bench (Blast, 2026-10-13) stayed listed until the worker was rebuilt,
@@ -390,6 +400,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     // The worker publishes every dev bench; production must not list a
     // page it does not serve.
     if (isDevOnlyBench(b.slug)) return [];
+    if (thinBySpec.has(b.slug)) return [];
     // Expired pages render noindex; never list them even if the blob still
     // carries them. Any bench, not just chain RPC ones — a bench below
     // quorum keeps serving its last good render, and after a week that
