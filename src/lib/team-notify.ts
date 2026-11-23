@@ -1,4 +1,5 @@
 import { causeCode } from "@/lib/error-cause";
+import { HTTP_SERVER_ERROR } from "@/lib/http-status";
 
 const TELEGRAM_MAX_CHARS = 4096;
 const DELIVERY_TIMEOUT_MS = 5_000;
@@ -20,7 +21,12 @@ export type TeamMessage = {
   slack: { text: string; blocks: unknown[] };
 };
 
-export type TeamDelivery = "sent" | "failed" | "unconfigured";
+export type TeamDelivery =
+  | "sent"
+  | "failed"
+  | "refused"
+  | "unsure"
+  | "unconfigured";
 
 type Channel =
   | { kind: "telegram"; token: string; chat: string }
@@ -99,6 +105,12 @@ function errorName(err: unknown): string {
   return code ? `${err.name} ${code}` : err.name;
 }
 
+const deliveryOfStatus = (res: Response): TeamDelivery =>
+  res.status < HTTP_SERVER_ERROR ? "refused" : "failed";
+
+const deliveryOfError = (err: unknown): TeamDelivery =>
+  err instanceof Error && err.name === "TimeoutError" ? "unsure" : "failed";
+
 async function sendTelegram(
   to: { token: string; chat: string },
   html: string,
@@ -124,10 +136,10 @@ async function sendTelegram(
       res.status,
       await telegramError(res, to.token),
     );
-    return "failed";
+    return deliveryOfStatus(res);
   } catch (err) {
     console.error("Telegram sendMessage failed", errorName(err));
-    return "failed";
+    return deliveryOfError(err);
   }
 }
 
@@ -145,12 +157,12 @@ async function sendSlack(
     if (res.ok) return "sent";
     const text = await res.text().catch(() => "");
     console.error("Slack webhook rejected team message", res.status, text);
-    return "failed";
+    return deliveryOfStatus(res);
   } catch (err) {
     const detail = err instanceof Error ? err.message : "";
     console.error("Slack webhook fetch failed", errorName(err),
       detail.replaceAll(webhook, "[webhook]").slice(0, MAX_LOGGED_ERROR));
-    return "failed";
+    return deliveryOfError(err);
   }
 }
 

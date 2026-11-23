@@ -2,16 +2,13 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { THEME_KEY } from "@/lib/theme-key";
 
 const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
-  // false during SSR + hydration, true once the client can read the DOM.
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
+  const mounted = useHydrated();
   const domDark = useSyncExternalStore(
     emptySubscribe,
     () => document.documentElement.classList.contains("dark"),
@@ -27,12 +24,12 @@ export function ThemeToggle() {
     if (next) {
       root.classList.add("dark");
       try {
-        localStorage.setItem("ocb-theme", "dark");
+        localStorage.setItem(THEME_KEY, "dark");
       } catch {}
     } else {
       root.classList.remove("dark");
       try {
-        localStorage.setItem("ocb-theme", "light");
+        localStorage.setItem(THEME_KEY, "light");
       } catch {}
     }
   }

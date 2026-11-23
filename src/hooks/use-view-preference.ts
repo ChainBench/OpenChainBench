@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import type { ViewType } from "@/lib/views";
+import { useHydrated } from "./use-hydrated";
 
 const STORAGE_KEY_PREFIX = "ocb:view:";
 
@@ -31,11 +32,7 @@ export function useViewPreference(
   defaultView: ViewType,
   allowed: ViewType[],
 ): [ViewType, (next: ViewType) => void, boolean] {
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
+  const mounted = useHydrated();
   const stored = useSyncExternalStore(
     emptySubscribe,
     () => {
