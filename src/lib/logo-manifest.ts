@@ -278,6 +278,7 @@ const RAW: Record<string, string> = {
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
   serialized: "/logos/serialized.svg",
+  metastreams: "/logos/metastreams.svg",
   codex: "/logos/codex.svg",
   polymarket: "/logos/polymarket.png",
   "polymarket-us": "/logos/polymarket.png",
