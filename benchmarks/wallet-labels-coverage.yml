@@ -239,6 +239,19 @@ providers:
       sample_size: sum(increase(wallet_labels_checks_total{provider="codex"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="codex"}[1h])) / sum(rate(wallet_labels_checks_total{provider="codex"}[1h]))
 
+  - slug: metastreams
+    name: Metastreams
+    tag: Identities attached to wallet positions, Solana and BNB, API key required
+    formula: "Share of Solana and BNB anchor addresses for which a Metastreams /v1/positions read (open, then closed) carries a non-generic identity name, success_total ÷ checks_total over 24h. No position, no identity."
+    queries:
+      p50: 100 * sum(increase(wallet_labels_success_total{provider="metastreams"}[24h])) / sum(increase(wallet_labels_checks_total{provider="metastreams"}[24h]))
+      p90: 100 * sum(increase(wallet_labels_success_total{provider="metastreams"}[24h])) / sum(increase(wallet_labels_checks_total{provider="metastreams"}[24h]))
+      p99: 100 * sum(increase(wallet_labels_success_total{provider="metastreams"}[24h])) / sum(increase(wallet_labels_checks_total{provider="metastreams"}[24h]))
+      mean: 100 * sum(increase(wallet_labels_success_total{provider="metastreams"}[24h])) / sum(increase(wallet_labels_checks_total{provider="metastreams"}[24h]))
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="metastreams"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="metastreams"}[24h])), 1), 0)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="metastreams"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="metastreams"}[1h])) / sum(rate(wallet_labels_checks_total{provider="metastreams"}[1h]))
+
   - slug: helius
     name: Helius
     tag: Solana specialist, native program graph, API key required

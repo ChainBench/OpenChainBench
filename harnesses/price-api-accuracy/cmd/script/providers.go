@@ -105,6 +105,17 @@ func providers(cfg config) []provider {
 	}
 	add(ser)
 
+	// Metastreams: the native-price read, the USD price of each chain's gas
+	// asset (SOL, ETH, BNB) from its own on-chain feed, with an observedAt
+	// stamp. Listed unranked for the same reason as Serialized: an on-chain
+	// DEX price, not a market aggregate. One request a minute for the three.
+	ms := provider{slug: "metastreams", interval: time.Minute, startDelay: 15 * time.Second, assets: metastreamsAssets}
+	ms.fetch = func(ctx context.Context) (map[string]quote, error) { return fetchMetastreams(ctx, cfg.metastreamsKey) }
+	if cfg.metastreamsKey == "" {
+		ms.disabledReason = "METASTREAMS_API_KEY unset"
+	}
+	add(ms)
+
 	return out
 }
 
@@ -369,6 +380,46 @@ func fetchSerialized(ctx context.Context, key string) (map[string]quote, error) 
 			continue
 		}
 		out[a] = quote{price: slot.Data.PriceUsd}
+	}
+	return out, nil
+}
+
+// ---- Metastreams (native prices) ------------------------------------------
+
+var metastreamsAssets = []string{"ETH", "SOL", "BNB"}
+
+// The chain whose gas asset stands for each major. ETH is read on Ethereum
+// mainnet, not on Robinhood Chain, which also answers ETH.
+var metastreamsChain = map[string]string{"solana": "SOL", "ethereum": "ETH", "bsc": "BNB"}
+
+func fetchMetastreams(ctx context.Context, key string) (map[string]quote, error) {
+	var r []struct {
+		Chain string `json:"chain"`
+		Asset string `json:"asset"`
+		Price struct {
+			USD string `json:"usd"`
+		} `json:"price"`
+		ObservedAt int64 `json:"observedAt"`
+	}
+	u := "https://api.metastreams.io/v1/native-prices?chains=solana,ethereum,bsc"
+	if err := getJSON(ctx, nil, u, map[string]string{"Authorization": "Bearer " + key}, &r); err != nil {
+		return nil, err
+	}
+	out := map[string]quote{}
+	for _, row := range r {
+		a, ok := metastreamsChain[strings.ToLower(row.Chain)]
+		if !ok || !strings.EqualFold(row.Asset, a) {
+			continue
+		}
+		price, err := strconv.ParseFloat(row.Price.USD, 64)
+		if err != nil || price <= 0 {
+			continue
+		}
+		q := quote{price: price}
+		if row.ObservedAt > 0 {
+			q.ts = time.UnixMilli(row.ObservedAt)
+		}
+		out[a] = q
 	}
 	return out, nil
 }

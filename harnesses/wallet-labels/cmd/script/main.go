@@ -59,6 +59,7 @@ func buildProviders(cfg *Config) []Provider {
 		// vendor leaves without a deploy.
 		NewBubblemapsProvider(cfg.BubblemapsAPIKey),
 		NewCodexProvider(cfg.CodexAPIKey),
+		NewMetastreamsProvider(cfg.MetastreamsAPIKey),
 		NewBlockscoutProvider(),
 		NewOLIProvider(),
 		NewTonAPIProvider(),
