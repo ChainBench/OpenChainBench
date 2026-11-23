@@ -60,6 +60,7 @@ import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { OutboundLink } from "@/components/outbound-link";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
+import { offPinCoverage } from "@/lib/off-pin-coverage";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
 import { ServerWalletVendorPricing, serverWalletVendorHeadline, serverWalletVendorFirstPriced, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
 import { PaymasterVendorPricing, paymasterVendorHeadline, fmtPaymasterBill } from "@/components/paymaster-vendor-pricing";
@@ -1387,6 +1388,8 @@ export default async function ProviderPage({
                     )
                 : [];
             const hasChainRanks = chainRanks.length > 0;
+            // No figure on the pinned chain but measured on other tabs: say so.
+            const offPin = hasData ? null : offPinCoverage(a.benchmark, a.result.slug);
             return (
               <li key={a.tier ? `${a.benchmark.slug}#tier=${a.tier}` : a.benchmark.slug}>
                 <RowLink
@@ -1414,7 +1417,7 @@ export default async function ProviderPage({
                       </>
                     ) : (
                       <span className="block text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-normal">
-                        {noRankLabel(a.benchmark.slug)}
+                        {offPin ? "not ranked" : noRankLabel(a.benchmark.slug)}
                       </span>
                     )}
                   </span>
@@ -1442,6 +1445,11 @@ export default async function ProviderPage({
                         ))}
                       </p>
                     )}
+                    {offPin && (
+                      <p className="mt-1.5 font-sans text-[10px] uppercase tracking-[0.14em] font-medium text-ink-muted">
+                        Measured on {offPin.chains.join(", ")}
+                      </p>
+                    )}
                   </div>
                   <div className="col-start-2 sm:col-start-3 text-left sm:text-right">
                     {hasData ? (
@@ -1458,7 +1466,7 @@ export default async function ProviderPage({
                       </>
                     ) : (
                       <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-medium">
-                        {noFigureLabel(a.benchmark.slug)}
+                        {offPin ? `not measured on ${offPin.pinnedLabel}` : noFigureLabel(a.benchmark.slug)}
                       </p>
                     )}
                   </div>
