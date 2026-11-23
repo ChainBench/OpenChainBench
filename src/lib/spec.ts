@@ -660,7 +660,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       files to 2026-11-15, zero fills between them, 2.0 bp on 2,589.
   // v127: Metastreams on benches 001, 004, 305 and 008; 004 gains Base and Robinhood tabs.
   // v128: bench 305 ranks its on-chain feeds on their asset tabs (ranked_on); field stats skip unranked rows.
-  ["bench-unfiltered-v128", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v129: Codex on bench 008, on seven of its eleven chains (the six EVM chains and Solana).
+  ["bench-unfiltered-v129", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -949,7 +950,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v119: lockstep with bench-unfiltered-v126 (FiatBear on bench 030).
   // v120: lockstep with bench-unfiltered-v127 (Metastreams).
   // v121: lockstep with bench-unfiltered-v128.
-  ["all-benchmarks-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v122: lockstep with bench-unfiltered-v129 (Codex on bench 008).
+  ["all-benchmarks-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
   // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).
@@ -1116,7 +1118,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      regions, and every region tab now ranks by share of first pushes.
   // v62: lockstep with bench-unfiltered-v127. Metastreams rows on chain and kind tabs.
   // v63: lockstep with bench-unfiltered-v128. Bench 305 asset tabs.
-  ["bench-filters-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v64: lockstep with bench-unfiltered-v129. Codex rows on bench 008's chain and kind tabs.
+  ["bench-filters-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v56: lockstep with bench-unfiltered-v118. All four benches declare
   //      regions and Thyme carries all three, so every region tab moves.
   // v58: lockstep with bench-unfiltered-v120; the Optimism row carries all
