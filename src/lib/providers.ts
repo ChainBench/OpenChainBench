@@ -977,7 +977,9 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v125.
   // v40: FiatBear is new to the SITE (bench 030 builder, #3627).
   //      Lockstep with bench-unfiltered-v126.
-  ["providers-v40"],
+  // v41: Metastreams is new to the site (benches 001, 004, 305, 008), and
+  //      appearances carry pinnedChain. Lockstep with bench-unfiltered-v127.
+  ["providers-v41"],
   // v35: BlockVectra gains its Optimism appearance (#3585). An existing
   //      provider, one more bench on its product page. Lockstep with
   //      bench-unfiltered-v120.
