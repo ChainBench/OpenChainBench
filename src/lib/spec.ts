@@ -1088,7 +1088,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v209: bench 007 declares a fees-removed view and two panels.
   // v210: bench 007 gains seven CEX rows and every row a venue type.
   // v211: Metastreams joins benches 305 and 008.
-  ["bench-unfiltered-v211", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v212: bench 305 ranks Metastreams and Serialized on the asset tabs they price (ranked_on).
+  ["bench-unfiltered-v212", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1478,7 +1479,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v202: lockstep with bench-unfiltered-v209 (bench 007 fees-removed view).
   // v203: lockstep with bench-unfiltered-v210 (bench 007 CEX rows).
   // v204: lockstep with bench-unfiltered-v211 (Metastreams on 305 and 008).
-  ["all-benchmarks-v204", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v205: lockstep with bench-unfiltered-v212 (ranked_on on bench 305).
+  ["all-benchmarks-v205", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1768,7 +1770,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v124: lockstep with bench-unfiltered-v209. Bench 007 gains fees=removed tabs.
   // v125: lockstep with bench-unfiltered-v210. Bench 007 CEX rows, all tabs.
   // v126: lockstep with bench-unfiltered-v211. 305 and 008 declare kind tabs.
-  ["bench-filters-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v127: lockstep with bench-unfiltered-v212. Bench 305 asset tabs rank its on-chain feeds.
+  ["bench-filters-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
