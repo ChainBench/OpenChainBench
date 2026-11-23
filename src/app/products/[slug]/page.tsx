@@ -58,12 +58,17 @@ import { getTerminalFills } from "@/lib/terminal-fills";
 import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { offPinCoverage } from "@/lib/off-pin-coverage";
 import { loadOffPinView, type OffPinView } from "@/lib/off-pin-view";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
-import { ServerWalletVendorPricing, serverWalletVendorHeadline, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
+import { ServerWalletVendorPricing, serverWalletVendorHeadline, serverWalletVendorFirstPriced, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
+import { PaymasterVendorPricing, paymasterVendorHeadline, fmtPaymasterBill } from "@/components/paymaster-vendor-pricing";
+
+/** The benches whose figure is a published price, not a measurement. */
+const PRICING_BENCHES = ["wallet-cost", "server-wallet-cost", "paymaster-cost"];
+import { fmtCostUSD } from "@/lib/cost-cell";
 
 /** "first to push on 62% of its blocks": a race bench's share of wins in
  *  prose. The share panel's label names the race. */
@@ -363,45 +368,95 @@ export async function generateMetadata({
     }
   }
 
-  // Embedded wallet vendors measured only by bench 309: the page is a
-  // pricing page and the title says so ("privy pricing" is the query), with
-  // the headline bill and its app size in the description. A vendor that
-  // also appears on other benches (thirdweb, Coinbase CDP) keeps its
-  // existing title: one wallet rank must not displace thirty RPC ones.
-  const WALLET_BENCHES = new Set(["wallet-cost", "server-wallet-cost"]);
-  const walletOnly =
-    appearances.length > 0 && appearances.every((a) => WALLET_BENCHES.has(a.benchmark.slug));
-  const embeddedApp = appearances.find((a) => a.benchmark.slug === "wallet-cost");
-  if (walletOnly && !embeddedApp) {
-    // Measured only on bench 310 (Lit, Portal, Dfns): a server wallet pricing
-    // page, priced on that bench's headline cell.
-    const rawSlug = appearances[0]?.result.slug ?? p.slug;
-    const head = serverWalletVendorHeadline(rawSlug);
-    const long = `${p.name} server wallet pricing ${new Date().getUTCFullYear()}: agents, bots, payouts`;
-    title = long.length <= 60 ? long : `${p.name} server wallet pricing ${new Date().getUTCFullYear()}`;
-    if (head && "usd" in head) {
-      description = capSnippet(
-        `${p.name} bills ${head.reading ? `${head.reading} ` : ""}${fmtServerWalletBill(head.usd)} a month for ${head.label} (latest value), ${head.rank > 0 ? `#${head.rank} of ${head.of}` : `not ranked among ${head.of}`} server wallet vendors priced. Its bill for a trading bot and for payouts too.`,
-      );
-    } else if (head) {
-      description = capSnippet(
-        `${p.name} publishes no self-serve price for ${head.label}, so it is not ranked there. Where it is priced, and what ${head.of} other server wallet vendors bill.`,
-      );
+  // Vendors measured only by the pricing benches (309 embedded wallets, 310
+  // server wallets, 312 paymasters): the page is a pricing page and the
+  // title says so ("privy pricing" is the query), with a headline bill in
+  // the description. A vendor that also appears on other benches (thirdweb,
+  // Coinbase CDP, Alchemy) keeps its existing title: one pricing rank must
+  // not displace thirty RPC ones.
+  //
+  // A vendor on several of them (Circle, Turnkey, Openfort, ZeroDev) used to
+  // take bench 309's title and description alone, so Turnkey's snippet led
+  // with what it does not publish at 10,000 users while bench 310 prices it
+  // (SEO audit 2026-10-30). The title now names every kind it is priced
+  // for, and the description the first headline bill it has.
+  const onPricing = new Set(
+    appearances.map((a) => a.benchmark.slug).filter((s) => PRICING_BENCHES.includes(s)),
+  );
+  const pricingOnly = appearances.length > 0 && onPricing.size === appearances.length;
+  if (pricingOnly) {
+    const year = new Date().getUTCFullYear();
+    const rawOf = (bench: string) => appearances.find((a) => a.benchmark.slug === bench)?.result.slug ?? p.slug;
+    const [only] = [...onPricing];
+    if (onPricing.size === 1 && only === "paymaster-cost") {
+      const long = `${p.name} paymaster pricing ${year}: Base, Arbitrum, Ethereum`;
+      title = long.length <= 60 ? long : `${p.name} paymaster pricing ${year}`;
+    } else if (onPricing.size === 1 && only === "server-wallet-cost") {
+      const long = `${p.name} server wallet pricing ${year}: agents, bots, payouts`;
+      title = long.length <= 60 ? long : `${p.name} server wallet pricing ${year}`;
+    } else if (onPricing.size === 1) {
+      // "wallet" in the title: a search for "privy pricing" returns other
+      // Privys (SEO audit 2026-10-30).
+      const long = `${p.name} wallet pricing ${year}: bill from 100 to 1M users`;
+      title = long.length <= 60 ? long : `${p.name} wallet pricing ${year}`;
+    } else {
+      const kinds = [
+        onPricing.has("wallet-cost") ? "embedded" : "",
+        onPricing.has("server-wallet-cost") ? "server" : "",
+        onPricing.has("paymaster-cost") ? "gas" : "",
+      ].filter(Boolean);
+      const tail =
+        kinds.length === 3
+          ? "embedded, server and gas"
+          : kinds.includes("gas")
+            ? `${kinds[0]} wallets and gas`
+            : "embedded and server wallets";
+      const long = `${p.name} wallet pricing ${year}: ${tail}`;
+      title = long.length <= 60 ? long : `${p.name} wallet pricing ${year}`;
     }
-  } else if (walletOnly) {
-    const rawSlug = embeddedApp?.result.slug ?? p.slug;
-    const head = walletVendorHeadline(rawSlug);
-    // "wallet" in the title: a search for "privy pricing" returns other
-    // Privys (SEO audit 2026-10-30).
-    const long = `${p.name} wallet pricing ${new Date().getUTCFullYear()}: bill from 100 to 1M users`;
-    title = long.length <= 60 ? long : `${p.name} wallet pricing ${new Date().getUTCFullYear()}`;
-    if (head && "usd" in head) {
+    const sentences: string[] = [];
+    if (onPricing.has("wallet-cost")) {
+      const head = walletVendorHeadline(rawOf("wallet-cost"));
+      if (head && "usd" in head) {
+        sentences.push(
+          `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (${head.verified ? "" : "ambiguous price, "}latest value), #${head.rank} of ${head.of} embedded wallet vendors priced.`,
+        );
+      }
+    }
+    if (sentences.length === 0 && onPricing.has("server-wallet-cost")) {
+      const head = serverWalletVendorHeadline(rawOf("server-wallet-cost"));
+      if (head && "usd" in head) {
+        sentences.push(
+          `${p.name} bills ${head.reading ? `${head.reading} ` : ""}${fmtServerWalletBill(head.usd)} a month for ${head.label} (latest value), ${head.rank > 0 ? `#${head.rank} of ${head.of}` : `not ranked among ${head.of}`} server wallet vendors priced.`,
+        );
+      } else {
+        const first = serverWalletVendorFirstPriced(rawOf("server-wallet-cost"));
+        if (first) {
+          sentences.push(
+            `${p.name} bills ${first.reading ? `${first.reading} ` : ""}${fmtServerWalletBill(first.usd)} a month for ${first.label} on its cheapest self-serve plan (latest value).`,
+          );
+        }
+      }
+    }
+    if (sentences.length === 0 && onPricing.has("paymaster-cost")) {
+      const head = paymasterVendorHeadline(rawOf("paymaster-cost"));
+      if (head && "usd" in head) {
+        sentences.push(
+          `${p.name} charges ${head.reading ? `${head.reading} ` : ""}${fmtPaymasterBill(head.usd)} a month on top of the gas for ${head.label} (latest value), ${head.rank > 0 ? `#${head.rank} of ${head.of}` : `not ranked among ${head.of}`} paymasters priced.`,
+        );
+      }
+    }
+    const scope = [
+      onPricing.has("wallet-cost") ? "app sizes" : "",
+      onPricing.has("server-wallet-cost") ? "agents, bots and payouts" : "",
+      onPricing.has("paymaster-cost") ? "gas sponsorship by chain" : "",
+    ].filter(Boolean);
+    if (sentences.length > 0) {
+      sentences.push(`Its bill for ${scope.join(", ")}, and where its published price stops.`);
+      description = capSnippet(sentences.join(" "));
+    } else {
       description = capSnippet(
-        `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (${head.verified ? "" : "ambiguous price, "}latest value), #${head.rank} of ${head.of} embedded wallet vendors priced. Its bill at 1,000 and 100,000 users, by usage profile.`,
-      );
-    } else if (head) {
-      description = capSnippet(
-        `${p.name} publishes no self-serve price for a 10,000-user consumer app, so it is not ranked there. Where it is priced, and what ${head.of} other embedded wallet vendors bill.`,
+        `${p.name} publishes no self-serve price at the headline size of the pricing benches it is on. Where it is priced, for ${scope.join(", ")}, and what other vendors bill.`,
       );
     }
   }
@@ -615,6 +670,10 @@ export default async function ProviderPage({
 
   // Same rule as generateMetadata: nothing that 410s gets counted or shown.
   const living = livingAppearances(p.appearances);
+  // A vendor priced only by the pricing benches: its H1 says pricing, as its
+  // title does ("Privy Benchmark" under "Privy wallet pricing 2026", SEO
+  // audit 2026-10-30).
+  const pricingPage = living.length > 0 && living.every((a) => PRICING_BENCHES.includes(a.benchmark.slug));
   const sorted = [...living].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
     // Larger field first (see metaRanked), then the title.
@@ -639,12 +698,18 @@ export default async function ProviderPage({
   // and made every /products/* page look near-duplicate to Bing (SEO audit
   // 2026-07-05: only 2 of ~5000 pages indexed). Each sentence is derived
   // from live measurements — no editorial claim.
+  // A published price of $0 is a value (Circle bills a 20-wallet bot
+  // nothing), not a missing measurement.
   const rankedAppearances = sorted.filter(
-    (a) => a.rank > 0 && a.result.ms.p50 !== 0,
+    (a) => a.rank > 0 && (a.result.ms.p50 !== 0 || PRICING_BENCHES.includes(a.benchmark.slug)),
   );
   const topLines: string[] = [];
   for (const a of rankedAppearances.slice(0, 4)) {
-    const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
+    // A published price whole, as the rows below print it ($51,299, not
+    // "$51.3K").
+    const p50Str = PRICING_BENCHES.includes(a.benchmark.slug)
+      ? fmtCostUSD(a.result.ms.p50)
+      : fmtUnit(a.result.ms.p50, a.benchmark.unit);
     const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
     const valueWord = a.benchmark.valueKind === "latest" ? "latest" : "p50";
     topLines.push(
@@ -656,7 +721,7 @@ export default async function ProviderPage({
   const proseParts: string[] = [];
   if (topLines.length > 0) {
     proseParts.push(
-      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes across chains"}` : ""}:`,
+      `${p.name} ${pricingPage ? (topLines.length === 1 ? "is priced on" : "is priced across") : topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes across chains"}` : ""}:`,
     );
     proseParts.push(`${topLines.join(", ")}.`);
   } else {
@@ -982,7 +1047,7 @@ export default async function ProviderPage({
               <ProviderLogo slug={p.slug} name={p.name} size={56} />
               <div className="min-w-0">
                 <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight">
-                  {p.name} <span className="text-ink-soft font-normal">Benchmark</span>
+                  {p.name} <span className="text-ink-soft font-normal">{pricingPage ? "pricing" : "Benchmark"}</span>
                 </h1>
                 <p className="mt-1 text-base text-ink-soft">
                   {productProse}
@@ -997,24 +1062,23 @@ export default async function ProviderPage({
                 {(reg?.url || reg?.twitter) && (
                   <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                     {reg.url && (
-                      <a
+                      <OutboundLink
                         className="lnk inline-flex items-center gap-1 font-medium text-ink hover:text-accent transition-colors break-all"
-                        href={withUtm(reg.referralUrl || reg.url)}
-                        rel={reg.referralUrl ? "noopener sponsored" : "noopener"}
+                        href={reg.referralUrl || reg.url}
+                        rel={reg.referralUrl ? "sponsored" : undefined}
                       >
                         {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                         <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
-                      </a>
+                      </OutboundLink>
                     )}
                     {reg.twitter && (
-                      <a
+                      <OutboundLink
                         className="lnk inline-flex items-center gap-1 text-ink-soft hover:text-ink transition-colors"
-                        href={withUtm(`https://x.com/${reg.twitter.replace(/^@/, "")}`)}
-                        rel="noopener"
+                        href={`https://x.com/${reg.twitter.replace(/^@/, "")}`}
                       >
                         {reg.twitter}
                         <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
-                      </a>
+                      </OutboundLink>
                     )}
                   </p>
                 )}
@@ -1244,13 +1308,13 @@ export default async function ProviderPage({
                     {c.value}
                   </dd>
                   <dd className="mt-1 text-xs text-ink-faint">
-                    <a
+                    <OutboundLink
                       className="lnk underline underline-offset-2 hover:text-ink"
-                      href={withUtm(c.source)}
-                      rel="noopener nofollow"
+                      href={c.source}
+                      rel="nofollow"
                     >
                       source
-                    </a>
+                    </OutboundLink>
                     {" · "}
                     <time dateTime={c.verifiedAt}>{claimAgeLabel(c)}</time>
                     {c.stale && (
@@ -1310,12 +1374,17 @@ export default async function ProviderPage({
             const pinView = hasData
               ? null
               : offPinViews.get(a.tier ? `${a.benchmark.slug}#${a.tier}` : a.benchmark.slug) ?? null;
+            // A published price prints whole, to the cent when it has cents:
+            // fmtUnit compacts $51,299 to "$51.3K" beside the table's
+            // $51,299, and would print CDP $49,975 and Lit $50,000 alike.
             // A race bench's p50 is the lag behind the first arrival, so the
             // winner reads ~0 ms by construction: show its share of wins.
             const value = hasData
               ? a.raceShare
                 ? `${Math.round(a.raceShare.share)}%`
-                : fmtUnit(a.result.ms.p50, a.benchmark.unit)
+                : PRICING_BENCHES.includes(a.benchmark.slug)
+                  ? fmtCostUSD(a.result.ms.p50)
+                  : fmtUnit(a.result.ms.p50, a.benchmark.unit)
               : pinView
                 ? pinView.raceShare
                   ? `${Math.round(pinView.raceShare.share)}%`
@@ -1392,7 +1461,7 @@ export default async function ProviderPage({
                     </h3>
                     <p className="text-xs text-ink-muted truncate">
                       {a.benchmark.metric}
-                      {a.tier ? <> · {a.tier === "keyed" ? "private cohort (API key)" : `${a.tier} cohort`}, ranked separately</> : null}
+                      {a.tier ? <> · {a.tier === "keyed" ? "private cohort (API key)" : `${a.tier.replace(/_/g, " ")} cohort`}, ranked separately</> : null}
                     </p>
                     {hasChainRanks && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-1.5 font-sans text-[10px] uppercase tracking-[0.14em] font-medium">
@@ -1453,6 +1522,10 @@ export default async function ProviderPage({
       {(() => {
         const w = sorted.find((a) => a.benchmark.slug === "server-wallet-cost");
         return w ? <ServerWalletVendorPricing slug={w.result.slug} name={p.name} /> : null;
+      })()}
+      {(() => {
+        const w = sorted.find((a) => a.benchmark.slug === "paymaster-cost");
+        return w ? <PaymasterVendorPricing slug={w.result.slug} name={p.name} /> : null;
       })()}
 
       <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />
@@ -1527,15 +1600,14 @@ export default async function ProviderPage({
                         self-promo loop. Every other provider keeps the
                         share link. */}
                     {p.slug !== "mobula" && (
-                      <a
+                      <OutboundLink
                         href={tweetIntent}
                         target="_blank"
-                        rel="noopener"
                         className="inline-flex items-center gap-1 hover:text-ink"
                       >
                         Share on X
                         <ArrowUpRight size={11} strokeWidth={2} />
-                      </a>
+                      </OutboundLink>
                     )}
                   </div>
                   <details className="mt-3">

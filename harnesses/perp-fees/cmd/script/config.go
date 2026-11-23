@@ -8,10 +8,10 @@ import (
 )
 
 type Config struct {
-	Venues       []VenueConfig
-	Interval     time.Duration
-	NotionalUSD  float64
-	MobulaAPIKey string // for /api/2/perp/quote
+	Venues      []VenueConfig
+	Interval    time.Duration
+	NotionalUSD float64
+	ArbitrumRPC string
 }
 
 // venueDef pairs a venue with the assets it supports natively.
@@ -49,7 +49,7 @@ func loadConfig() *Config {
 		// maps asset → market address (gmxMarkets in gmx.go), verified
 		// against gmxinfra /markets/info.
 		{slug: "gmx", display: "GMX v2", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
-		// Gains v8 on Base — reads fees on-chain via Base RPC. Pair index
+		// Gains v8 on Arbitrum — reads fees on-chain via Arbitrum RPC. Pair index
 		// for each asset is discovered by scanning the diamond's
 		// `pairs(N)` slot for the asset/USD name match (findGainsPair in
 		// gains.go).
@@ -75,6 +75,13 @@ func loadConfig() *Config {
 		// taker fee (3.8 bps, edgex-1.gitbook.io) hardcoded because no
 		// public fee schedule API — disclosed in the spec formula.
 		{slug: "edgex", display: "edgeX", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
+		{slug: "binance", display: "Binance", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "bybit", display: "Bybit", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "okx", display: "OKX", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "bitget", display: "Bitget", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "mexc", display: "MEXC", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "gate", display: "Gate", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "kucoin", display: "KuCoin", assets: []string{"ETH", "BTC", "SOL"}},
 	}
 
 	venues := make([]VenueConfig, 0, len(defs)*3)
@@ -90,10 +97,13 @@ func loadConfig() *Config {
 	}
 
 	c := &Config{
-		Interval:     5 * time.Minute,
-		NotionalUSD:  notional,
-		MobulaAPIKey: os.Getenv("MOBULA_API_KEY"),
-		Venues:       venues,
+		Interval:    5 * time.Minute,
+		NotionalUSD: notional,
+		ArbitrumRPC: "https://arb1.arbitrum.io/rpc",
+		Venues:      venues,
+	}
+	if v := os.Getenv("RPC_ARBITRUM"); v != "" {
+		c.ArbitrumRPC = v
 	}
 
 	if v := os.Getenv("REFRESH_INTERVAL_SECONDS"); v != "" {

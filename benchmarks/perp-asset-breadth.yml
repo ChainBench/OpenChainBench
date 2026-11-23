@@ -9,6 +9,12 @@ category: Trading
 status: live
 metric: Non-crypto markets
 unit: count
+
+# A success rate measures nothing here: this bench counts markets a
+# venue lists, not requests it answered. Without this the ledger fills
+# the column from the loader's default and publishes 100% for every
+# venue, backed by no sample.
+ledger_reliability: false
 higher_is_better: true
 row_noun: { one: venue, many: venues }
 disclaimer: |

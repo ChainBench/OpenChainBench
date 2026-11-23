@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { pageMetadata } from "@/lib/page-metadata";
 import { SITE } from "@/data/site";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/docs",
@@ -120,7 +120,7 @@ const AGENT_FILES = [
 const MIRRORS = [
   { href: "https://huggingface.co/datasets/OpenChainBench/benchmarks", label: "Hugging Face dataset", body: "The catalogue as a dataset, for notebooks and training sets." },
   { href: "https://huggingface.co/spaces/OpenChainBench/leaderboard", label: "Hugging Face Space", body: "The leaderboard as a hosted app." },
-  { href: "https://github.com/ChainBench/OpenChainBench", label: "GitHub", body: "The specs, every harness, and the site itself. MIT for the code." },
+  { href: SITE.github, label: "GitHub", body: "The specs, every harness, and the site itself. MIT for the code." },
 ] as const;
 
 function SectionHeader({ number, label, id }: { number: string; label: string; id: string }) {
@@ -313,7 +313,7 @@ export default function DocsPage() {
         <SectionHeader number="VI" label="Citing a number" id="citing" />
         <p className="mt-6 max-w-3xl text-[15px] text-ink-soft leading-relaxed">
           The data is{" "}
-          <a className="lnk" href={withUtm("https://creativecommons.org/licenses/by/4.0/")} rel="license noopener">
+          <a className="lnk" href="https://creativecommons.org/licenses/by/4.0/" rel="license noopener">
             CC BY 4.0
           </a>
           . Attribution is OpenChainBench plus the benchmark page.
@@ -381,9 +381,9 @@ ${SITE.url}/api/cite/ethereum-rpc/txt    # one sentence with the value and date`
             <ul className="mt-2 space-y-1.5 text-sm text-ink-soft leading-relaxed">
               {MIRRORS.map((m) => (
                 <li key={m.href}>
-                  <a className="lnk" href={withUtm(m.href)} rel="noopener" target="_blank">
+                  <OutboundLink className="lnk" href={m.href} target="_blank">
                     {m.label}
-                  </a>{" "}
+                  </OutboundLink>{" "}
                   · {m.body}
                 </li>
               ))}

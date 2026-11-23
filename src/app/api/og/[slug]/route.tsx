@@ -5,6 +5,7 @@ import { fmtUnit } from "@/lib/format";
 import { fieldValue, leader, sparklineFor } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
+import { scopeFromParams, scopeNote } from "@/lib/venue-type-filter";
 
 export const runtime = "nodejs";
 export const contentType = "image/png";
@@ -31,18 +32,22 @@ export async function GET(
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
-  const b = await getBenchmark(slug);
-  if (!b || b.editorialStatus !== "live") {
+  const unscoped = await getBenchmark(slug);
+  if (!unscoped || unscoped.editorialStatus !== "live") {
     return new Response("not_found", {
       status: 404,
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
 
+  const { view, bench: b } = scopeFromParams(
+    unscoped,
+    new URL(req.url).searchParams,
+  );
   const top = leader(b);
   const value = fieldValue(b);
   const valueStr = value != null ? fmtUnit(value, b.unit) : "-";
-  const spark = sparklineFor(b, top?.slug);
+  const spark = top ? sparklineFor(b, top.slug) : [];
 
   return ogResponse(
     (
@@ -104,7 +109,8 @@ export async function GET(
             {valueStr}
           </span>
           <span style={{ fontSize: 28, color: "#4a443c", maxWidth: 980 }}>
-            {top ? `${top.name} leads · ${b.title}` : b.title}
+            {`${top ? `${top.name} leads · ` : ""}${b.title}` +
+              scopeNote(view)}
           </span>
         </div>
 

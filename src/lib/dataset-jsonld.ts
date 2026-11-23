@@ -212,7 +212,12 @@ export function buildBenchVariableMeasured(input: {
    *  ledger_columns; the PropertyValues then carry those labels and
    *  units instead of calling a signed 30-day deviation "p99". */
   ledgerColumns?: { label: string; slot?: "p50" | "p90" | "p99" | "mean"; unit?: string }[];
+  /** False on a bench that sends no traffic (the pricing benches): its
+   *  sample count is a count of scrapes, not a sample, so `sample_size` is
+   *  not an axis it measures (SEO audit 2026-10-30). */
+  ledgerReliability?: boolean;
 }): Array<string | VariableMeasuredValue> {
+  const sampled = input.ledgerReliability !== false;
   const slotCols = (input.ledgerColumns ?? []).filter((c) => c.slot);
   if (slotCols.length > 0 && input.leader) {
     const l = input.leader;
@@ -228,10 +233,12 @@ export function buildBenchVariableMeasured(input: {
         unitText: c.unit ?? input.unit,
       });
     }
-    out.push("sample_size");
+    if (sampled) out.push("sample_size");
     return out;
   }
   if (!input.leader || input.leader.p50 <= 0) {
+    // A pricing bench has one figure, not percentiles of a sample.
+    if (!sampled) return [input.metric];
     return [
       input.metric,
       `${input.metric}_p50`,

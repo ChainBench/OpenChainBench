@@ -21,6 +21,7 @@ describe("product slug aliases", () => {
   test("known rebrands still resolve", () => {
     expect(canonicalize("ton").slug).toBe("gram");
     expect(canonicalize("vertex").slug).toBe("nado");
+    expect(canonicalize("proliquid").slug).toBe("tuleep-trade");
   });
 
   test("case does not matter, the rewrites pass through whatever was linked", () => {

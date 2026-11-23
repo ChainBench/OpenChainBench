@@ -23,7 +23,7 @@ abstract: |
 methodology:
   - "Probe: a single getblockcount JSON-RPC POST every 60 seconds per provider from us-east, eu-west and Singapore. Latency is the client-side wall-clock round trip."
   - "Classification: ok (HTTP 200 with a usable height), http_err, jsonrpc_err (HTTP 200 with an error body), stale (tip more than 20 blocks behind the cross-provider max), timeout. Only ok responses contribute latency."
-  - "Providers: PublicNode (bitcoin-rpc.publicnode.com), dRPC (bitcoin.drpc.org), NOWNodes (public-btc.nownodes.io, no key, 5 RPS)."
+  - "Providers: PublicNode (bitcoin-rpc.publicnode.com), dRPC (bitcoin.drpc.org), NOWNodes (public-btc.nownodes.io, no key, 5 RPS), RpcNode (public-bitcoin-mainnet.rpcnode.dev, no key, 5 RPS per IP)."
   - "Aggregation: p50/p90/p99 via Prometheus quantile_over_time over 24h; the headline cites the cross-region figure and the region tabs re-scope it."
 
 faq:
@@ -96,6 +96,30 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="bitcoin", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="bitcoin", region="sgp"}[1h])
+
+  - slug: rpcnode
+    name: RpcNode
+    endpoint: https://public-bitcoin-mainnet.rpcnode.dev
+    tag: Public node, 20 mainnets, 5 RPS per IP
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to public-bitcoin-mainnet.rpcnode.dev."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="bitcoin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode", chain="bitcoin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="rpcnode", chain="bitcoin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="rpcnode", chain="bitcoin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="rpcnode", chain="bitcoin"}) / sum(ocb:rpc_call:rate_24h{provider="rpcnode", chain="bitcoin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="rpcnode", chain="bitcoin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="bitcoin"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="bitcoin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="bitcoin", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="bitcoin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="bitcoin", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="bitcoin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="bitcoin", region="sgp"}[1h])
 
   - slug: nownodes
     name: NOWNodes

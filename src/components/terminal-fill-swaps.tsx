@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { FillSample } from "@/lib/terminal-fills";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Audit table of the sampled swaps behind bench 268: every row is one
@@ -304,16 +304,15 @@ export function TerminalFillSwaps({
                 </td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   {txExplorer(s) ? (
-                    <a
-                      href={withUtm(`${txExplorer(s)}${s.sig}`)}
+                    <OutboundLink
+                      href={`${txExplorer(s)}${s.sig}`}
                       target="_blank"
-                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-soft hover:text-ink"
                       title={hashTitle(s)}
                     >
                       {s.sig.slice(0, 6)}…{s.sig.slice(-4)}
                       <ExternalLink className="h-3 w-3 opacity-60" />
-                    </a>
+                    </OutboundLink>
                   ) : (
                     // No explorer we can name for this hash: show it rather
                     // than link somewhere it does not exist.
@@ -338,15 +337,14 @@ export function TerminalFillSwaps({
                       </span>
                     ) : null}
                     {s.chain && s.inTx ? (
-                      <a
-                        href={withUtm(`${EXPLORERS[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? EXPLORERS.solana}${s.inTx}`)}
+                      <OutboundLink
+                        href={`${EXPLORERS[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? EXPLORERS.solana}${s.inTx}`}
                         target="_blank"
-                        rel="noopener noreferrer"
                         className="text-[10px] uppercase tracking-[0.1em] text-ink-faint underline underline-offset-2 hover:text-ink"
                         title={depositTitle(s)}
                       >
                         {`from ${CHAIN_NAMES[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? "Solana"}`}
-                      </a>
+                      </OutboundLink>
                     ) : s.chain ? (
                       <span className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">from {CHAIN_NAMES[s.chain] ?? s.chain}</span>
                     ) : null}
@@ -672,15 +670,14 @@ function RefCell({ s }: { s: FillSample }) {
 function SandwichCell({ s }: { s: FillSample }) {
   if (s.sandwich)
     return (
-      <a
-        href={withUtm(`https://solscan.io/tx/${s.sandwich.frontSig}`)}
+      <OutboundLink
+        href={`https://solscan.io/tx/${s.sandwich.frontSig}`}
         target="_blank"
-        rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 text-bad hover:underline underline-offset-2"
         title={`attacker ${s.sandwich.attacker}\nfront-run ${s.sandwich.frontSig}\nback-run ${s.sandwich.backSig}\nattacker profit ${Math.round(s.sandwich.profitBps)} bps of the trade`}
       >
         <ShieldAlert className="h-3.5 w-3.5" /> hit
-      </a>
+      </OutboundLink>
     );
   if (s.scanned)
     return (

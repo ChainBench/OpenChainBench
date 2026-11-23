@@ -14,7 +14,8 @@ import {
 import { PmTopMarketsTable } from "@/components/pm-top-markets-table";
 import { PmCategoryDonut } from "@/components/pm-category-donut";
 import { PmVolumeOiChart } from "@/components/pm-volume-oi-chart";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
+import { safeHost } from "@/lib/url-host";
 
 /**
  * Per-venue anchored section on /prediction-markets. URL anchor is the
@@ -32,7 +33,7 @@ import { withUtm } from "@/lib/utm";
  * Promise.all so cold renders stay under the page-level ISR budget.
  */
 
-export type PmVenueSectionProps = {
+type PmVenueSectionProps = {
   slug: string;
   /** Human-readable name shown in the heading. */
   name: string;
@@ -87,14 +88,13 @@ export async function PmVenueSection({
             {chainLabel}
           </span>
         </div>
-        <a
-          href={withUtm(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener noreferrer"
           className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"
         >
           Open {externalHost}
-        </a>
+        </OutboundLink>
       </header>
 
       {kpis ? (
@@ -176,23 +176,14 @@ export async function PmVenueSection({
             <span aria-hidden>·</span>
           </>
         )}
-        <a
-          href={withUtm(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener noreferrer"
           className="hover:text-ink underline underline-offset-2"
         >
           View on {externalHost}
-        </a>
+        </OutboundLink>
       </footer>
     </section>
   );
-}
-
-function safeHost(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
 }

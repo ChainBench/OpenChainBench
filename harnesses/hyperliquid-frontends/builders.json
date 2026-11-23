@@ -558,10 +558,10 @@
   },
   {
     "slug": "tuleep-trade",
-    "name": "tuleep.trade",
+    "name": "Proliquid",
     "address": "0x00000000617c4307d352e8c1720a9f29d01c3d62",
-    "valid_from": "2025-05-28",
-    "notes": "Source: HyperTracker public builder registry (refCode TULEEPTRADE, joined 2025-05-28). Batch coverage audit 2026-06-12 against local node fills."
+    "valid_from": "2025-05-27",
+    "notes": "Proliquid (proliquid.xyz), formerly tuleep.trade: tuleep.trade now 301s to www.proliquid.xyz and the builder address, confirmed by the operator, is unchanged. Slug kept as tuleep-trade so the builder label, recorded history and page URL stay put. Multi-venue trading terminal (Hyperliquid, RISEx, Lighter, Extended, Binance, Bybit, OKX, BloFin); Hyperliquid builder fee starts at 2 bps and drops to 0.5 bps at the top tier, published at proliquid.xyz/hyperliquid-builder-fees-compared. valid_from is the first day the public fills bucket returns a file, checked day by day from 2025-01-01 on 2026-11-03: 237 days have one, the earliest 2025-05-27 (one day before the HyperTracker join date this row used). Originally sourced from HyperTracker (refCode TULEEPTRADE)."
   },
   {
     "slug": "slash",

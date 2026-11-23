@@ -19,7 +19,13 @@ import type {
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { specHasDistribution, specValueKind } from "@/lib/value-window";
-import { SpecSchema, type Spec } from "@/lib/spec-schema";
+import { pickChainLeader, pickChainTrailer } from "@/lib/materialize/per-chain-leader";
+import {
+  metricNameRe,
+  SpecSchema,
+  type FeesView,
+  type Spec,
+} from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
@@ -73,9 +79,10 @@ export type BenchmarkFilters = {
   bucket?: string;
   /** Access cohort (public / keyed). Selects providers, injects no label. */
   tier?: string;
+  fees?: FeesView;
 };
 
-const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "bucket", "tier"] as const;
+const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "bucket", "tier", "fees"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
 export function filterSig(f: BenchmarkFilters): string {
@@ -92,8 +99,12 @@ export function parseFilterSig(sig: string): BenchmarkFilters {
   if (!sig) return out;
   for (const kv of sig.split("&")) {
     const [k, v] = kv.split("=");
+    if (k === "fees") {
+      if (v === "removed") out.fees = v;
+      continue;
+    }
     if (k && v && (FILTER_KEYS as readonly string[]).includes(k)) {
-      out[k as FilterKey] = v;
+      out[k as Exclude<FilterKey, "fees">] = v;
     }
   }
   return out;
@@ -177,6 +188,7 @@ export function buildEditorial(
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,
     rowNoun: spec.row_noun,
+    headlineSlice: spec.headline_slice,
     valueKind: specValueKind(spec),
     hasDistribution: specHasDistribution(spec),
     abstract: spec.abstract,
@@ -193,6 +205,8 @@ export function buildEditorial(
     ledgerColumns: spec.ledger_columns,
     ledgerReliability: spec.ledger_reliability,
     providerNotes: spec.provider_notes,
+    providerFootnotes: spec.provider_footnotes,
+    feesRemovable: spec.fees_removed ? true : undefined,
   };
 }
 
@@ -239,7 +253,56 @@ export function restrictToTier(spec: Spec, tier: string | undefined): Spec {
 function labelFilters(f: BenchmarkFilters): BenchmarkFilters {
   const rest: BenchmarkFilters = { ...f };
   delete rest.tier;
+  delete rest.fees;
   return rest;
+}
+
+export function withFeesRemoved(spec: Spec): Spec {
+  const view = spec.fees_removed;
+  if (!view) return spec;
+  const renames = Object.entries(view.metric_rename).map(
+    ([from, to]) => [metricNameRe(from, "g"), to] as const,
+  );
+  const rename = (q: string | undefined) =>
+    q === undefined
+      ? q
+      : renames.reduce((acc, [re, to]) => acc.replace(re, to), q);
+  return {
+    ...spec,
+    metric: view.metric,
+    panel_main_label: view.panel_main_label,
+    providers: spec.providers.map((p) => ({
+      ...p,
+      formula: view.formula,
+      queries: p.queries && mapQueries(p.queries, rename),
+    })),
+  };
+}
+
+type ProviderQueries = NonNullable<Spec["providers"][number]["queries"]>;
+
+function mapQueries(
+  q: ProviderQueries,
+  fn: (query: string | undefined) => string | undefined,
+): ProviderQueries {
+  return {
+    ...q,
+    p50: fn(q.p50),
+    p90: fn(q.p90),
+    p95: fn(q.p95),
+    p99: fn(q.p99),
+    mean: fn(q.mean),
+    success: fn(q.success),
+    sample_size: fn(q.sample_size),
+    series: fn(q.series),
+    ranked: fn(q.ranked),
+    live_activity: fn(q.live_activity),
+    regions: q.regions?.map((r) => ({
+      ...r,
+      p50: fn(r.p50),
+      series: fn(r.series),
+    })),
+  };
 }
 
 export async function specToBenchmark(
@@ -263,7 +326,8 @@ export async function specToBenchmark(
   const activeTier = fullSpec.dimensions?.tier
     ? merged.tier ?? defaultTier(fullSpec)
     : undefined;
-  const spec = restrictToTier(fullSpec, activeTier);
+  const cohort = restrictToTier(fullSpec, activeTier);
+  const spec = merged.fees === "removed" ? withFeesRemoved(cohort) : cohort;
   const editorial = buildEditorial(spec);
 
   const activeLabels = activeFilterLabels(labelFilters(merged));
@@ -273,9 +337,13 @@ export async function specToBenchmark(
       ? applyDimensionsToSpec(spec, activeLabels)
       : spec;
 
+  // activeTier is NOT in activeLabels: labelFilters strips it, because a
+  // tier is a cohort switch rather than a slice. The panel gate needs it
+  // all the same, so it travels alongside.
   const live = await tryLoadLive(filteredSpec, isFiltered, {
     ...activeLabels,
     ...(activeTier ? { tier: activeTier } : {}),
+    ...(merged.fees ? { fees: merged.fees } : {}),
   });
   if (live) {
     // Mark live entries explicitly so a missing `availability` reads as
@@ -310,6 +378,11 @@ export async function specToBenchmark(
       const view = activeFilterLabels(labelFilters(options));
       for (const r of live.results) {
         if (r.unrankedLabel !== "Provisional") continue;
+        // The row goes in because the interactive table dashes the success
+        // cell for every unranked row (ledger-table.tsx:1175) while the
+        // served HTML renders it (static-ledger.tsx:186). A bench whose
+        // reason NEEDS its size has to carry it in the label, which both
+        // surfaces render.
         r.unrankedLabel = rankGateReason(spec.slug, r.slug, view) ?? r.unrankedLabel;
       }
     }
@@ -334,6 +407,7 @@ export async function specToBenchmark(
           tag: p.tag,
           type: p.type,
           layer: p.layer,
+          venueType: p.venue_type,
           ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
           successRate: 100,
           secondary: p.secondary,
@@ -364,6 +438,7 @@ export async function specToBenchmark(
             tag: p.tag,
             type: p.type,
             layer: p.layer,
+            venueType: p.venue_type,
             ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
             successRate: 100,
             secondary: p.secondary,
@@ -381,6 +456,7 @@ export async function specToBenchmark(
           tag: p.tag,
           type: p.type,
           layer: p.layer,
+          venueType: p.venue_type,
           ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
           successRate: 0,
           secondary: p.secondary,
@@ -465,8 +541,19 @@ export async function specToBenchmark(
         // `ranked_on`: on these tabs the row is like for like and ranks.
         if (isRankedOnView(entry.rankedOn, view)) continue;
         r.unrankedLabel = entry.label;
-        r.unresponsive = undefined;
-        r.availability = "live";
+        // Absent from the ORDER and absent from the DATA are two different
+        // absences, and clearing both here conflated them: declaring a
+        // provider unranked also declared it responsive, so a row that had
+        // returned nothing kept the zeros it arrived with and published
+        // them. Bench 313 put LI.FI at 0% that way, with no series at all in
+        // Prometheus, on a board where lower is better and 0 is the best
+        // score a row can hold. Not being ranked is a property of the
+        // provider; having answered is a property of the window.
+        const read = typeof r.successRate === "number" ? r.successRate > 0 : true;
+        if (read) {
+          r.unresponsive = undefined;
+          r.availability = "live";
+        }
         if (entry.hide) r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
       }
     }
@@ -541,13 +628,13 @@ export async function specToBenchmark(
           if (liveForChain.length === 0) {
             return [chain, undefined, undefined, slugs, values, spreads] as const;
           }
-          const sorted = [...liveForChain].sort((a, b) =>
-            spec.higher_is_better ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-          );
+          // Not sorted[0] of everything: a row the board publishes outside
+          // its ranking cannot lead a chain, and a shared best value elects
+          // nobody. See per-chain-leader.ts for the two live cases.
           return [
             chain,
-            sorted[0],
-            sorted[sorted.length - 1],
+            pickChainLeader(liveForChain, !!spec.higher_is_better) ?? undefined,
+            pickChainTrailer(liveForChain, !!spec.higher_is_better) ?? undefined,
             slugs,
             values,
             spreads,
@@ -658,8 +745,8 @@ export async function specToBenchmark(
     // seo_intro, faq) never drifts from the displayed data.
     // A column whose panel was not published this view would draw a column
     // of dashes under a header promising a reading, because colValue
-    // resolves a missing panel to null and the table still renders it.
-    // Slot columns (p50/p90/p99/mean) are never affected.
+    // resolves a missing panel to null and the table still renders it. Drop
+    // it instead. Slot columns (p50/p90/p99/mean) are never affected.
     const publishedPanelIds = new Set((live.metricPanels ?? []).map((p) => p.id));
     const keptColumns = editorial.ledgerColumns?.filter(
       (c) => !c.panel || publishedPanelIds.has(c.panel),
@@ -682,7 +769,7 @@ export async function specToBenchmark(
     // Persistence is the caller's concern (site: KV snapshot write,
     // worker: store publish). Only the unfiltered "All" view of a live
     // spec triggers the hook; filtered variants are derived views.
-    if (!isFiltered && spec.status === "live") {
+    if (!isFiltered && !merged.fees && spec.status === "live") {
       hooks?.onRendered?.(rendered);
     }
     return rendered;
@@ -1097,26 +1184,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
     })),
     providers: spec.providers.map((p) => ({
       ...p,
-      queries: p.queries
-        ? {
-            ...p.queries,
-            p50: inject(p.queries.p50),
-            p90: inject(p.queries.p90),
-            p95: inject(p.queries.p95),
-            p99: inject(p.queries.p99),
-            mean: inject(p.queries.mean),
-            success: inject(p.queries.success),
-            sample_size: inject(p.queries.sample_size),
-            series: inject(p.queries.series),
-            ranked: inject(p.queries.ranked),
-            live_activity: inject(p.queries.live_activity),
-            regions: p.queries.regions?.map((r) => ({
-              ...r,
-              p50: inject(r.p50),
-              series: inject(r.series),
-            })),
-          }
-        : p.queries,
+      queries: p.queries ? mapQueries(p.queries, inject) : p.queries,
     })),
     prometheus: spec.prometheus
       ? { ...spec.prometheus, probe_ok: inject(spec.prometheus.probe_ok) }
@@ -1137,28 +1205,27 @@ export function dimensionLabels(f: BenchmarkFilters): Record<string, string> {
 /**
  * Whether a panel is published on the view the reader is on.
  *
- * Two rules, and they answer different questions.
+ * A panel that declares `per_chain_only` measures a per-chain quantity, and
+ * the all-chains view must not pool it: averaging milliseconds across chains
+ * averages different block times, state sizes and node fleets. Bench 311's
+ * getblock reads 1.94 ms of eth_call work on Ethereum and 468.56 on
+ * HyperEVM, so the pooled figure of 61.49 was almost entirely one chain.
  *
- * `per_chain_only` marks a per-chain quantity, which the all-chains view
- * must not pool: averaging milliseconds across chains averages different
- * block times, state sizes and node fleets. Measured 2026-10-31, getblock
- * reads 1.94 ms of eth_call work on Ethereum and 468.56 on HyperEVM, so its
- * pooled 61.49 was almost entirely one chain.
- *
- * `tiers` scopes a panel to a cohort. API capability is probed on the keyed
- * endpoints only, so on a chain page's public tab those panels have nothing
- * to say and are absent rather than empty.
- *
- * Exported and shared for the reason panelMetricQuery is: panel values and
- * the 7d/30d panel series are built by different code paths, and the series
- * route is reachable by URL, so a panel withheld from the board would
- * otherwise still have served a pooled chart.
+ * Exported and shared for the reason panelMetricQuery is: the panel values
+ * and the 7d/30d panel series are built by different code paths, and a rule
+ * written twice is a rule that holds in one of them. The series route is
+ * reachable by URL, so a panel withheld from the board would still have
+ * served a pooled chart.
  */
 export function publishesPanelOnView(
-  panel: { per_chain_only?: boolean; tiers?: string[] },
-  dims: { chain?: string; tier?: string },
+  panel: { per_chain_only?: boolean; tiers?: string[]; fees?: FeesView },
+  dims: { chain?: string; tier?: string; fees?: FeesView },
 ): boolean {
   if (panel.per_chain_only && !dims.chain) return false;
+  if (panel.fees && panel.fees !== (dims.fees ?? "included")) return false;
+  // A panel scoped to a cohort says nothing about the others. Capability
+  // is probed on the keyed endpoints only, so under a chain page's public
+  // tab these panels are absent rather than empty.
   if (panel.tiers && panel.tiers.length > 0) {
     if (!dims.tier || !panel.tiers.includes(dims.tier)) return false;
   }
@@ -1284,6 +1351,7 @@ export function unresponsiveResult(
     tag: p.tag,
     type: p.type,
     layer: p.layer,
+    venueType: p.venue_type,
     ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
     successRate: successPct,
     sampleSize: probe.sampleSize ?? undefined,
@@ -1298,10 +1366,11 @@ export function unresponsiveResult(
 async function tryLoadLive(
   spec: Spec,
   isFiltered = false,
-  /** The dimension values pinned on this view. A tier is NOT in
-   *  activeFilterLabels, because labelFilters strips it: a tier is a cohort
-   *  switch rather than a slice. The panel gate needs it all the same. */
-  activeLabels: Record<string, string> = {},
+  /** The dimension values pinned on this view. Used to tell a chain tab from
+   *  the all-chains view, which `isFiltered` cannot: a tier pin is a filter
+   *  too. `activeFilterLabels` already drops a value of "all", so a missing
+   *  `chain` key here means the reader is on the pooled view. */
+  activeLabels: Record<string, string> = {}
 ): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt" | "metricPanels"> | null> {
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
@@ -1360,6 +1429,9 @@ async function tryLoadLive(
       // stronger reason: it decides whether a row may LEAD. `prom.scalar`
       // returns null for an error and for an empty result alike, so one
       // timed-out query used to promote the row it was meant to hold back.
+      // Retry first, so a transient null does not gate an eligible provider,
+      // then fail closed below, so a persistent one cannot crown an
+      // ineligible one.
       const rankGate =
         q.ranked && firstRankGate == null ? await prom.scalar(q.ranked) : firstRankGate;
 
@@ -1453,6 +1525,7 @@ async function tryLoadLive(
         tag: p.tag,
         type: p.type,
         layer: p.layer,
+        venueType: p.venue_type,
         // Explicit: a row that reached this point has real aggregates,
         // whatever their sign. liveResults() keeps such a row on a finite
         // p50, so a signed metric (slippage vs quote: a bridge that beats
@@ -1472,8 +1545,9 @@ async function tryLoadLive(
             : undefined,
         successRate: success != null ? (success > 1 ? success : success * 100) : 100,
         sampleSize: sampleSize ?? undefined,
-        // The rank gate read 0: published (its figures stand), listed
-        // as provisional below the ranked field, never a leader.
+        // Published either way (its figures stand); listed as provisional
+        // below the ranked rows, never a leader. The three outcomes and why
+        // a null is one of them are in rankGateLabel.
         unrankedLabel: rankGateLabel(q.ranked, rankGate),
         secondary: p.secondary,
         query: q.p50,
@@ -1597,9 +1671,11 @@ async function tryLoadLive(
     // are omitted from the values map (rendered as "no data" by the UI).
     const metricPanels: MetricPanel[] = [];
     for (const panel of spec.metric_panels ?? []) {
-      // Omitted rather than blanked, so no tab opens onto nothing, and so
-      // the worker's panel carry cannot resurrect it: that loop walks the
-      // FRESH panels and never re-adds an absent one.
+      // A per-chain quantity is not published pooled. Omitted rather than
+      // blanked, so the tab strip does not offer a view onto nothing, and
+      // so the worker's panel carry cannot resurrect the pooled figure: its
+      // loop walks the FRESH panels, and a panel absent from them is never
+      // re-added.
       if (!publishesPanelOnView(panel, activeLabels)) continue;
       const values: Record<string, number> = {};
       const seriesByProvider: Record<string, (number | null)[]> = {};
@@ -1768,6 +1844,7 @@ function draftBenchmark(
     tag: p.tag,
     type: p.type,
     layer: p.layer,
+    venueType: p.venue_type,
     ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
     successRate: 0,
     secondary: p.secondary,

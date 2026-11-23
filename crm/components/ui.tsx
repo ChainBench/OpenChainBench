@@ -94,11 +94,14 @@ export function Lines({
   height = 120,
   width = 640,
   logScale = false,
+  legend = (values) => fmtInt(values.reduce((a, v) => a + v, 0)),
 }: {
   series: { name: string; color: string; values: number[] }[];
   height?: number;
   width?: number;
   logScale?: boolean;
+  /** The figure beside each legend entry; the series total by default. */
+  legend?: (values: number[]) => string;
 }) {
   const n = Math.max(...series.map((s) => s.values.length), 0);
   if (n < 2) return <div style={{ height }} />;
@@ -125,7 +128,7 @@ export function Lines({
           <li key={s.name} className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-sm" style={{ background: s.color }} />
             {s.name}
-            <span className="mono">{fmtInt(s.values.reduce((a, v) => a + v, 0))}</span>
+            <span className="mono">{legend(s.values)}</span>
           </li>
         ))}
       </ul>

@@ -1,6 +1,7 @@
 import { getBenchmarks } from "@/data/benchmarks";
 import { isThinRpcBench, isExpiredRpcPage } from "@/lib/provider-filters";
 import { SITE } from "@/data/site";
+import { getAllReports } from "@/lib/reports/loader";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { cohortViews, groundingTraceLine } from "@/lib/citation";
 import { isDevOnlyRoute } from "@/lib/removed-benches";
@@ -111,6 +112,27 @@ export async function GET() {
     lines.push("");
     for (const a of answers) {
       lines.push(`- [${a.question}](${a.url}): ${answerOneLine(a)}`);
+    }
+  }
+
+  // Reports, for the same reason the Answers block exists: this file listed
+  // every bench and every answer page and not one report, so the longest
+  // and most citable thing the site publishes was invisible to the index
+  // written for machines to read. Same loader as the index, the RSS feed
+  // and the sitemap, so a draft never appears.
+  const reports = getAllReports().filter((r) => !r.draft);
+  if (reports.length > 0) {
+    lines.push("");
+    lines.push(`## Reports (${reports.length})`);
+    lines.push("");
+    lines.push(
+      "Long-form analysis built on the live benchmarks. Each one states its measurement window and links the boards behind every figure.",
+    );
+    lines.push("");
+    for (const r of reports) {
+      lines.push(
+        `- [${r.title}](${SITE.url}/reports/${r.categorySlug}/${r.slug}) (${r.period}): ${r.heroFinding}`,
+      );
     }
   }
 

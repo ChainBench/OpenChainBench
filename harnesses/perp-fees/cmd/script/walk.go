@@ -24,9 +24,8 @@ type bookLevel struct {
 }
 
 // walkBookForNotional walks the ask side until $notional has been matched
-// and returns the size-weighted effective price. Same math as the original
-// per-venue walks: partial fill on the crossing level, 1% tolerance on the
-// matched total, error when the book cannot fill the notional.
+// and returns the size-weighted effective price: partial fill on the
+// crossing level, error when the book runs out before the notional.
 func walkBookForNotional(levels []bookLevel, notional float64) (float64, error) {
 	matched := 0.0
 	totalQty := 0.0
@@ -36,18 +35,13 @@ func walkBookForNotional(levels []bookLevel, notional float64) (float64, error) 
 		}
 		levelCost := l.Px * l.Sz
 		if matched+levelCost >= notional {
-			partial := (notional - matched) / l.Px
-			totalQty += partial
-			matched = notional
-			break
+			totalQty += (notional - matched) / l.Px
+			return notional / totalQty, nil
 		}
 		matched += levelCost
 		totalQty += l.Sz
 	}
-	if matched < notional*0.99 || totalQty == 0 {
-		return 0, fmt.Errorf("insufficient_depth: matched=%.2f of %.2f", matched, notional)
-	}
-	return notional / totalQty, nil
+	return 0, fmt.Errorf("insufficient_depth: matched=%.2f of %.2f", matched, notional)
 }
 
 // totalBookNotional sums price*size across every level, giving the total
@@ -120,20 +114,6 @@ func applyBookTiersCapped(s *PerpSample, levels []bookLevel, mid, maxFillRatio f
 			Notional:  notionalLabel(n),
 			SpreadBps: spread,
 			AllInBps:  s.TakerFeeBps + spread,
-		})
-	}
-}
-
-// applyFlatTiers publishes the same all-in figure at every tier. Used by the
-// oracle-priced venues (GMX v2, Gains) where the harness-read cost is
-// a fixed fraction of position size, so the bps figure does not change with
-// notional. Callers document per venue why that is correct.
-func applyFlatTiers(s *PerpSample) {
-	for _, n := range tierNotionals {
-		s.Tiers = append(s.Tiers, TierSample{
-			Notional:  notionalLabel(n),
-			SpreadBps: s.SpreadBps,
-			AllInBps:  s.AllInBps,
 		})
 	}
 }

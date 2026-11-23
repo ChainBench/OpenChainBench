@@ -1,6 +1,6 @@
 import { defaultTier } from "@/lib/materialize/load";
 import type { BenchmarkFilters } from "@/lib/materialize/load";
-import type { Spec } from "@/lib/spec-schema";
+import type { FeesView, Spec } from "@/lib/spec-schema";
 
 /**
  * Every dimension combination the worker builds a variant for.
@@ -28,6 +28,7 @@ export function variantCombos(spec: Spec): BenchmarkFilters[] {
   // crossed with every label dimension like any other filter.
   const headlineTier = defaultTier(spec);
   const tiers = (dims.tier ?? []).map((d) => d.value).filter((v) => v !== headlineTier);
+  const feesViews: FeesView[] = spec.fees_removed ? ["removed"] : [];
   const opt = <T,>(xs: T[]): (T | undefined)[] => (xs.length ? [undefined, ...xs] : [undefined]);
   const combos: BenchmarkFilters[] = [];
   for (const chain of opt(chains)) {
@@ -37,16 +38,19 @@ export function variantCombos(spec: Spec): BenchmarkFilters[] {
           for (const amount_usd of opt(amounts)) {
             for (const bucket of opt(buckets)) {
               for (const tier of opt(tiers)) {
-                if (!chain && !region && !kind && !venue && !amount_usd && !bucket && !tier) continue; // the aggregate is tier A
-                combos.push({
-                  ...(chain ? { chain } : {}),
-                  ...(region ? { region } : {}),
-                  ...(kind ? { kind } : {}),
-                  ...(venue ? { venue } : {}),
-                  ...(amount_usd ? { amount_usd } : {}),
-                  ...(bucket ? { bucket } : {}),
-                  ...(tier ? { tier } : {}),
-                });
+                for (const fees of opt(feesViews)) {
+                  if (!chain && !region && !kind && !venue && !amount_usd && !bucket && !tier && !fees) continue; // the aggregate is tier A
+                  combos.push({
+                    ...(chain ? { chain } : {}),
+                    ...(region ? { region } : {}),
+                    ...(kind ? { kind } : {}),
+                    ...(venue ? { venue } : {}),
+                    ...(amount_usd ? { amount_usd } : {}),
+                    ...(bucket ? { bucket } : {}),
+                    ...(tier ? { tier } : {}),
+                    ...(fees ? { fees } : {}),
+                  });
+                }
               }
             }
           }

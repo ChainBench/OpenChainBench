@@ -7,12 +7,22 @@ import { StatTable } from "@/components/reports/stat-table";
 import { RegionWinners } from "@/components/reports/region-winners";
 import { PerpCostClient } from "@/components/perp-cost-client";
 import {
+  SpeedCostChart,
+  RegionSpreadChart,
+  WsFirstChart,
+  FreeTierChart,
+  Scorecard,
+} from "@/components/reports/private-rpc/charts";
+import { LatencyHeatmap, CostCurves, MethodSpreadChart } from "@/components/reports/private-rpc/interactive";
+import { L } from "@/components/reports/private-rpc/shared";
+import {
   getAllReports,
   getReport,
   REPORT_CATEGORY_META,
 } from "@/lib/reports/loader";
 import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID } from "@/lib/hub-jsonld";
+import { outboundHref } from "@/lib/outbound-click";
 import { SITE } from "@/data/site";
 
 export const revalidate = 3600;
@@ -37,9 +47,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // segment), not the site-wide generic one.
   const ogImage = report.ogImage ?? `${canonical}/opengraph-image`;
   const social = `${report.title} · OpenChainBench`;
+  // Same rule as the bench route: the layout template appends
+  // " · OpenChainBench", 17 characters, and past 43 the suffix is what a
+  // SERP cuts. A report title carries the subject, so it ships absolute
+  // rather than losing its own last words.
+  const metaTitle =
+    report.title.length > 43 ? { absolute: report.title } : report.title;
 
   return {
-    title: report.title,
+    title: metaTitle,
     description: report.summary,
     alternates: { canonical },
     openGraph: {
@@ -92,6 +108,17 @@ const MDX_COMPONENTS = {
   // Setting it in the map also means an author cannot forget it, which is
   // what left the page outlining eleven sections against a TOC of eight.
   PerpCostClient: () => <PerpCostClient headingLevel={3} />,
+  // Exhibits of the October 2026 private RPC report.
+  SpeedCostChart,
+  MethodSpreadChart,
+  RegionSpreadChart,
+  LatencyHeatmap,
+  WsFirstChart,
+  CostCurves,
+  FreeTierChart,
+  Scorecard,
+  // Inline provider or chain logo: <L s="quicknode" />
+  L,
 
   // Table of contents — pipe-separated section names, auto-generates anchor hrefs
   TOC: ({ sections }: { sections: string }) => {
@@ -236,8 +263,8 @@ const MDX_COMPONENTS = {
     </div>
   ),
 
-  a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a className="lnk" {...props} />
+  a: ({ href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a className="lnk" {...props} href={outboundHref(href)} />
   ),
 
   strong: (props: React.HTMLAttributes<HTMLElement>) => (
@@ -298,6 +325,14 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       publisher: { "@id": `${SITE.url}/#org` },
       inLanguage: "en",
       license: "https://creativecommons.org/licenses/by/4.0/",
+      // An engine that quotes a figure from a report should be able to walk
+      // to the data behind it. Each report category has a subject hub at the
+      // same slug (/perps, /rpc, /bridge, /chains, /data-api,
+      // /prediction-markets) carrying the live boards the report is built
+      // on, which is what isBasedOn is for. Pointing it at the reports index
+      // would have said the report is based on the list of reports.
+      mainEntityOfPage: { "@type": "WebPage", "@id": url },
+      isBasedOn: `${SITE.url}/${report.categorySlug}`,
       // #collection is the @id the category page actually defines
       // (src/app/reports/[category]/page.tsx:52). #series was a dangling
       // reference that resolved to nothing.
@@ -342,6 +377,28 @@ export default async function ReportPage({ params }: Props) {
 
   const catMeta = REPORT_CATEGORY_META[category];
   const lds = reportJsonLd(report);
+
+  // One source for the FAQ. The body used to re-type four of the five
+  // frontmatter questions while the fifth lived only in the JSON-LD, so a
+  // reader never saw it and an edit to that hidden answer (Dwellir 50.0 to
+  // 42.9 per cent) shipped invisible. Rendering from `report.faq` makes the
+  // page and the structured data the same text by construction.
+  const mdxComponents = {
+    ...MDX_COMPONENTS,
+    Faq: () => (
+      <>
+        {(report.faq ?? []).map((f) => (
+          <div key={f.q}>
+            <h3>{f.q}</h3>
+            <p>{f.a}</p>
+          </div>
+        ))}
+      </>
+    ),
+    // MDXRemote's components prop is typed against its own MDXComponents,
+    // which does not admit a custom element name.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
 
   return (
     <article className="mx-auto max-w-[760px] px-4 sm:px-6 py-8 sm:py-14">
@@ -418,6 +475,17 @@ export default async function ReportPage({ params }: Props) {
               timeZone: "UTC",
             })}
           </time>
+          {report.updatedAt && report.updatedAt !== report.publishedAt ? (
+            <time dateTime={report.updatedAt}>
+              Updated{" "}
+              {new Date(report.updatedAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                timeZone: "UTC",
+              })}
+            </time>
+          ) : null}
           <span>{report.readingTime} min read</span>
         </div>
       </header>
@@ -426,8 +494,7 @@ export default async function ReportPage({ params }: Props) {
       <div className="mt-2">
         <MDXRemote
           source={report.content}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          components={MDX_COMPONENTS as any}
+          components={mdxComponents}
           options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
         />
       </div>

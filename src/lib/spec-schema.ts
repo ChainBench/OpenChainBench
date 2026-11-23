@@ -68,6 +68,16 @@ const slug = z
 
 /** PromQL. a non-empty string. We don't parse PromQL; that's Prometheus's job. */
 const promql = z.string().min(1);
+const promMetricName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
+export const metricNameRe = (name: string, flags = ""): RegExp =>
+  new RegExp(`(?<![\\w:])${name}(?![\\w:])`, flags);
+const FEES_VIEWS = ["included", "removed"] as const;
+const unrankedLabel = z
+  .string()
+  .min(1)
+  .max(20)
+  .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens");
+export type FeesView = (typeof FEES_VIEWS)[number];
 
 const region = z.enum(["us-east", "us-west", "eu-west", "ap-southeast", "sgp", "global"]);
 
@@ -138,6 +148,8 @@ export const ProviderType = z.enum([
  *  toggle pill on the bench page so readers can split the leaderboard
  *  by execution layer without leaving the page. */
 export const ProviderLayer = z.enum(["l1", "l2"]);
+
+export const ProviderVenueType = z.enum(["dex", "cex"]);
 
 // Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
 // voice. The site is hand-authored, the YAMLs must read that way too. Plain
@@ -215,6 +227,7 @@ const provider = z.object({
    *  L1 and L2 providers (network-fees) renders an L1/L2/All toggle pill
    *  that filters the ledger by this field. */
   layer: ProviderLayer.optional(),
+  venue_type: ProviderVenueType.optional(),
   /** Access cohort this provider belongs to on a bench that declares
    *  `dimensions.tier` (RPC pages: `public` no-key endpoints next to
    *  `keyed` API-key providers). The tier selector partitions the
@@ -234,12 +247,7 @@ const provider = z.object({
    *  "0.00 bps" for a venue giving up a hundred. Set
    *  `unranked_hides_value` for the other situation, where no publishable
    *  value exists even though the series does. */
-  unranked: z
-    .string()
-    .min(1)
-    .max(20)
-    .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens")
-    .optional(),
+  unranked: unrankedLabel.optional(),
   /** Blanks this row's percentiles instead of publishing them. For an
    *  unranked row whose series exists but whose number must not be read:
    *  perp-pf-ratio's Paradex reads 29.85 off an adapter the spec itself
@@ -397,6 +405,16 @@ export const SpecSchema = z
      * board of chains, which is the one sentence the page marks for an
      * answer engine to quote (SEO audit 2026-09-23).
      */
+    /**
+     * The clause the citable headline appends for the headline cell, in place
+     * of the dimension labels. The pricing benches label their default size
+     * "Medium size", which is a picker label, and "measured on" misdescribes
+     * a calculation from list prices (SEO audit 2026-10-30): "measured on AI
+     * agents, 50 transactions each, Medium size" reached /api/stat, citable
+     * and llms.txt. Starts with a comma-free phrase; rendered as ", <slice>".
+     */
+    headline_slice: z.string().min(8).max(140).optional(),
+
     row_noun: z
       .object({
         one: z.string().min(1).max(24),
@@ -677,6 +695,10 @@ export const SpecSchema = z
       .record(slug, z.string().min(1).max(30).refine(noAiDashes, noAiDashesMsg))
       .optional(),
 
+    provider_footnotes: z
+      .record(slug, z.string().min(1).max(400).refine(noAiDashes, noAiDashesMsg))
+      .optional(),
+
     /* Optional single PromQL returning one instant sample per
      * (provider[, chain][, region]) — e.g.
      *   avg by (provider, chain, region) (quantile_over_time(0.50, m[24h]))
@@ -759,7 +781,32 @@ export const SpecSchema = z
             .regex(/^[a-z][a-z0-9_]*$/, "Panel id must be lowercase snake_case"),
           label: z.string().min(1).max(80),
           description: z.string().max(300).optional(),
-          metric: z.string().min(1).max(200),
+          /** The loader injects `<label_key>="<slug>"` into the metric's FIRST
+           *  brace, and appends `{...}` when the metric has none. So a metric
+           *  with no brace must be a bare metric or recording-rule name:
+           *  anything else gets the selector pasted after a closing paren,
+           *  which Prometheus answers 400 to.
+           *
+           *  Bench 313's `coverage` panel was the case, on the day it
+           *  shipped. `100 * sum by (provider) (...) / (... > 0)` became
+           *  `... > 0){provider="kyberswap-same-block"}`, four queries per
+           *  provider all 400, and the panel published an empty values map
+           *  while the bench's other four panels filled normally. Nothing on
+           *  the page said a column was missing; the only trace was a line in
+           *  the worker's log. The same injection is what
+           *  applyDimensionsToSpec does with the selected dimensions, so this
+           *  holds for every view, not only the default one. */
+          metric: z
+            .string()
+            .min(1)
+            .max(200)
+            .refine(
+              (m) => m.includes("{") || /^[A-Za-z_:][A-Za-z0-9_:]*$/.test(m.trim()),
+              "A panel metric without a brace must be a bare metric name: the " +
+                "loader appends the provider selector at the end, and Prometheus " +
+                "rejects a selector pasted onto an expression. Put a `{...}` on " +
+                "the selector the slug belongs to.",
+            ),
           /** The PromQL label that holds each provider's slug. Defaults to
            *  "builder"; other benches may use "provider", "venue", etc. */
           label_key: z.string().min(1).max(40).default("builder"),
@@ -804,14 +851,17 @@ export const SpecSchema = z
            *  all-chains view must not publish a pooled version of it.
            *
            *  Pooling a latency across chains averages different block
-           *  times, state sizes and node fleets. Measured 2026-10-31, the
-           *  per-chain spread INSIDE one provider on bench 311's eth_call
-           *  work term: getblock 1.94 ms on ethereum against 468.56 on
-           *  hyperliquid, a factor of 242; quicknode 98; blockmachine 70.
-           *  A chain-count floor does not help, because all three are
-           *  measured on all 8 chains. The panel is omitted from the
-           *  unfiltered view rather than blanked, so no tab opens onto
-           *  nothing. */
+           *  times, state sizes and node fleets into one number. Bench 311's
+           *  methodology already says this of its window columns ("providers
+           *  are comparable within a chain tab, across chains they are
+           *  not"), and the three measured views were publishing exactly
+           *  that pooled figure. Measured 2026-10-31, per-chain spread
+           *  INSIDE one provider on the eth_call work term: getblock 1.94 ms
+           *  on ethereum against 468.56 on hyperliquid, a factor of 242;
+           *  quicknode a factor of 98; blockmachine 70. A chain-count floor
+           *  does not help, because all three are measured on all 8 chains.
+           *  The panel is omitted from the unfiltered view rather than
+           *  blanked, so no tab opens onto nothing. */
           per_chain_only: z.boolean().optional(),
           /** Tiers this panel belongs to. Omitted means every tier.
            *
@@ -822,6 +872,7 @@ export const SpecSchema = z
            *  than drawing a column of dashes under a header that promises
            *  a reading. */
           tiers: z.array(z.string().min(1).max(40)).max(6).optional(),
+          fees: z.enum(FEES_VIEWS).optional(),
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
@@ -834,6 +885,18 @@ export const SpecSchema = z
       // and the leverage-neutral rate that answers the same question in money
       // instead of notional. Six panels that are one measurement.
       .max(17)
+      .optional(),
+
+    fees_removed: z
+      .object({
+        metric: z.string().min(1).max(80),
+        panel_main_label: z.string().min(1).max(80),
+        formula: z.string().min(1).max(400),
+        metric_rename: z
+          .record(promMetricName, promMetricName)
+          .refine((r) => Object.keys(r).length > 0, "metric_rename is empty"),
+      })
+      .strict()
       .optional(),
 
     /**
@@ -980,6 +1043,37 @@ export const SpecSchema = z
           code: "custom",
           path: ["aggregate_filters", "tier"],
           message: `aggregate_filters.tier "${pinned}" is not a declared tier`,
+        });
+      }
+    }
+
+    const untyped = spec.providers.findIndex((p) => !p.venue_type);
+    if (untyped >= 0 && spec.providers.some((p) => p.venue_type)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", untyped, "venue_type"],
+        message: "venue_type is set on every provider of the bench or none",
+      });
+    }
+
+    (spec.metric_panels ?? []).forEach((panel, i) => {
+      if (panel.fees && !spec.fees_removed) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["metric_panels", i, "fees"],
+          message: "metric_panels[].fees requires fees_removed on the bench",
+        });
+      }
+    });
+    for (const from of Object.keys(spec.fees_removed?.metric_rename ?? {})) {
+      const read = spec.providers.some((p) =>
+        metricNameRe(from).test(p.queries?.p50 ?? ""),
+      );
+      if (!read) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["fees_removed", "metric_rename", from],
+          message: `No provider p50 query reads "${from}"`,
         });
       }
     }

@@ -1,100 +1,21 @@
 package main
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
-// Gains (gTrade) v8 on Base. We read fees and spread directly from the
-// PairsStorage facet on the Diamond contract via Base public RPC. No
-// hardcoded fee schedule — everything comes from on-chain.
-//
-// Diamond:    0x6cd5ac19a07518a8092eeffda4f1174c72704eeb (Base mainnet)
-// Functions:
-//   pairs(uint256)  -> struct, contains spreadP and feeIndex
-//   fees(uint256)   -> struct, first uint256 is totalPositionSizeFeeP
-//                      (the open fee; matches the backend fees[] array)
-//
-// Asset → pairIndex mapping is read from on-chain pair name strings
-// so we don't hardcode it either.
-
-const gainsDiamond = "0x6cd5ac19a07518a8092eeffda4f1174c72704eeb"
-
-// Base RPC. Configurable via RPC_BASE env var to point at a dedicated
-// provider (Alchemy, Quicknode, etc.) when public throttling becomes
-// an issue. Default mainnet.base.org caps around 10 req/s.
-func gainsBaseRPC() string {
-	if v := os.Getenv("RPC_BASE"); v != "" {
-		return v
-	}
-	return "https://mainnet.base.org"
-}
+const gainsDiamond = "0xFF162c694eAA571f685030649814282eA457f169"
 
 const selPairs = "0xb91ac788"      // pairs(uint256)
 const selFees = "0x4acc79ed"       // fees(uint256)
 const selPairsCount = "0x88c64eb8" // pairsCount()
-
-type rpcCall struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id"`
-	Method  string `json:"method"`
-	Params  []any  `json:"params"`
-}
-
-type rpcResp struct {
-	Result string `json:"result"`
-	Error  *struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-func ethCall(client *http.Client, to, data string) (string, error) {
-	body, _ := json.Marshal(rpcCall{
-		JSONRPC: "2.0", ID: 1, Method: "eth_call",
-		Params: []any{map[string]string{"to": to, "data": data}, "latest"},
-	})
-	req, _ := http.NewRequest("POST", gainsBaseRPC(), bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	// Surface HTTP-level failures (429 from public Base RPC, 5xx) as such
-	// instead of a generic JSON parse error, so classifyErr can bucket them.
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(respBody), 120))
-	}
-	var r rpcResp
-	if err := json.Unmarshal(respBody, &r); err != nil {
-		return "", fmt.Errorf("parse: %w", err)
-	}
-	if r.Error != nil {
-		return "", fmt.Errorf("rpc: %s", r.Error.Message)
-	}
-	return r.Result, nil
-}
-
-func uint256ArgAt(result string, slotIdx int) *big.Int {
-	hexStr := strings.TrimPrefix(result, "0x")
-	start := slotIdx * 64
-	if start+64 > len(hexStr) {
-		return big.NewInt(0)
-	}
-	n := new(big.Int)
-	n.SetString(hexStr[start:start+64], 16)
-	return n
-}
 
 // extractAsciiString reads a dynamic string at byte offset `byteOffset`
 // (relative to the start of the result data, after the leading 0x20).
@@ -119,15 +40,16 @@ func extractAsciiString(result string, byteOffset int64) string {
 }
 
 type gainsPair struct {
+	Index    int
 	From     string
 	To       string
 	SpreadP  *big.Int
 	FeeIndex int64
 }
 
-func gainsReadPair(client *http.Client, pairIndex int) (*gainsPair, error) {
+func gainsReadPair(client *http.Client, rpcURL string, pairIndex int) (*gainsPair, error) {
 	idx := fmt.Sprintf("%064x", pairIndex)
-	res, err := ethCall(client, gainsDiamond, selPairs+idx)
+	res, err := ethCall(client, rpcURL, gainsDiamond, selPairs+idx)
 	if err != nil {
 		return nil, err
 	}
@@ -145,6 +67,7 @@ func gainsReadPair(client *http.Client, pairIndex int) (*gainsPair, error) {
 	// Reading slot 9 + applying half-spread (/2) matches the backend values
 	// exactly (ETH/BTC spreadP=1e8, SOL spreadP=0).
 	return &gainsPair{
+		Index:    pairIndex,
 		From:     from,
 		To:       to,
 		SpreadP:  uint256ArgAt(res, 7),
@@ -152,9 +75,9 @@ func gainsReadPair(client *http.Client, pairIndex int) (*gainsPair, error) {
 	}, nil
 }
 
-func gainsReadFeeOpenP(client *http.Client, feeIndex int64) (*big.Int, error) {
+func gainsReadFeeOpenP(client *http.Client, rpcURL string, feeIndex int64) (*big.Int, error) {
 	idx := fmt.Sprintf("%064x", feeIndex)
-	res, err := ethCall(client, gainsDiamond, selFees+idx)
+	res, err := ethCall(client, rpcURL, gainsDiamond, selFees+idx)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +106,7 @@ type gainsFeeEntry struct {
 // full Pair object — every pair seen during the scan gets cached, so
 // running the scan once populates BTC, ETH, LTC, etc. all at once and
 // future calls hit the cache directly.
-func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
+func findGainsPair(client *http.Client, rpcURL, asset string) (*gainsPair, error) {
 	upper := strings.ToUpper(asset)
 
 	gainsCacheMu.Lock()
@@ -200,7 +123,7 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 	// (visible via fetch_errors_total) rather than silently reusing config
 	// that may have changed on-chain.
 	if ok && hasIdx {
-		p, err := gainsReadPair(client, idx)
+		p, err := gainsReadPair(client, rpcURL, idx)
 		if err != nil {
 			return nil, fmt.Errorf("refresh pair %d: %w", idx, err)
 		}
@@ -233,7 +156,7 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 	// exit still handling the tail.
 	consecutiveErrors := 0
 	for i := 0; i < 200; i++ {
-		p, err := gainsReadPair(client, i)
+		p, err := gainsReadPair(client, rpcURL, i)
 		if err != nil {
 			fmt.Printf("[PERP][gains] pair scan idx %d: %v\n", i, err)
 			consecutiveErrors++
@@ -276,15 +199,15 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 
 var gainsScanMu sync.Mutex
 
-func fetchGains(v VenueConfig, _ string) PerpSample {
-	s := PerpSample{Venue: v.Slug, Asset: v.Asset, At: time.Now().UTC().Format(time.RFC3339)}
+func fetchGains(v VenueConfig, rpcURL string) (s PerpSample) {
+	s = PerpSample{Venue: v.Slug, Asset: v.Asset, At: time.Now().UTC().Format(time.RFC3339)}
 	start := time.Now()
 	client := &http.Client{Timeout: 10 * time.Second}
+	defer func() { s.FetchLatencyMs = time.Since(start).Milliseconds() }()
 
-	pair, err := findGainsPair(client, v.Asset)
+	pair, err := findGainsPair(client, rpcURL, v.Asset)
 	if err != nil {
 		s.Err = fmt.Sprintf("find_pair: %v", err)
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
 
@@ -299,38 +222,121 @@ func fetchGains(v VenueConfig, _ string) PerpSample {
 		openFeeP = cached.openFeeP
 		gainsCacheMu.Unlock()
 	} else {
-		openFeeP, err = gainsReadFeeOpenP(client, pair.FeeIndex)
+		openFeeP, err = gainsReadFeeOpenP(client, rpcURL, pair.FeeIndex)
+		if err == nil && openFeeP.Sign() <= 0 {
+			err = errors.New("zero open fee")
+		}
 		if err != nil {
 			gainsCacheMu.Unlock()
 			s.Err = fmt.Sprintf("read_fee: %v", err)
-			s.FetchLatencyMs = time.Since(start).Milliseconds()
 			return s
 		}
 		gainsFeeCache[pair.FeeIndex] = gainsFeeEntry{openFeeP: openFeeP, at: time.Now()}
 		gainsCacheMu.Unlock()
 	}
 
-	// Gains v8 stores fee values as a percentage with 1e10 precision.
-	// 350_000_000 means 0.035% = 3.5 bps. bps = raw / 1e8.
-	openFeeF, _ := new(big.Float).Quo(new(big.Float).SetInt(openFeeP), big.NewFloat(1e8)).Float64()
-	// spreadP is the FULL bid-ask spread; the taker only crosses half of
-	// it, so half-spread = spreadP / (2 × 1e8). the Gains UI displays
-	// this same half-spread (e.g. spreadP=1e8 → 0.005% = 0.5 bps).
-	spreadF, _ := new(big.Float).Quo(new(big.Float).SetInt(pair.SpreadP), big.NewFloat(2e8)).Float64()
+	feeBps := gainsPToBps(openFeeP)
+	halfSpreadBps := gainsPToBps(pair.SpreadP) / 2
 
-	s.TakerFeeBps = openFeeF
-	s.SpreadBps = spreadF
-	s.AllInBps = openFeeF + spreadF
-	// Notional tiers: Gains v8 fees are percentages of position size.
-	// totalPositionSizeFeeP and spreadP are both flat rates that do not
-	// change with notional (the fees(feeIndex) tier is per pair, not per
-	// trade size), so the bps figure is identical at $1k, $10k and $100k.
-	// Gains does apply dynamic price impact on pairs with spreadP=0 (SOL),
-	// but that value is computed inside the protocol at trade time and is
-	// not readable from the on-chain config this harness measures, so we
-	// publish the flat rate at every tier rather than invent an impact
-	// curve.
-	applyFlatTiers(&s)
-	s.FetchLatencyMs = time.Since(start).Milliseconds()
+	var quotes map[float64]oracleQuote
+	err = withGainsRPCGap(func() error {
+		price, err := gainsReadPrice(client, rpcURL, v.Asset)
+		if err != nil {
+			return fmt.Errorf("read_price: %w", err)
+		}
+		s.MidPrice = ratioFloat(price, chainlinkPriceScale)
+		probe := gainsImpactProbe(pair.Index, halfSpreadBps, feeBps)
+		quotes, err = quoteOracle(client, rpcURL, oracleNotionals(v.NotionalUSD), probe)
+		if err != nil {
+			return fmt.Errorf("price_impact: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		s.Err = err.Error()
+		return s
+	}
+	applyOracleQuotes(&s, v.NotionalUSD, quotes)
 	return s
+}
+
+const (
+	selLatestRoundData = "0xfeaf968c"
+	selCumulVolImpactP = "0x6901d442"
+	gainsPPerBps       = 1e8
+	gainsTokenDecimals = 18
+)
+
+var chainlinkPriceScale = big.NewInt(1e8)
+
+var gainsChainlinkFeeds = map[string]string{
+	"ETH": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+	"BTC": "0x6ce185860a4963106506C203335A2910413708e9",
+	"SOL": "0x24ceA4b8ce57cda5058b924B9B9987992450590c",
+}
+
+const gainsBatchGap = time.Second
+
+var (
+	gainsBatchMu sync.Mutex
+	gainsBatchAt time.Time
+)
+
+func withGainsRPCGap(read func() error) error {
+	gainsBatchMu.Lock()
+	defer gainsBatchMu.Unlock()
+	if wait := gainsBatchGap - time.Since(gainsBatchAt); wait > 0 {
+		time.Sleep(wait)
+	}
+	defer func() { gainsBatchAt = time.Now() }()
+	return read()
+}
+
+func gainsPToBps(p *big.Int) float64 {
+	return ratioFloat(p, big.NewInt(gainsPPerBps))
+}
+
+func gainsReadPrice(client *http.Client, rpcURL, asset string) (*big.Int, error) {
+	feed, ok := gainsChainlinkFeeds[strings.ToUpper(asset)]
+	if !ok {
+		return nil, fmt.Errorf("no price feed for %s", asset)
+	}
+	res, err := ethCall(client, rpcURL, feed, selLatestRoundData)
+	if err != nil {
+		return nil, err
+	}
+	answer := int256ArgAt(res, 1)
+	if answer.Sign() <= 0 {
+		return nil, errors.New("non-positive oracle price")
+	}
+	return answer, nil
+}
+
+func gainsImpactProbe(pairIndex int, halfSpreadBps, feeBps float64) oracleProbe {
+	idx := abiUint(big.NewInt(int64(pairIndex)))
+	return oracleProbe{
+		CallsFor: func(notional float64) []ethCallMsg {
+			usd := usdScaled(notional, gainsTokenDecimals)
+			cumul := func(long bool) ethCallMsg {
+				return ethCallMsg{To: gainsDiamond, Data: selCumulVolImpactP +
+					abiAddress("0x0") + idx + abiBool(long) + abiUint(usd) +
+					abiBool(false) + abiBool(true) + abiUint64(0)}
+			}
+			return []ethCallMsg{cumul(true), cumul(false)}
+		},
+		CostFrom: func(r []string) (sideCosts, error) {
+			for _, res := range r {
+				if len(strings.TrimPrefix(res, "0x")) != abiWordHexLen {
+					return sideCosts{}, fmt.Errorf("impact reply of %d hex chars", len(res))
+				}
+			}
+			impact := func(i int) float64 { return gainsPToBps(int256ArgAt(r[i], 0)) }
+			return sideCosts{
+				Long:     halfSpreadBps + impact(0),
+				Short:    halfSpreadBps - impact(1),
+				LongFee:  feeBps,
+				ShortFee: feeBps,
+			}, nil
+		},
+	}
 }

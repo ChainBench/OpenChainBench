@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { buildSitemap } from "@/lib/sitemap-builder";
+import { escapeMarkup } from "@/lib/escape-markup";
 
 // Route Handler (not Metadata Route). Reason: the previous
 // `src/app/sitemap.ts` metadata route left Next in charge of the
@@ -25,15 +26,6 @@ export const dynamic = "force-dynamic";
 // the static sitemap if the full build hangs.
 export const maxDuration = 300;
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
 function toIso(v: MetadataRoute.Sitemap[number]["lastModified"]): string | null {
   if (!v) return null;
   const d = v instanceof Date ? v : new Date(v);
@@ -43,7 +35,7 @@ function toIso(v: MetadataRoute.Sitemap[number]["lastModified"]): string | null 
 function serialize(entries: MetadataRoute.Sitemap): string {
   const urls = entries
     .map((e) => {
-      const parts = [`<url><loc>${escapeXml(e.url)}</loc>`];
+      const parts = [`<url><loc>${escapeMarkup(e.url)}</loc>`];
       const iso = toIso(e.lastModified);
       if (iso) parts.push(`<lastmod>${iso}</lastmod>`);
       if (e.changeFrequency) parts.push(`<changefreq>${e.changeFrequency}</changefreq>`);

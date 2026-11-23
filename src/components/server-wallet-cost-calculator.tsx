@@ -317,7 +317,7 @@ export function ServerWalletCostGrid() {
                           )}
                           {floors.map((r) => (
                             <span key={r.slug} className="mt-1 block text-[11px] leading-snug text-ink-faint">
-                              {r.name} {r.planName}: at least {fmtUSD(r.usd)}, not named
+                              {r.name} {r.planName}: {floorText(r.usd)}, not named
                             </span>
                           ))}
                         </>
@@ -364,6 +364,11 @@ function scenarioSentence(s: ScenarioLike): string {
 function rankOf(priced: ServerWalletRow[], row: ServerWalletRow): number {
   const c = Math.round((row.usd ?? 0) * 100);
   return 1 + priced.filter((r) => Math.round((r.usd ?? 0) * 100) < c).length;
+}
+
+/** "at least $0" says nothing: a $0 floor is $0 on the published rates. */
+function floorText(usd: number | null): string {
+  return Math.round((usd ?? 0) * 100) === 0 ? "$0 on its published rates" : `at least ${fmtUSD(usd)}`;
 }
 
 function boundWord(row: ServerWalletRow): string {

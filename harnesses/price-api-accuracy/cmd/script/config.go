@@ -15,6 +15,7 @@ type config struct {
 	mobulaKey      string
 	coinstatsKey   string
 	serializedKey  string
+	metastreamsKey string
 	coingeckoKey   string // optional demo key; keyless public API when empty
 	coingeckoProxy string
 }
@@ -28,6 +29,7 @@ func loadConfig() config {
 		mobulaKey:      strings.TrimSpace(os.Getenv("MOBULA_API_KEY")),
 		coinstatsKey:   strings.TrimSpace(os.Getenv("COINSTATS_API_KEY")),
 		serializedKey:  strings.TrimSpace(os.Getenv("SERIALIZED_API_KEY")),
+		metastreamsKey: strings.TrimSpace(os.Getenv("METASTREAMS_API_KEY")),
 		coingeckoKey:   strings.TrimSpace(os.Getenv("COINGECKO_DEMO_KEY")),
 		coingeckoProxy: strings.TrimSpace(os.Getenv("COINGECKO_PROXY_URL")),
 	}

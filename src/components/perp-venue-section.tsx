@@ -14,7 +14,8 @@ import {
   PerpVenueBenchCards,
   type PerpVenueBenchRow,
 } from "@/components/perp-venue-bench-cards";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
+import { safeHost } from "@/lib/url-host";
 
 /**
  * Perp venue view on /products/<slug>, behind the "Perpetuals" pill.
@@ -42,7 +43,7 @@ import { withUtm } from "@/lib/utm";
  * the /perps hub, so cold renders stay inside the page's ISR budget.
  */
 
-export type PerpVenueSectionProps = {
+type PerpVenueSectionProps = {
   slug: string;
   /** Human-readable name shown in the heading. */
   name: string;
@@ -175,14 +176,13 @@ export async function PerpVenueSection({
           </span>
           <span className="text-sm text-ink-muted">{VENUE_TYPE_SENTENCE[venueType]}</span>
         </div>
-        <a
-          href={withUtm(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener noreferrer"
           className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"
         >
           Open {externalHost}
-        </a>
+        </OutboundLink>
       </header>
 
       {kpis && (
@@ -363,15 +363,14 @@ export async function PerpVenueSection({
           </>
         )}
         <span aria-hidden>·</span>
-        <a
-          href={withUtm(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener noreferrer"
           className="inline-flex items-center gap-1 hover:text-ink underline underline-offset-2"
         >
           {externalHost}
           <ArrowUpRight size={11} strokeWidth={2} />
-        </a>
+        </OutboundLink>
         {slug === "hyperliquid" && (
           <>
             <span aria-hidden>·</span>
@@ -456,12 +455,4 @@ function fmtCount(v: number | undefined): string {
   if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
   return Math.round(v).toLocaleString("en-US");
-}
-
-function safeHost(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
 }

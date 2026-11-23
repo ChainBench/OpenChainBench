@@ -410,13 +410,11 @@ export type HlHip3Summary = {
   asOf: number;
 };
 
-/** Upstash keys for the hub's two cohort blobs, written by
- *  /api/cron/snapshot-hl-cohort. Bump the suffix here if either summary
- *  shape changes so a stale-shape blob can never deserialize into a
- *  misaligned payload. The cohort-snapshot module appends its own `:v1`. */
 /**
- * Upstash snapshot keys. **Bump the suffix whenever the stored shape
- * changes**, the way hl-hip3 went to v2.
+ * Upstash snapshot keys for the hub's two cohort blobs, written by the
+ * materialize worker after every sweep. **Bump the suffix whenever the
+ * stored shape changes**, the way hl-hip3 went to v2. The cohort-snapshot
+ * module appends its own `:v1` on top of whatever is set here.
  *
  * The reader serves a blob until it is ten minutes old, and a blob written
  * under an older shape decodes with the new fields simply absent. On

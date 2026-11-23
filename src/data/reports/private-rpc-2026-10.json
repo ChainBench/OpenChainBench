@@ -1,0 +1,4262 @@
+{
+  "asOf": "2026-11-13T13:07:00Z",
+  "window": "7d",
+  "http": [
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 7.3,
+      "p99": 10.2,
+      "cold50": 33.4
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 3.4,
+      "p99": 31.0,
+      "cold50": 17.4
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 6.2,
+      "p99": 10.7,
+      "cold50": 12.9
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 8.3,
+      "p99": 29.4,
+      "cold50": 25.0
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 74.9,
+      "p99": 82.2,
+      "cold50": 238.6
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "blockmachine",
+      "p50": 114.3,
+      "p99": 519.5,
+      "cold50": 280.4
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 7.6,
+      "p99": 12.0,
+      "cold50": 38.6
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 10.3,
+      "p99": 20.5,
+      "cold50": 43.8
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 15.5,
+      "p99": 26.5,
+      "cold50": 45.0
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 13.6,
+      "p99": 82.8,
+      "cold50": 50.1
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 21.6,
+      "p99": 31.1,
+      "cold50": 81.9
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "blockmachine",
+      "p50": 36.7,
+      "p99": 105.3,
+      "cold50": 56.6
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 2.5,
+      "p99": 16.6,
+      "cold50": 18.2
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 39.6,
+      "p99": 61.6,
+      "cold50": 135.7
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.8,
+      "p99": 19.4,
+      "cold50": 20.8
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 7.4,
+      "p99": 25.6,
+      "cold50": 25.1
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 4.2,
+      "p99": 156.5,
+      "cold50": 193.5
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "blockmachine",
+      "p50": 177.5,
+      "p99": 356.1,
+      "cold50": 195.3
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 6.4,
+      "p99": 8.5,
+      "cold50": 31.4
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 2.6,
+      "p99": 6.2,
+      "cold50": 16.2
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 12.4,
+      "p99": 19.1,
+      "cold50": 19.1
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 7.6,
+      "p99": 28.1,
+      "cold50": 23.7
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 2.4,
+      "p99": 4.3,
+      "cold50": 15.6
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "blockmachine",
+      "p50": 115.1,
+      "p99": 533.3,
+      "cold50": 291.2
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 7.0,
+      "p99": 9.7,
+      "cold50": 37.7
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 9.2,
+      "p99": 391.1,
+      "cold50": 41.0
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 8.8,
+      "p99": 18.2,
+      "cold50": 26.1
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 19.4,
+      "p99": 39.0,
+      "cold50": 46.8
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 21.4,
+      "p99": 66.8,
+      "cold50": 82.6
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "blockmachine",
+      "p50": 36.3,
+      "p99": 96.3,
+      "cold50": 76.5
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 2.4,
+      "p99": 19.7,
+      "cold50": 18.2
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 4.7,
+      "p99": 79.2,
+      "cold50": 24.2
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.1,
+      "p99": 16.3,
+      "cold50": 19.8
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 6.5,
+      "p99": 23.7,
+      "cold50": 24.2
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 3.5,
+      "p99": 35.8,
+      "cold50": 195.4
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "blockmachine",
+      "p50": 186.0,
+      "p99": 464.9,
+      "cold50": 503.4
+    },
+    {
+      "chain": "arbitrum",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 6.5,
+      "p99": 7.9,
+      "cold50": 31.3
+    },
+    {
+      "chain": "arbitrum",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 7.4,
+      "p99": 11.4,
+      "cold50": 32.1
+    },
+    {
+      "chain": "arbitrum",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 11.5,
+      "p99": 59.4,
+      "cold50": 23.2
+    },
+    {
+      "chain": "arbitrum",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 7.3,
+      "p99": 28.1,
+      "cold50": 25.2
+    },
+    {
+      "chain": "arbitrum",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 93.0,
+      "p99": 110.7,
+      "cold50": 287.2
+    },
+    {
+      "chain": "arbitrum",
+      "region": "us-east",
+      "provider": "blockmachine",
+      "p50": 111.6,
+      "p99": 536.9,
+      "cold50": 294.9
+    },
+    {
+      "chain": "arbitrum",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 7.8,
+      "p99": 10.8,
+      "cold50": 39.7
+    },
+    {
+      "chain": "arbitrum",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 8.7,
+      "p99": 12.8,
+      "cold50": 41.2
+    },
+    {
+      "chain": "arbitrum",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 8.6,
+      "p99": 17.7,
+      "cold50": 39.2
+    },
+    {
+      "chain": "arbitrum",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 12.8,
+      "p99": 35.3,
+      "cold50": 48.6
+    },
+    {
+      "chain": "arbitrum",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 21.4,
+      "p99": 32.5,
+      "cold50": 78.2
+    },
+    {
+      "chain": "arbitrum",
+      "region": "eu-west",
+      "provider": "blockmachine",
+      "p50": 36.9,
+      "p99": 97.6,
+      "cold50": 80.1
+    },
+    {
+      "chain": "arbitrum",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 1.9,
+      "p99": 17.2,
+      "cold50": 17.5
+    },
+    {
+      "chain": "arbitrum",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 4.6,
+      "p99": 47.6,
+      "cold50": 126.2
+    },
+    {
+      "chain": "arbitrum",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.1,
+      "p99": 17.0,
+      "cold50": 12.3
+    },
+    {
+      "chain": "arbitrum",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 6.2,
+      "p99": 23.8,
+      "cold50": 24.9
+    },
+    {
+      "chain": "arbitrum",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 176.0,
+      "p99": 209.6,
+      "cold50": 706.7
+    },
+    {
+      "chain": "arbitrum",
+      "region": "sgp",
+      "provider": "blockmachine",
+      "p50": 184.4,
+      "p99": 501.7,
+      "cold50": 503.8
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 6.6,
+      "p99": 8.7,
+      "cold50": 32.7
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 2.9,
+      "p99": 6.5,
+      "cold50": 16.3
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 11.6,
+      "p99": 60.2,
+      "cold50": 18.0
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 8.4,
+      "p99": 28.3,
+      "cold50": 27.3
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 74.9,
+      "p99": 82.1,
+      "cold50": 240.0
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "blockmachine",
+      "p50": 114.9,
+      "p99": 522.9,
+      "cold50": 297.6
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 6.8,
+      "p99": 9.1,
+      "cold50": 38.0
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 10.2,
+      "p99": 27.1,
+      "cold50": 41.4
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 14.7,
+      "p99": 25.9,
+      "cold50": 44.0
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 20.1,
+      "p99": 48.0,
+      "cold50": 49.4
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 21.6,
+      "p99": 30.0,
+      "cold50": 83.2
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "blockmachine",
+      "p50": 40.0,
+      "p99": 110.5,
+      "cold50": 85.1
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 1.4,
+      "p99": 16.6,
+      "cold50": 15.4
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 40.0,
+      "p99": 57.2,
+      "cold50": 126.8
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.0,
+      "p99": 16.9,
+      "cold50": 19.0
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 6.8,
+      "p99": 23.4,
+      "cold50": 22.4
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 3.5,
+      "p99": 17.6,
+      "cold50": 198.2
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "blockmachine",
+      "p50": 222.0,
+      "p99": 382.2,
+      "cold50": 488.3
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 6.6,
+      "p99": 8.3,
+      "cold50": 31.1
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 2.8,
+      "p99": 16.0,
+      "cold50": 16.4
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 12.4,
+      "p99": 835.1,
+      "cold50": 19.4
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 7.1,
+      "p99": 27.6,
+      "cold50": 25.5
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 75.0,
+      "p99": 82.3,
+      "cold50": 240.1
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "blockmachine",
+      "p50": 113.4,
+      "p99": 479.8,
+      "cold50": 290.1
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 7.5,
+      "p99": 12.1,
+      "cold50": 37.8
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 8.7,
+      "p99": 26.6,
+      "cold50": 41.7
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 9.0,
+      "p99": 23.9,
+      "cold50": 38.8
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 19.7,
+      "p99": 44.5,
+      "cold50": 48.0
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 22.3,
+      "p99": 174.6,
+      "cold50": 87.3
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "blockmachine",
+      "p50": 38.8,
+      "p99": 146.4,
+      "cold50": 81.6
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 1.6,
+      "p99": 17.2,
+      "cold50": 15.9
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 70.7,
+      "p99": 604.0,
+      "cold50": 228.0
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.1,
+      "p99": 19.8,
+      "cold50": 20.9
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 6.3,
+      "p99": 23.1,
+      "cold50": 26.1
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 178.5,
+      "p99": 329.9,
+      "cold50": 736.7
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "blockmachine",
+      "p50": 186.1,
+      "p99": 650.2,
+      "cold50": 500.6
+    },
+    {
+      "chain": "solana",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 6.8,
+      "p99": 10.8,
+      "cold50": 32.7
+    },
+    {
+      "chain": "solana",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 7.3,
+      "p99": 88.8,
+      "cold50": 31.9
+    },
+    {
+      "chain": "solana",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 11.4,
+      "p99": 26.3,
+      "cold50": 18.2
+    },
+    {
+      "chain": "solana",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 7.8,
+      "p99": 30.7,
+      "cold50": 24.1
+    },
+    {
+      "chain": "solana",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 1.6,
+      "p99": 2.6,
+      "cold50": 20.3
+    },
+    {
+      "chain": "solana",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 8.4,
+      "p99": 70.4,
+      "cold50": 41.4
+    },
+    {
+      "chain": "solana",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 8.9,
+      "p99": 19.8,
+      "cold50": 26.4
+    },
+    {
+      "chain": "solana",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 14.2,
+      "p99": 48.2,
+      "cold50": 47.0
+    },
+    {
+      "chain": "solana",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 1.8,
+      "p99": 19.2,
+      "cold50": 16.0
+    },
+    {
+      "chain": "solana",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 4.1,
+      "p99": 29.4,
+      "cold50": 22.6
+    },
+    {
+      "chain": "solana",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.0,
+      "p99": 46.8,
+      "cold50": 12.7
+    },
+    {
+      "chain": "solana",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 6.8,
+      "p99": 23.5,
+      "cold50": 25.6
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 7.0,
+      "p99": 9.2,
+      "cold50": 31.4
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 60.4,
+      "p99": 165.5,
+      "cold50": 203.1
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 233.2,
+      "p99": 248.6,
+      "cold50": 240.2
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 5.5,
+      "p99": 13.8,
+      "cold50": 19.9
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 74.7,
+      "p99": 82.1,
+      "cold50": 237.7
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 7.3,
+      "p99": 11.4,
+      "cold50": 37.7
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 8.2,
+      "p99": 299.6,
+      "cold50": 43.6
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 8.7,
+      "p99": 177.0,
+      "cold50": 38.6
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 12.0,
+      "p99": 28.1,
+      "cold50": 51.3
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 21.3,
+      "p99": 38.7,
+      "cold50": 82.7
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 2.4,
+      "p99": 17.5,
+      "cold50": 17.6
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 70.6,
+      "p99": 88.6,
+      "cold50": 225.2
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.0,
+      "p99": 89.5,
+      "cold50": 21.4
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 5.5,
+      "p99": 19.4,
+      "cold50": 23.8
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 3.3,
+      "p99": 176.3,
+      "cold50": 194.2
+    },
+    {
+      "chain": "robinhood",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 7.4,
+      "p99": 25.1,
+      "cold50": 32.1
+    },
+    {
+      "chain": "robinhood",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 2.7,
+      "p99": 28.9,
+      "cold50": 17.0
+    },
+    {
+      "chain": "robinhood",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 11.1,
+      "p99": 58.6,
+      "cold50": 17.9
+    },
+    {
+      "chain": "robinhood",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 5.3,
+      "p99": 11.0,
+      "cold50": 16.2
+    },
+    {
+      "chain": "robinhood",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 2.4,
+      "p99": 4.0,
+      "cold50": 15.0
+    },
+    {
+      "chain": "robinhood",
+      "region": "us-east",
+      "provider": "blockmachine",
+      "p50": 110.5,
+      "p99": 533.8,
+      "cold50": 203.1
+    },
+    {
+      "chain": "robinhood",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 7.8,
+      "p99": 14.0,
+      "cold50": 37.5
+    },
+    {
+      "chain": "robinhood",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 7.8,
+      "p99": 22.4,
+      "cold50": 41.6
+    },
+    {
+      "chain": "robinhood",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 9.4,
+      "p99": 18.4,
+      "cold50": 40.0
+    },
+    {
+      "chain": "robinhood",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 12.0,
+      "p99": 26.4,
+      "cold50": 46.2
+    },
+    {
+      "chain": "robinhood",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 21.7,
+      "p99": 35.1,
+      "cold50": 82.0
+    },
+    {
+      "chain": "robinhood",
+      "region": "eu-west",
+      "provider": "blockmachine",
+      "p50": 33.5,
+      "p99": 77.1,
+      "cold50": 72.9
+    },
+    {
+      "chain": "robinhood",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 66.0,
+      "p99": 84.2,
+      "cold50": 19.7
+    },
+    {
+      "chain": "robinhood",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 36.7,
+      "p99": 60.1,
+      "cold50": 127.5
+    },
+    {
+      "chain": "robinhood",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 5.7,
+      "p99": 19.2,
+      "cold50": 23.1
+    },
+    {
+      "chain": "robinhood",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 176.7,
+      "p99": 225.2,
+      "cold50": 718.1
+    },
+    {
+      "chain": "robinhood",
+      "region": "sgp",
+      "provider": "blockmachine",
+      "p50": 177.7,
+      "p99": 337.1,
+      "cold50": 197.9
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "quicknode",
+      "p50": 6.2,
+      "p99": 9.8,
+      "cold50": 31.9
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "chainstack",
+      "p50": 2.4,
+      "p99": 5.1,
+      "cold50": 22.5
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "getblock",
+      "p50": 11.8,
+      "p99": 17.6,
+      "cold50": 28.1
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "alchemy",
+      "p50": 7.0,
+      "p99": 27.3,
+      "cold50": 26.1
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "dwellir",
+      "p50": 74.6,
+      "p99": 82.1,
+      "cold50": 240.4
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "blockmachine",
+      "p50": 112.4,
+      "p99": 612.6,
+      "cold50": 300.4
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "p50": 7.2,
+      "p99": 11.6,
+      "cold50": 37.6
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "p50": 9.1,
+      "p99": 16.8,
+      "cold50": 59.5
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "getblock",
+      "p50": 14.8,
+      "p99": 25.2,
+      "cold50": 44.5
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "alchemy",
+      "p50": 12.6,
+      "p99": 30.3,
+      "cold50": 52.9
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "p50": 21.2,
+      "p99": 29.5,
+      "cold50": 81.4
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "blockmachine",
+      "p50": 38.9,
+      "p99": 122.6,
+      "cold50": 82.6
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "quicknode",
+      "p50": 158.1,
+      "p99": 181.7,
+      "cold50": 492.3
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "chainstack",
+      "p50": 38.6,
+      "p99": 57.4,
+      "cold50": 148.0
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "alchemy",
+      "p50": 6.5,
+      "p99": 23.0,
+      "cold50": 25.8
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "dwellir",
+      "p50": 3.3,
+      "p99": 16.9,
+      "cold50": 196.3
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "blockmachine",
+      "p50": 185.5,
+      "p99": 345.6,
+      "cold50": 509.2
+    }
+  ],
+  "httpSummary": [
+    {
+      "provider": "quicknode",
+      "us-east": {
+        "p50": 6.6,
+        "p99": 9.2,
+        "cold50": 31.9
+      },
+      "eu-west": {
+        "p50": 7.3,
+        "p99": 11.4,
+        "cold50": 37.7
+      },
+      "sgp": {
+        "p50": 2.4,
+        "p99": 17.5,
+        "cold50": 17.6
+      },
+      "all": {
+        "p50": 6.8,
+        "p99": 11.6,
+        "cold50": 31.9
+      },
+      "success": 100.0,
+      "calls": 136064,
+      "errors": {
+        "http_err": 7,
+        "timeout": 3
+      }
+    },
+    {
+      "provider": "chainstack",
+      "us-east": {
+        "p50": 2.9,
+        "p99": 16.0,
+        "cold50": 17.4
+      },
+      "eu-west": {
+        "p50": 8.7,
+        "p99": 26.6,
+        "cold50": 41.6
+      },
+      "sgp": {
+        "p50": 38.6,
+        "p99": 60.1,
+        "cold50": 127.5
+      },
+      "all": {
+        "p50": 8.4,
+        "p99": 31.0,
+        "cold50": 41.4
+      },
+      "success": 100.0,
+      "calls": 136068,
+      "errors": {
+        "http_err": 11,
+        "stale": 1
+      }
+    },
+    {
+      "provider": "getblock",
+      "us-east": {
+        "p50": 11.6,
+        "p99": 58.6,
+        "cold50": 19.1
+      },
+      "eu-west": {
+        "p50": 9.0,
+        "p99": 23.9,
+        "cold50": 39.2
+      },
+      "sgp": {
+        "p50": 4.1,
+        "p99": 19.4,
+        "cold50": 19.8
+      },
+      "all": {
+        "p50": 9.0,
+        "p99": 23.9,
+        "cold50": 21.4
+      },
+      "success": 99.6,
+      "calls": 125946,
+      "errors": {
+        "timeout": 26,
+        "stale": 316,
+        "jsonrpc_err": 157,
+        "http_err": 1
+      }
+    },
+    {
+      "provider": "alchemy",
+      "us-east": {
+        "p50": 7.3,
+        "p99": 28.1,
+        "cold50": 25.0
+      },
+      "eu-west": {
+        "p50": 13.6,
+        "p99": 39.0,
+        "cold50": 48.6
+      },
+      "sgp": {
+        "p50": 6.5,
+        "p99": 23.4,
+        "cold50": 24.9
+      },
+      "all": {
+        "p50": 7.4,
+        "p99": 27.6,
+        "cold50": 25.6
+      },
+      "success": 100.0,
+      "calls": 136065,
+      "errors": {
+        "timeout": 1,
+        "stale": 2
+      }
+    },
+    {
+      "provider": "dwellir",
+      "us-east": {
+        "p50": 74.9,
+        "p99": 82.1,
+        "cold50": 240.0
+      },
+      "eu-west": {
+        "p50": 21.6,
+        "p99": 35.1,
+        "cold50": 82.6
+      },
+      "sgp": {
+        "p50": 4.2,
+        "p99": 176.3,
+        "cold50": 198.2
+      },
+      "all": {
+        "p50": 21.6,
+        "p99": 82.1,
+        "cold50": 195.4
+      },
+      "success": 100.0,
+      "calls": 120930,
+      "errors": {
+        "timeout": 25
+      }
+    },
+    {
+      "provider": "blockmachine",
+      "us-east": {
+        "p50": 113.4,
+        "p99": 533.3,
+        "cold50": 291.2
+      },
+      "eu-west": {
+        "p50": 36.9,
+        "p99": 105.3,
+        "cold50": 80.1
+      },
+      "sgp": {
+        "p50": 185.5,
+        "p99": 382.2,
+        "cold50": 500.6
+      },
+      "all": {
+        "p50": 113.4,
+        "p99": 382.2,
+        "cold50": 280.4
+      },
+      "success": 100.0,
+      "calls": 105802,
+      "errors": {
+        "timeout": 12,
+        "http_err": 2
+      }
+    }
+  ],
+  "ws": [
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 0.4,
+      "seen": 8372
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 8363
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "getblock",
+      "first": 94.4,
+      "seen": 8375
+    },
+    {
+      "chain": "ethereum",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 4.2,
+      "seen": 8372
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 3.6,
+      "seen": 8371
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 2.7,
+      "seen": 8369
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 20.8,
+      "seen": 8370
+    },
+    {
+      "chain": "ethereum",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 68.2,
+      "seen": 8372
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "chainstack",
+      "first": 0.8,
+      "seen": 8370
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "dwellir",
+      "first": 3.6,
+      "seen": 8356
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "getblock",
+      "first": 61.2,
+      "seen": 8370
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 31.0,
+      "seen": 8369
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 4.8,
+      "seen": 503835
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 22.7,
+      "seen": 503790
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "getblock",
+      "first": 0.0,
+      "seen": 503839
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 72.5,
+      "seen": 503869
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 0.4,
+      "seen": 503688
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 503700
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 0.2,
+      "seen": 503688
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 99.4,
+      "seen": 503706
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "chainstack",
+      "first": 0.0,
+      "seen": 503847
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "dwellir",
+      "first": 0.1,
+      "seen": 503779
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "getblock",
+      "first": 0.3,
+      "seen": 503814
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 99.6,
+      "seen": 503829
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 3.5,
+      "seen": 223698
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 0.2,
+      "seen": 223565
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "getblock",
+      "first": 2.9,
+      "seen": 223720
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 93.4,
+      "seen": 223665
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 2.4,
+      "seen": 223644
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 1.0,
+      "seen": 223648
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 4.7,
+      "seen": 223686
+    },
+    {
+      "chain": "bnb",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 90.5,
+      "seen": 223666
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "chainstack",
+      "first": 7.0,
+      "seen": 223580
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "dwellir",
+      "first": 6.2,
+      "seen": 223674
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "getblock",
+      "first": 21.8,
+      "seen": 223670
+    },
+    {
+      "chain": "bnb",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 62.3,
+      "seen": 223674
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 0.4,
+      "seen": 67179
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 67093
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "getblock",
+      "first": 19.1,
+      "seen": 67161
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 80.5,
+      "seen": 67183
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 0.1,
+      "seen": 67183
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 67178
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 14.4,
+      "seen": 67184
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 85.5,
+      "seen": 67179
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "chainstack",
+      "first": 0.0,
+      "seen": 67084
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 67032
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "getblock",
+      "first": 11.6,
+      "seen": 67180
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 88.3,
+      "seen": 67182
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 38.1,
+      "seen": 198602
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 198269
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "getblock",
+      "first": 11.0,
+      "seen": 198594
+    },
+    {
+      "chain": "arc",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 50.9,
+      "seen": 198597
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 0.1,
+      "seen": 198554
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 198421
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 0.0,
+      "seen": 198588
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 99.9,
+      "seen": 198602
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "chainstack",
+      "first": 0.2,
+      "seen": 198512
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 197953
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 99.8,
+      "seen": 198350
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 16.8,
+      "seen": 102449
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 66.7,
+      "seen": 102353
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 16.5,
+      "seen": 102455
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 1.9,
+      "seen": 102411
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 33.5,
+      "seen": 102050
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 61.1,
+      "seen": 102451
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 4.8,
+      "seen": 102457
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "chainstack",
+      "first": 3.0,
+      "seen": 102446
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "dwellir",
+      "first": 90.7,
+      "seen": 102432
+    },
+    {
+      "chain": "hyperliquid",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 6.3,
+      "seen": 102444
+    }
+  ],
+  "wsDisconnects": {
+    "chainstack": 9,
+    "dwellir": 1,
+    "fluxrpc": 59,
+    "getblock": 5
+  },
+  "cost": {
+    "dapp": {
+      "alchemy": [
+        [
+          1000000,
+          12.54,
+          "payg"
+        ],
+        [
+          1000000000,
+          12547.5,
+          "payg"
+        ]
+      ],
+      "blockmachine": [
+        [
+          1000000,
+          9.0,
+          "standard"
+        ],
+        [
+          5000000,
+          9,
+          "standard"
+        ],
+        [
+          8189847,
+          24.95,
+          "standard"
+        ],
+        [
+          8200571,
+          25,
+          "pro"
+        ],
+        [
+          20000000,
+          25,
+          "pro"
+        ],
+        [
+          53297012,
+          124.89,
+          "pro"
+        ],
+        [
+          53365544,
+          125,
+          "business"
+        ],
+        [
+          100000000,
+          125,
+          "business"
+        ],
+        [
+          286997363,
+          498.99,
+          "business"
+        ],
+        [
+          287318858,
+          499,
+          "business-plus"
+        ],
+        [
+          500000000,
+          499,
+          "business-plus"
+        ],
+        [
+          832554779,
+          997.83,
+          "business-plus"
+        ],
+        [
+          833404755,
+          999,
+          "enterprise"
+        ],
+        [
+          1000000000,
+          999,
+          "enterprise"
+        ]
+      ],
+      "chainstack": [
+        [
+          1000000,
+          49.0,
+          "growth"
+        ],
+        [
+          20000000,
+          49,
+          "growth"
+        ],
+        [
+          29976008,
+          198.64,
+          "growth"
+        ],
+        [
+          30012938,
+          199,
+          "pro"
+        ],
+        [
+          80000000,
+          199,
+          "pro"
+        ],
+        [
+          103991394,
+          498.89,
+          "pro"
+        ],
+        [
+          104118570,
+          499,
+          "business"
+        ],
+        [
+          200000000,
+          499,
+          "business"
+        ],
+        [
+          249061010,
+          989.61,
+          "business"
+        ],
+        [
+          249382504,
+          990,
+          "enterprise"
+        ],
+        [
+          400000000,
+          990,
+          "enterprise"
+        ],
+        [
+          1000000000,
+          3990.0,
+          "enterprise"
+        ]
+      ],
+      "dwellir": [
+        [
+          1000000,
+          49.0,
+          "developer"
+        ],
+        [
+          25000000,
+          49,
+          "developer"
+        ],
+        [
+          74937699,
+          298.69,
+          "developer"
+        ],
+        [
+          75031057,
+          299,
+          "growth"
+        ],
+        [
+          150000000,
+          299,
+          "growth"
+        ],
+        [
+          383078484,
+          998.24,
+          "growth"
+        ],
+        [
+          383516439,
+          999,
+          "scale"
+        ],
+        [
+          500000000,
+          999,
+          "scale"
+        ],
+        [
+          1000000000,
+          1999.0,
+          "scale"
+        ]
+      ],
+      "getblock": [
+        [
+          1000000,
+          49.0,
+          "starter"
+        ],
+        [
+          4500000,
+          49,
+          "starter"
+        ],
+        [
+          4508307,
+          99,
+          "growth"
+        ],
+        [
+          9250000,
+          99,
+          "growth"
+        ],
+        [
+          9266780,
+          199,
+          "advanced"
+        ],
+        [
+          19250000,
+          199,
+          "advanced"
+        ],
+        [
+          19276751,
+          349,
+          "scale"
+        ],
+        [
+          35000000,
+          349,
+          "scale"
+        ],
+        [
+          35069055,
+          499,
+          "pro"
+        ],
+        [
+          50000000,
+          499,
+          "pro"
+        ],
+        [
+          74959908,
+          698.68,
+          "pro"
+        ],
+        [
+          75069475,
+          699,
+          "premium"
+        ],
+        [
+          80000000,
+          699,
+          "premium"
+        ],
+        [
+          1000000000,
+          7139.0,
+          "premium"
+        ]
+      ],
+      "quicknode": [
+        [
+          1000000,
+          49.0,
+          "build"
+        ],
+        [
+          3809524,
+          49,
+          "build"
+        ],
+        [
+          19158295,
+          248.84,
+          "build"
+        ],
+        [
+          19193768,
+          249,
+          "accelerate"
+        ],
+        [
+          21428571,
+          249,
+          "accelerate"
+        ],
+        [
+          42665343,
+          498.74,
+          "accelerate"
+        ],
+        [
+          42741013,
+          499,
+          "scale"
+        ],
+        [
+          45238095,
+          499,
+          "scale"
+        ],
+        [
+          90042473,
+          997.67,
+          "scale"
+        ],
+        [
+          90210074,
+          999,
+          "business"
+        ],
+        [
+          95238095,
+          999,
+          "business"
+        ],
+        [
+          142787895,
+          1498.27,
+          "business"
+        ],
+        [
+          143021872,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          152380952,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          199812123,
+          1997.03,
+          "business-plus-t1"
+        ],
+        [
+          200183241,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          214285714,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          309501980,
+          2998.77,
+          "business-plus-t2"
+        ],
+        [
+          309874345,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          333333333,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          1000000000,
+          9999.0,
+          "business-plus-t3"
+        ]
+      ]
+    },
+    "indexer": {
+      "alchemy": [
+        [
+          1000000,
+          21.0,
+          "payg"
+        ],
+        [
+          485455184,
+          10194.56,
+          "payg"
+        ],
+        [
+          486051788,
+          null,
+          null
+        ],
+        [
+          488438204,
+          null,
+          null
+        ],
+        [
+          497983867,
+          null,
+          null
+        ],
+        [
+          574349177,
+          null,
+          null
+        ],
+        [
+          782406211,
+          null,
+          null
+        ]
+      ],
+      "blockmachine": [
+        [
+          1000000,
+          9.0,
+          "standard"
+        ],
+        [
+          5000000,
+          9,
+          "standard"
+        ],
+        [
+          8189847,
+          24.95,
+          "standard"
+        ],
+        [
+          8200571,
+          25,
+          "pro"
+        ],
+        [
+          20000000,
+          25,
+          "pro"
+        ],
+        [
+          53297012,
+          124.89,
+          "pro"
+        ],
+        [
+          53365544,
+          125,
+          "business"
+        ],
+        [
+          100000000,
+          125,
+          "business"
+        ],
+        [
+          286997363,
+          498.99,
+          "business"
+        ],
+        [
+          287318858,
+          499,
+          "business-plus"
+        ],
+        [
+          500000000,
+          499,
+          "business-plus"
+        ],
+        [
+          832554779,
+          997.83,
+          "business-plus"
+        ],
+        [
+          833404755,
+          999,
+          "enterprise"
+        ],
+        [
+          1000000000,
+          999,
+          "enterprise"
+        ]
+      ],
+      "chainstack": [
+        [
+          1000000,
+          49.0,
+          "growth"
+        ],
+        [
+          10000000,
+          49,
+          "growth"
+        ],
+        [
+          14999062,
+          198.97,
+          "growth"
+        ],
+        [
+          15018962,
+          199,
+          "pro"
+        ],
+        [
+          40000000,
+          199,
+          "pro"
+        ],
+        [
+          51994908,
+          498.87,
+          "pro"
+        ],
+        [
+          52063440,
+          499,
+          "business"
+        ],
+        [
+          100000000,
+          499,
+          "business"
+        ],
+        [
+          124510837,
+          989.22,
+          "business"
+        ],
+        [
+          124684082,
+          990,
+          "enterprise"
+        ],
+        [
+          200000000,
+          990,
+          "enterprise"
+        ],
+        [
+          1000000000,
+          8990.0,
+          "enterprise"
+        ]
+      ],
+      "dwellir": [
+        [
+          1000000,
+          49.0,
+          "developer"
+        ],
+        [
+          25000000,
+          49,
+          "developer"
+        ],
+        [
+          74937699,
+          298.69,
+          "developer"
+        ],
+        [
+          75031057,
+          299,
+          "growth"
+        ],
+        [
+          150000000,
+          299,
+          "growth"
+        ],
+        [
+          383078484,
+          998.24,
+          "growth"
+        ],
+        [
+          383516439,
+          999,
+          "scale"
+        ],
+        [
+          500000000,
+          999,
+          "scale"
+        ],
+        [
+          1000000000,
+          1999.0,
+          "scale"
+        ]
+      ],
+      "getblock": [
+        [
+          1000000,
+          49.0,
+          "starter"
+        ],
+        [
+          2250000,
+          49,
+          "starter"
+        ],
+        [
+          2252922,
+          99,
+          "growth"
+        ],
+        [
+          4625000,
+          99,
+          "growth"
+        ],
+        [
+          4632330,
+          199,
+          "advanced"
+        ],
+        [
+          9625000,
+          199,
+          "advanced"
+        ],
+        [
+          9635920,
+          349,
+          "scale"
+        ],
+        [
+          17500000,
+          349,
+          "scale"
+        ],
+        [
+          17525911,
+          499,
+          "pro"
+        ],
+        [
+          25000000,
+          499,
+          "pro"
+        ],
+        [
+          37498248,
+          698.97,
+          "pro"
+        ],
+        [
+          37567741,
+          699,
+          "premium"
+        ],
+        [
+          40000000,
+          699,
+          "premium"
+        ],
+        [
+          1000000000,
+          14139.0,
+          "premium"
+        ]
+      ],
+      "quicknode": [
+        [
+          1000000,
+          49.0,
+          "build"
+        ],
+        [
+          4000000,
+          49,
+          "build"
+        ],
+        [
+          20124257,
+          248.94,
+          "build"
+        ],
+        [
+          20150364,
+          249,
+          "accelerate"
+        ],
+        [
+          22500000,
+          249,
+          "accelerate"
+        ],
+        [
+          44793131,
+          498.68,
+          "accelerate"
+        ],
+        [
+          44839801,
+          499,
+          "scale"
+        ],
+        [
+          47500000,
+          499,
+          "scale"
+        ],
+        [
+          94621026,
+          998.48,
+          "scale"
+        ],
+        [
+          94779231,
+          999,
+          "business"
+        ],
+        [
+          100000000,
+          999,
+          "business"
+        ],
+        [
+          149727471,
+          1496.27,
+          "business"
+        ],
+        [
+          150020972,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          160000000,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          209990838,
+          1998.91,
+          "business-plus-t1"
+        ],
+        [
+          210218250,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          225000000,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          324688738,
+          2995.89,
+          "business-plus-t2"
+        ],
+        [
+          325321519,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          350000000,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          1000000000,
+          9499.0,
+          "business-plus-t3"
+        ]
+      ]
+    },
+    "trace": {
+      "alchemy": [
+        [
+          1000000,
+          16.8,
+          "payg"
+        ],
+        [
+          127802494,
+          2147.08,
+          "payg"
+        ],
+        [
+          127975740,
+          null,
+          null
+        ],
+        [
+          133519583,
+          null,
+          null
+        ],
+        [
+          144607271,
+          null,
+          null
+        ],
+        [
+          166782646,
+          null,
+          null
+        ],
+        [
+          227199382,
+          null,
+          null
+        ],
+        [
+          309501980,
+          null,
+          null
+        ],
+        [
+          421618557,
+          null,
+          null
+        ],
+        [
+          574349177,
+          null,
+          null
+        ],
+        [
+          782406211,
+          null,
+          null
+        ]
+      ],
+      "blockmachine": [
+        [
+          1000000,
+          40.6,
+          "pro"
+        ],
+        [
+          2116129,
+          124.98,
+          "pro"
+        ],
+        [
+          2118415,
+          125,
+          "business"
+        ],
+        [
+          3968254,
+          125,
+          "business"
+        ],
+        [
+          11375736,
+          498.34,
+          "business"
+        ],
+        [
+          11390345,
+          499,
+          "business-plus"
+        ],
+        [
+          19841270,
+          499,
+          "business-plus"
+        ],
+        [
+          33041200,
+          997.96,
+          "business-plus"
+        ],
+        [
+          33078130,
+          999,
+          "enterprise"
+        ],
+        [
+          39682540,
+          999,
+          "enterprise"
+        ],
+        [
+          428181201,
+          10789.17,
+          "enterprise"
+        ],
+        [
+          428777805,
+          null,
+          null
+        ],
+        [
+          431164221,
+          null,
+          null
+        ],
+        [
+          440709885,
+          null,
+          null
+        ],
+        [
+          459801212,
+          null,
+          null
+        ],
+        [
+          497983867,
+          null,
+          null
+        ],
+        [
+          574349177,
+          null,
+          null
+        ],
+        [
+          782406211,
+          null,
+          null
+        ]
+      ],
+      "chainstack": [
+        [
+          1000000,
+          49.0,
+          "growth"
+        ],
+        [
+          10000000,
+          49,
+          "growth"
+        ],
+        [
+          14999062,
+          198.97,
+          "growth"
+        ],
+        [
+          15018962,
+          199,
+          "pro"
+        ],
+        [
+          40000000,
+          199,
+          "pro"
+        ],
+        [
+          51994908,
+          498.87,
+          "pro"
+        ],
+        [
+          52063440,
+          499,
+          "business"
+        ],
+        [
+          100000000,
+          499,
+          "business"
+        ],
+        [
+          124510837,
+          989.22,
+          "business"
+        ],
+        [
+          124684082,
+          990,
+          "enterprise"
+        ],
+        [
+          200000000,
+          990,
+          "enterprise"
+        ],
+        [
+          1000000000,
+          8990.0,
+          "enterprise"
+        ]
+      ],
+      "dwellir": [
+        [
+          1000000,
+          49.0,
+          "developer"
+        ],
+        [
+          25000000,
+          49,
+          "developer"
+        ],
+        [
+          74937699,
+          298.69,
+          "developer"
+        ],
+        [
+          75031057,
+          299,
+          "growth"
+        ],
+        [
+          150000000,
+          299,
+          "growth"
+        ],
+        [
+          383078484,
+          998.24,
+          "growth"
+        ],
+        [
+          383516439,
+          999,
+          "scale"
+        ],
+        [
+          500000000,
+          999,
+          "scale"
+        ],
+        [
+          1000000000,
+          1999.0,
+          "scale"
+        ]
+      ],
+      "getblock": [
+        [
+          1000000,
+          99.0,
+          "growth"
+        ],
+        [
+          1778846,
+          99,
+          "growth"
+        ],
+        [
+          1782142,
+          199,
+          "advanced"
+        ],
+        [
+          3701923,
+          199,
+          "advanced"
+        ],
+        [
+          3707892,
+          349,
+          "scale"
+        ],
+        [
+          6730769,
+          349,
+          "scale"
+        ],
+        [
+          6744016,
+          499,
+          "pro"
+        ],
+        [
+          9615385,
+          499,
+          "pro"
+        ],
+        [
+          14414591,
+          698.65,
+          "pro"
+        ],
+        [
+          14435230,
+          699,
+          "premium"
+        ],
+        [
+          15384615,
+          699,
+          "premium"
+        ],
+        [
+          1000000000,
+          36539.0,
+          "premium"
+        ]
+      ],
+      "quicknode": [
+        [
+          1000000,
+          49.0,
+          "build"
+        ],
+        [
+          2222222,
+          49,
+          "build"
+        ],
+        [
+          11173946,
+          248.8,
+          "build"
+        ],
+        [
+          11190947,
+          249,
+          "accelerate"
+        ],
+        [
+          12500000,
+          249,
+          "accelerate"
+        ],
+        [
+          24878423,
+          498.55,
+          "accelerate"
+        ],
+        [
+          24905533,
+          499,
+          "scale"
+        ],
+        [
+          26388889,
+          499,
+          "scale"
+        ],
+        [
+          52549991,
+          998.15,
+          "scale"
+        ],
+        [
+          52605650,
+          999,
+          "business"
+        ],
+        [
+          55555556,
+          999,
+          "business"
+        ],
+        [
+          83250021,
+          1497.5,
+          "business"
+        ],
+        [
+          83339527,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          88888889,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          116581806,
+          1997.47,
+          "business-plus-t1"
+        ],
+        [
+          116708982,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          125000000,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          180397438,
+          2996.15,
+          "business-plus-t2"
+        ],
+        [
+          180613545,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          194444444,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          1000000000,
+          17499.0,
+          "business-plus-t3"
+        ]
+      ]
+    },
+    "solana-bot": {
+      "alchemy": [
+        [
+          1000000,
+          8.4,
+          "payg"
+        ],
+        [
+          1000000000,
+          8400.0,
+          "payg"
+        ]
+      ],
+      "chainstack": [
+        [
+          1000000,
+          49.0,
+          "growth"
+        ],
+        [
+          20000000,
+          49,
+          "growth"
+        ],
+        [
+          29976008,
+          198.64,
+          "growth"
+        ],
+        [
+          30012938,
+          199,
+          "pro"
+        ],
+        [
+          80000000,
+          199,
+          "pro"
+        ],
+        [
+          103991394,
+          498.89,
+          "pro"
+        ],
+        [
+          104118570,
+          499,
+          "business"
+        ],
+        [
+          200000000,
+          499,
+          "business"
+        ],
+        [
+          249061010,
+          989.61,
+          "business"
+        ],
+        [
+          249382504,
+          990,
+          "enterprise"
+        ],
+        [
+          400000000,
+          990,
+          "enterprise"
+        ],
+        [
+          1000000000,
+          3990.0,
+          "enterprise"
+        ]
+      ],
+      "getblock": [
+        [
+          1000000,
+          49.0,
+          "starter"
+        ],
+        [
+          1800000,
+          49,
+          "starter"
+        ],
+        [
+          1803131,
+          99,
+          "growth"
+        ],
+        [
+          3700000,
+          99,
+          "growth"
+        ],
+        [
+          3705998,
+          199,
+          "advanced"
+        ],
+        [
+          7700000,
+          199,
+          "advanced"
+        ],
+        [
+          7710250,
+          349,
+          "scale"
+        ],
+        [
+          14000000,
+          349,
+          "scale"
+        ],
+        [
+          14015933,
+          499,
+          "pro"
+        ],
+        [
+          20000000,
+          499,
+          "pro"
+        ],
+        [
+          29971310,
+          698.43,
+          "pro"
+        ],
+        [
+          30017416,
+          699,
+          "premium"
+        ],
+        [
+          32000000,
+          699,
+          "premium"
+        ],
+        [
+          1000000000,
+          17639.0,
+          "premium"
+        ]
+      ],
+      "quicknode": [
+        [
+          1000000,
+          49.0,
+          "build"
+        ],
+        [
+          2666667,
+          49,
+          "build"
+        ],
+        [
+          13406342,
+          248.76,
+          "build"
+        ],
+        [
+          13420950,
+          249,
+          "accelerate"
+        ],
+        [
+          15000000,
+          249,
+          "accelerate"
+        ],
+        [
+          29839565,
+          498.3,
+          "accelerate"
+        ],
+        [
+          29883067,
+          499,
+          "scale"
+        ],
+        [
+          31666667,
+          499,
+          "scale"
+        ],
+        [
+          63097060,
+          998.74,
+          "scale"
+        ],
+        [
+          63165592,
+          999,
+          "business"
+        ],
+        [
+          66666667,
+          999,
+          "business"
+        ],
+        [
+          99976186,
+          1498.64,
+          "business"
+        ],
+        [
+          100107372,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          106666667,
+          1499,
+          "business-plus-t1"
+        ],
+        [
+          139877337,
+          1997.16,
+          "business-plus-t1"
+        ],
+        [
+          140092713,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          150000000,
+          1999,
+          "business-plus-t2"
+        ],
+        [
+          216579253,
+          2997.69,
+          "business-plus-t2"
+        ],
+        [
+          216815256,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          233333333,
+          2999,
+          "business-plus-t3"
+        ],
+        [
+          1000000000,
+          14499.0,
+          "business-plus-t3"
+        ]
+      ]
+    }
+  },
+  "free": [
+    {
+      "provider": "drpc",
+      "name": "dRPC",
+      "value": 10500000,
+      "floor": 10500000,
+      "ceiling": 10500000,
+      "cohort": false,
+      "verified": false
+    },
+    {
+      "provider": "onfinality",
+      "name": "OnFinality",
+      "value": 6857143,
+      "floor": 2400000,
+      "ceiling": 12000000,
+      "cohort": false,
+      "verified": true
+    },
+    {
+      "provider": "chainstack",
+      "name": "Chainstack",
+      "value": 3000000,
+      "floor": 1500000,
+      "ceiling": 3000000,
+      "cohort": true,
+      "verified": true
+    },
+    {
+      "provider": "blockpi",
+      "name": "BlockPI",
+      "value": 1818182,
+      "floor": 392465,
+      "ceiling": 3333333,
+      "cohort": false,
+      "verified": true
+    },
+    {
+      "provider": "alchemy",
+      "name": "Alchemy",
+      "value": 1255230,
+      "floor": 750000,
+      "ceiling": 1500000,
+      "cohort": true,
+      "verified": true
+    },
+    {
+      "provider": "validation-cloud",
+      "name": "Validation Cloud",
+      "value": 1219512,
+      "floor": 1219510,
+      "ceiling": 1250000,
+      "cohort": false,
+      "verified": true
+    },
+    {
+      "provider": "ankr",
+      "name": "Ankr",
+      "value": 1000000,
+      "floor": 1000000,
+      "ceiling": 1000000,
+      "cohort": false,
+      "verified": true
+    },
+    {
+      "provider": "infura",
+      "name": "Infura",
+      "value": 902256,
+      "floor": 226415,
+      "ceiling": 1125000,
+      "cohort": false,
+      "verified": true
+    },
+    {
+      "provider": "blockdaemon",
+      "name": "Blockdaemon",
+      "value": 191693,
+      "floor": 109091,
+      "ceiling": 600000,
+      "cohort": false,
+      "verified": false
+    },
+    {
+      "provider": "getblock",
+      "name": "GetBlock",
+      "value": 75000,
+      "floor": 14423,
+      "ceiling": 75000,
+      "cohort": true,
+      "verified": true
+    },
+    {
+      "provider": "blockmachine",
+      "name": "BlockMachine",
+      "value": 10000,
+      "floor": 397,
+      "ceiling": 10000,
+      "cohort": true,
+      "verified": false
+    }
+  ],
+  "methods": {
+    "asOf": "2026-11-13",
+    "window": "24h",
+    "chain": "ethereum",
+    "latency": [
+      {
+        "provider": "quicknode",
+        "cheap": 6.6,
+        "archive": 32.9,
+        "getlogs": 27.1,
+        "work": 1.8
+      },
+      {
+        "provider": "chainstack",
+        "cheap": 10.1,
+        "archive": 44.0,
+        "getlogs": 23.3,
+        "work": 2.0
+      },
+      {
+        "provider": "getblock",
+        "cheap": 6.2,
+        "archive": null,
+        "getlogs": 18.2,
+        "work": 1.9
+      },
+      {
+        "provider": "alchemy",
+        "cheap": 8.9,
+        "archive": 18.0,
+        "getlogs": 16.2,
+        "work": 2.6
+      },
+      {
+        "provider": "dwellir",
+        "cheap": 21.5,
+        "archive": 236.4,
+        "getlogs": 188.9,
+        "work": 4.1
+      },
+      {
+        "provider": "blockmachine",
+        "cheap": 139.3,
+        "archive": 193.4,
+        "getlogs": 192.8,
+        "work": 39.1
+      }
+    ],
+    "getlogsWindow": [
+      {
+        "provider": "quicknode",
+        "address": 10000.0,
+        "topics": 10000.0,
+        "bound": "refused"
+      },
+      {
+        "provider": "chainstack",
+        "address": 10000.0,
+        "topics": 10000.0,
+        "bound": "refused"
+      },
+      {
+        "provider": "getblock",
+        "address": 1000.0,
+        "topics": 1000.0,
+        "bound": "refused"
+      },
+      {
+        "provider": "alchemy",
+        "address": 1000000.0,
+        "topics": 1000000.0,
+        "bound": "top"
+      },
+      {
+        "provider": "dwellir",
+        "address": 500.0,
+        "topics": 500.0,
+        "bound": "refused"
+      },
+      {
+        "provider": "blockmachine",
+        "address": 10000.0,
+        "topics": 10000.0,
+        "bound": "refused"
+      }
+    ],
+    "coverage": [
+      {
+        "provider": "quicknode",
+        "servedPct": 91.1,
+        "traceBlockPct": 50.0,
+        "cellsAsked": 56,
+        "cellsTotal": 56
+      },
+      {
+        "provider": "chainstack",
+        "servedPct": 94.6,
+        "traceBlockPct": 62.5,
+        "cellsAsked": 56,
+        "cellsTotal": 56
+      },
+      {
+        "provider": "getblock",
+        "servedPct": 76.8,
+        "traceBlockPct": 25.0,
+        "cellsAsked": 56,
+        "cellsTotal": 56
+      },
+      {
+        "provider": "alchemy",
+        "servedPct": 94.6,
+        "traceBlockPct": 62.5,
+        "cellsAsked": 56,
+        "cellsTotal": 56
+      },
+      {
+        "provider": "dwellir",
+        "servedPct": 89.3,
+        "traceBlockPct": 50.0,
+        "cellsAsked": 56,
+        "cellsTotal": 56
+      },
+      {
+        "provider": "blockmachine",
+        "servedPct": 95.9,
+        "traceBlockPct": 71.4,
+        "cellsAsked": 49,
+        "cellsTotal": 49
+      }
+    ],
+    "solana": [
+      {
+        "api": "getProgramAccounts, SPL Token",
+        "servedPct": 100.0,
+        "verdicts": 2,
+        "cohort": 4
+      },
+      {
+        "api": "getProgramAccounts, small program",
+        "servedPct": 100.0,
+        "verdicts": 4,
+        "cohort": 4
+      },
+      {
+        "api": "getProgramAccountsV2, paginated",
+        "servedPct": 25.0,
+        "verdicts": 4,
+        "cohort": 4
+      }
+    ],
+    "regionScope": {
+      "cheap": "three regions",
+      "archive": "three regions",
+      "getlogs": "three regions",
+      "work": "three regions",
+      "note": "Medians over 24 hours. Coverage probes run in all three regions since 5 November; All regions averages the three regional medians, the same convention as the headline latency."
+    },
+    "statistic": "median",
+    "byRegion": {
+      "all": [
+        {
+          "provider": "quicknode",
+          "cheap": 6.6,
+          "archive": 32.9,
+          "getlogs": 27.1,
+          "work": 1.8
+        },
+        {
+          "provider": "chainstack",
+          "cheap": 10.1,
+          "archive": 44.0,
+          "getlogs": 23.3,
+          "work": 2.0
+        },
+        {
+          "provider": "getblock",
+          "cheap": 6.2,
+          "archive": null,
+          "getlogs": 18.2,
+          "work": 1.9
+        },
+        {
+          "provider": "alchemy",
+          "cheap": 8.9,
+          "archive": 18.0,
+          "getlogs": 16.2,
+          "work": 2.6
+        },
+        {
+          "provider": "dwellir",
+          "cheap": 21.5,
+          "archive": 236.4,
+          "getlogs": 188.9,
+          "work": 4.1
+        },
+        {
+          "provider": "blockmachine",
+          "cheap": 139.3,
+          "archive": 193.4,
+          "getlogs": 192.8,
+          "work": 39.1
+        }
+      ],
+      "us-east": [
+        {
+          "provider": "quicknode",
+          "cheap": 6.6,
+          "archive": 32.9,
+          "getlogs": 26.9,
+          "work": 4.6
+        },
+        {
+          "provider": "chainstack",
+          "cheap": 3.3,
+          "archive": 18.7,
+          "getlogs": 8.0,
+          "work": 1.5
+        },
+        {
+          "provider": "getblock",
+          "cheap": 5.9,
+          "archive": null,
+          "getlogs": 10.0,
+          "work": 1.9
+        },
+        {
+          "provider": "alchemy",
+          "cheap": 8.9,
+          "archive": 15.5,
+          "getlogs": 14.1,
+          "work": 5.8
+        },
+        {
+          "provider": "dwellir",
+          "cheap": 74.8,
+          "archive": 406.5,
+          "getlogs": 395.0,
+          "work": 4.1
+        },
+        {
+          "provider": "blockmachine",
+          "cheap": 139.3,
+          "archive": 208.3,
+          "getlogs": 309.7,
+          "work": 39.1
+        }
+      ],
+      "eu-west": [
+        {
+          "provider": "quicknode",
+          "cheap": 7.8,
+          "archive": 29.7,
+          "getlogs": 27.1,
+          "work": 1.2
+        },
+        {
+          "provider": "chainstack",
+          "cheap": 10.1,
+          "archive": 44.0,
+          "getlogs": 23.3,
+          "work": 2.0
+        },
+        {
+          "provider": "getblock",
+          "cheap": 15.7,
+          "archive": null,
+          "getlogs": 33.0,
+          "work": 4.0
+        },
+        {
+          "provider": "alchemy",
+          "cheap": 19.3,
+          "archive": 34.9,
+          "getlogs": 32.1,
+          "work": 2.6
+        },
+        {
+          "provider": "dwellir",
+          "cheap": 21.5,
+          "archive": 75.5,
+          "getlogs": 70.1,
+          "work": 7.8
+        },
+        {
+          "provider": "blockmachine",
+          "cheap": 34.9,
+          "archive": 52.5,
+          "getlogs": 47.9,
+          "work": 9.8
+        }
+      ],
+      "sgp": [
+        {
+          "provider": "quicknode",
+          "cheap": 3.9,
+          "archive": 87.5,
+          "getlogs": 86.9,
+          "work": 1.8
+        },
+        {
+          "provider": "chainstack",
+          "cheap": 41.6,
+          "archive": 118.0,
+          "getlogs": 114.8,
+          "work": 31.4
+        },
+        {
+          "provider": "getblock",
+          "cheap": 6.2,
+          "archive": null,
+          "getlogs": 18.2,
+          "work": 1.6
+        },
+        {
+          "provider": "alchemy",
+          "cheap": 7.4,
+          "archive": 18.0,
+          "getlogs": 16.2,
+          "work": 2.6
+        },
+        {
+          "provider": "dwellir",
+          "cheap": 5.4,
+          "archive": 236.4,
+          "getlogs": 188.9,
+          "work": 2.6
+        },
+        {
+          "provider": "blockmachine",
+          "cheap": 174.2,
+          "archive": 193.4,
+          "getlogs": 192.8,
+          "work": 105.1
+        }
+      ]
+    },
+    "getlogsRegion": "us-east",
+    "getlogsNote": "Pinned to US East, the region the capability probe runs in. GetBlock's guard is regional: 10,000 blocks from EU West against 1,000 from US East and Singapore. Alchemy's figure carries bound=top, meaning the ladder ran out before the provider did, so it is a floor and not a cap."
+  },
+  "solanaCohort": [
+    {
+      "provider": "quicknode",
+      "us-east": 6.8,
+      "eu-west": 1.6,
+      "sgp": 1.8,
+      "p99max": 19.2,
+      "success": 100.0,
+      "v2": "refused"
+    },
+    {
+      "provider": "chainstack",
+      "us-east": 7.3,
+      "eu-west": 8.4,
+      "sgp": 4.1,
+      "p99max": 88.8,
+      "success": 100.0,
+      "v2": "refused"
+    },
+    {
+      "provider": "getblock",
+      "us-east": 11.4,
+      "eu-west": 8.9,
+      "sgp": 4.0,
+      "p99max": 46.8,
+      "success": 99.7,
+      "v2": "refused"
+    },
+    {
+      "provider": "alchemy",
+      "us-east": 7.8,
+      "eu-west": 14.2,
+      "sgp": 6.8,
+      "p99max": 48.2,
+      "success": 100.0,
+      "v2": "served"
+    },
+    {
+      "provider": "helius",
+      "us-east": 11.7,
+      "eu-west": 14.5,
+      "sgp": 12.3,
+      "p99max": 53.5,
+      "success": 100.0,
+      "v2": "served"
+    },
+    {
+      "provider": "fluxrpc",
+      "us-east": 6.9,
+      "eu-west": 1.8,
+      "sgp": null,
+      "p99max": 8.2,
+      "success": 93.3,
+      "v2": null
+    }
+  ],
+  "wsNewcomers": [
+    "alchemy"
+  ],
+  "methodMatrix": {
+    "chain": "ethereum",
+    "window": "24h",
+    "statistic": "median",
+    "apis": [
+      {
+        "key": "eth_call_light_warm",
+        "label": "eth_call, one read"
+      },
+      {
+        "key": "eth_getblockreceipts",
+        "label": "eth_getBlockReceipts"
+      },
+      {
+        "key": "eth_getlogs_address",
+        "label": "eth_getLogs, address"
+      },
+      {
+        "key": "eth_getlogs_topics",
+        "label": "eth_getLogs, topics"
+      },
+      {
+        "key": "eth_getlogs_nofilter",
+        "label": "eth_getLogs, no filter"
+      },
+      {
+        "key": "trace_block",
+        "label": "trace_block"
+      },
+      {
+        "key": "archive_5m",
+        "label": "archive read, 5M back"
+      },
+      {
+        "key": "eth_call_heavy_warm",
+        "label": "eth_call, fifty reads"
+      },
+      {
+        "key": "debug_tracetransaction",
+        "label": "debug_traceTransaction"
+      }
+    ],
+    "minSamplesPerCell": 2839,
+    "byRegion": {
+      "all": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 7.0,
+          "eth_getblockreceipts": 31.2,
+          "eth_getlogs_address": 27.1,
+          "eth_getlogs_topics": 28.9,
+          "eth_getlogs_nofilter": 47.3,
+          "trace_block": 27.3,
+          "archive_5m": 32.9,
+          "eth_call_heavy_warm": 9.0,
+          "debug_tracetransaction": 84.0
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 9.5,
+          "eth_getblockreceipts": 35.4,
+          "eth_getlogs_address": 23.3,
+          "eth_getlogs_topics": 45.9,
+          "eth_getlogs_nofilter": 74.4,
+          "trace_block": 116.4,
+          "archive_5m": 44.0,
+          "eth_call_heavy_warm": 11.5,
+          "debug_tracetransaction": 45.4
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 4.9,
+          "eth_getblockreceipts": 25.9,
+          "eth_getlogs_address": 18.2,
+          "eth_getlogs_topics": 56.5,
+          "eth_getlogs_nofilter": 61.1,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 6.4,
+          "debug_tracetransaction": 23.6
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 8.5,
+          "eth_getblockreceipts": 35.2,
+          "eth_getlogs_address": 16.2,
+          "eth_getlogs_topics": 21.0,
+          "eth_getlogs_nofilter": 32.8,
+          "trace_block": 46.5,
+          "archive_5m": 18.0,
+          "eth_call_heavy_warm": 11.7,
+          "debug_tracetransaction": 20.2
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 21.3,
+          "eth_getblockreceipts": 66.7,
+          "eth_getlogs_address": 188.9,
+          "eth_getlogs_topics": 918.0,
+          "eth_getlogs_nofilter": 1076.2,
+          "trace_block": 947.2,
+          "archive_5m": 236.4,
+          "eth_call_heavy_warm": 29.6,
+          "debug_tracetransaction": 186.2
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 162.7,
+          "eth_getblockreceipts": 200.4,
+          "eth_getlogs_address": 192.8,
+          "eth_getlogs_topics": 241.4,
+          "eth_getlogs_nofilter": 239.0,
+          "trace_block": 279.9,
+          "archive_5m": 193.4,
+          "eth_call_heavy_warm": 166.8,
+          "debug_tracetransaction": 197.1
+        }
+      ],
+      "us-east": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 7.0,
+          "eth_getblockreceipts": 31.2,
+          "eth_getlogs_address": 26.9,
+          "eth_getlogs_topics": 28.9,
+          "eth_getlogs_nofilter": 47.3,
+          "trace_block": 27.3,
+          "archive_5m": 32.9,
+          "eth_call_heavy_warm": 9.7,
+          "debug_tracetransaction": 84.0
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 2.7,
+          "eth_getblockreceipts": 13.9,
+          "eth_getlogs_address": 8.0,
+          "eth_getlogs_topics": 20.2,
+          "eth_getlogs_nofilter": 46.5,
+          "trace_block": 63.5,
+          "archive_5m": 18.7,
+          "eth_call_heavy_warm": 4.7,
+          "debug_tracetransaction": 19.5
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 4.8,
+          "eth_getblockreceipts": 25.4,
+          "eth_getlogs_address": 10.0,
+          "eth_getlogs_topics": 44.4,
+          "eth_getlogs_nofilter": 61.1,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 6.4,
+          "debug_tracetransaction": 11.9
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 7.7,
+          "eth_getblockreceipts": 35.2,
+          "eth_getlogs_address": 14.1,
+          "eth_getlogs_topics": 18.6,
+          "eth_getlogs_nofilter": 32.8,
+          "trace_block": 37.1,
+          "archive_5m": 15.5,
+          "eth_call_heavy_warm": 11.7,
+          "debug_tracetransaction": 15.2
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 74.3,
+          "eth_getblockreceipts": 230.0,
+          "eth_getlogs_address": 395.0,
+          "eth_getlogs_topics": 918.0,
+          "eth_getlogs_nofilter": 1076.2,
+          "trace_block": 947.2,
+          "archive_5m": 406.5,
+          "eth_call_heavy_warm": 78.3,
+          "debug_tracetransaction": 394.5
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 162.7,
+          "eth_getblockreceipts": 436.3,
+          "eth_getlogs_address": 309.7,
+          "eth_getlogs_topics": 361.4,
+          "eth_getlogs_nofilter": 317.5,
+          "trace_block": 500.6,
+          "archive_5m": 208.3,
+          "eth_call_heavy_warm": 166.8,
+          "debug_tracetransaction": 260.1
+        }
+      ],
+      "eu-west": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 8.2,
+          "eth_getblockreceipts": 36.3,
+          "eth_getlogs_address": 27.1,
+          "eth_getlogs_topics": 27.7,
+          "eth_getlogs_nofilter": 42.2,
+          "trace_block": 30.1,
+          "archive_5m": 29.7,
+          "eth_call_heavy_warm": 9.0,
+          "debug_tracetransaction": 62.8
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 9.5,
+          "eth_getblockreceipts": 35.4,
+          "eth_getlogs_address": 23.3,
+          "eth_getlogs_topics": 45.9,
+          "eth_getlogs_nofilter": 74.4,
+          "trace_block": 116.4,
+          "archive_5m": 44.0,
+          "eth_call_heavy_warm": 11.5,
+          "debug_tracetransaction": 45.4
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 14.7,
+          "eth_getblockreceipts": 41.0,
+          "eth_getlogs_address": 33.0,
+          "eth_getlogs_topics": 70.5,
+          "eth_getlogs_nofilter": 73.1,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 19.3,
+          "debug_tracetransaction": 44.0
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 19.3,
+          "eth_getblockreceipts": 73.4,
+          "eth_getlogs_address": 32.1,
+          "eth_getlogs_topics": 53.8,
+          "eth_getlogs_nofilter": 52.6,
+          "trace_block": 77.2,
+          "archive_5m": 34.9,
+          "eth_call_heavy_warm": 20.6,
+          "debug_tracetransaction": 35.1
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 21.3,
+          "eth_getblockreceipts": 66.7,
+          "eth_getlogs_address": 70.1,
+          "eth_getlogs_topics": 84.1,
+          "eth_getlogs_nofilter": 79.0,
+          "trace_block": 107.5,
+          "archive_5m": 75.5,
+          "eth_call_heavy_warm": 29.6,
+          "debug_tracetransaction": 67.5
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 37.7,
+          "eth_getblockreceipts": 66.8,
+          "eth_getlogs_address": 47.9,
+          "eth_getlogs_topics": 108.6,
+          "eth_getlogs_nofilter": 123.5,
+          "trace_block": 200.4,
+          "archive_5m": 52.5,
+          "eth_call_heavy_warm": 49.7,
+          "debug_tracetransaction": 61.6
+        }
+      ],
+      "sgp": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 4.8,
+          "eth_getblockreceipts": 23.5,
+          "eth_getlogs_address": 86.9,
+          "eth_getlogs_topics": 94.1,
+          "eth_getlogs_nofilter": 91.1,
+          "trace_block": 20.1,
+          "archive_5m": 87.5,
+          "eth_call_heavy_warm": 5.4,
+          "debug_tracetransaction": 218.6
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 39.7,
+          "eth_getblockreceipts": 135.4,
+          "eth_getlogs_address": 114.8,
+          "eth_getlogs_topics": 187.9,
+          "eth_getlogs_nofilter": 185.5,
+          "trace_block": 173.3,
+          "archive_5m": 118.0,
+          "eth_call_heavy_warm": 80.7,
+          "debug_tracetransaction": 137.5
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 4.9,
+          "eth_getblockreceipts": 25.9,
+          "eth_getlogs_address": 18.2,
+          "eth_getlogs_topics": 56.5,
+          "eth_getlogs_nofilter": 53.7,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 5.8,
+          "debug_tracetransaction": 23.6
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 8.5,
+          "eth_getblockreceipts": 21.1,
+          "eth_getlogs_address": 16.2,
+          "eth_getlogs_topics": 21.0,
+          "eth_getlogs_nofilter": 21.9,
+          "trace_block": 46.5,
+          "archive_5m": 18.0,
+          "eth_call_heavy_warm": 10.7,
+          "debug_tracetransaction": 20.2
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 4.3,
+          "eth_getblockreceipts": 31.4,
+          "eth_getlogs_address": 188.9,
+          "eth_getlogs_topics": 1043.7,
+          "eth_getlogs_nofilter": 1230.9,
+          "trace_block": 1068.1,
+          "archive_5m": 236.4,
+          "eth_call_heavy_warm": 6.7,
+          "debug_tracetransaction": 186.2
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 180.5,
+          "eth_getblockreceipts": 200.4,
+          "eth_getlogs_address": 192.8,
+          "eth_getlogs_topics": 241.4,
+          "eth_getlogs_nofilter": 239.0,
+          "trace_block": 279.9,
+          "archive_5m": 193.4,
+          "eth_call_heavy_warm": 205.8,
+          "debug_tracetransaction": 197.1
+        }
+      ]
+    }
+  },
+  "supportMatrix": {
+    "region": "us-east",
+    "apis": [
+      "eth_getlogs_nofilter",
+      "eth_getlogs_address",
+      "eth_getlogs_topics",
+      "eth_getblockreceipts",
+      "archive_5m",
+      "trace_block",
+      "debug_tracetransaction"
+    ],
+    "rows": [
+      {
+        "provider": "quicknode",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 8,
+        "trace_block": 4,
+        "debug_tracetransaction": 7
+      },
+      {
+        "provider": "chainstack",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 8,
+        "trace_block": 5,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "getblock",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 1,
+        "trace_block": 2,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "alchemy",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 8,
+        "trace_block": 5,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "dwellir",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 6,
+        "trace_block": 4,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "blockmachine",
+        "chains": 7,
+        "eth_getlogs_nofilter": 7,
+        "eth_getlogs_address": 7,
+        "eth_getlogs_topics": 7,
+        "eth_getblockreceipts": 7,
+        "archive_5m": 7,
+        "trace_block": 5,
+        "debug_tracetransaction": 7
+      }
+    ]
+  }
+}

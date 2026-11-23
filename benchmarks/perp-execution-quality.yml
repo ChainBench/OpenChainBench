@@ -23,8 +23,8 @@ seo_intro: |
   within a fraction of a basis point). ETH is the headline tab; BTC and
   SOL have their own rankings, and the $1k, $10k and $1M tiers are
   published as raw series. Oracle-priced venues (GMX v2, Gains) have no
-  book to walk and are left out; their fixed spread parameter is part of
-  their all-in figure on the perp-fees bench.
+  book to walk and are left out; their on-chain spread and impact is part
+  of their all-in figure on the perp-fees bench.
 abstract: |
   Every 30 seconds the perp-fees harness fetches the public orderbook of
   each venue for ETH, BTC and SOL, computes the top-of-book mid and walks
@@ -46,7 +46,7 @@ methodology:
   - "Book endpoints, part 1: Hyperliquid POST /info l2Book; Lighter GET /api/v1/orderBookOrders (100 levels); Aster GET /fapi/v1/depth (100 levels); Extended GET /api/v1/info/markets/{market}/orderbook; dYdX v4 indexer GET /v4/orderbooks/perpetualMarket/{ticker}."
   - "Book endpoints, part 2: Paradex GET /orderbook/{market}/interactive (the Retail book, RPI liquidity included, see perp-fees); Ondo Perps GET /v1/perps/depth (100 levels); Polymarket perps GET /v1/info/book (500 levels); edgeX GET /api/v2/public/quote/getDepth (200 levels)."
   - "Fee excluded on purpose: Lighter quotes 0 bps taker, Hyperliquid 4.5, Aster and dYdX 5, Extended and Ondo 2.5, Polymarket 4, edgeX 3.8, Paradex 0 on Retail orders. The all-in ranking with fees is the perp-fees bench; this page answers the depth question only."
-  - "Oracle-priced venues excluded: GMX v2 and Gains price against an oracle with a fixed spread and impact parameter, there is no book to walk, so their tiers are flat and would read as zero or constant slippage. They stay on perp-fees where the fee and the spread parameter are counted together."
+  - "Oracle-priced venues excluded: GMX v2 and Gains price against an oracle, there is no book to walk. Their spread and impact are quoted by the protocol on-chain as the mean of a long and a short, not walked on the ask side, which is a different measurement from the one ranked here. They stay on perp-fees, where it is counted with the fee."
   - "Headline tier $100,000, tabs ETH, BTC, SOL. The $1,000, $10,000 and $1,000,000 tiers are available as raw series through perp_fees_all_in_bps_tier{notional} on the API and MCP surfaces."
   - "Failures: a venue that errors or returns an empty book drops perp_fees_health to 0 for that asset and increments perp_fees_fetch_errors_total{error_type}; the leaderboard tags it as stale and the 24 h average excludes the missing ticks."
 findings:
@@ -82,7 +82,7 @@ faq:
   - q: "Why is the fee left out when perp-fees already exists?"
     a: "perp-fees ranks the all-in cost (fee plus spread plus impact) and a zero-fee venue can win it on the fee alone. This bench removes the fee so the comparison is about book depth: how much the fill price moves for a given size. Both numbers matter; a trader with a fee rebate or a large clip reads this one."
   - q: "Why are GMX v2 and Gains missing?"
-    a: "They price against an oracle with a fixed spread and impact parameter instead of an orderbook, so there is no depth to walk and their tiers are flat. They are ranked on perp-fees, where the fee and the spread parameter are added together."
+    a: "They price against an oracle instead of an orderbook, so there is no depth to walk. Their size-dependent cost is the price impact each protocol charges on-chain, read as the mean of a long and a short rather than an ask-side walk. They are ranked on perp-fees, where that impact is added to the fee."
   - q: "What happens when a book cannot fill $100k?"
     a: "The tier is skipped for that tick and counted in perp_fees_tier_skipped_total instead of being extrapolated from the last visible level. Paradex (100 visible levels) and edgeX (200) are the venues where this happens on thin sessions; the sample size column shows how many ticks made it into the 24 h average."
   - q: "Does this measure what I would pay on the venue's UI?"

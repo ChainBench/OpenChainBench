@@ -61,4 +61,27 @@ describe("linkifyParts", () => {
       .join("");
     expect(rebuilt).toBe(s);
   });
+
+  it("keeps a closing paren that belongs to the URL", () => {
+    const parts = linkifyParts("See https://en.wikipedia.org/wiki/Foo_(bar).");
+    const link = parts.find((p) => p.kind === "link");
+    expect(link).toEqual({
+      kind: "link",
+      href: "https://en.wikipedia.org/wiki/Foo_(bar)",
+      label: "en.wikipedia.org/wiki/Foo_(bar)",
+    });
+  });
+
+  it("drops an extra paren that closes the sentence", () => {
+    const s = "(see https://en.wikipedia.org/wiki/Foo_(bar))";
+    const parts = linkifyParts(s);
+    const link = parts.find((p) => p.kind === "link");
+    expect(link?.kind === "link" && link.href).toBe("https://en.wikipedia.org/wiki/Foo_(bar)");
+    const rebuilt = parts.map((p) => (p.kind === "link" ? p.href : p.value)).join("");
+    expect(rebuilt).toBe(s);
+  });
+
+  it("does not link a bare scheme", () => {
+    expect(linkifyParts("https://)")).toEqual([{ kind: "text", value: "https://)" }]);
+  });
 });

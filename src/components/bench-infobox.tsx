@@ -5,6 +5,7 @@ import { displayResults } from "@/lib/provider-filters";
 import { leader } from "@/lib/citation";
 import { fmtHeadline } from "@/lib/format";
 import { SITE } from "@/data/site";
+import { FootnoteMark } from "@/components/provider-footnotes";
 
 /**
  * Compact "At a glance" card that sits under the H1/subtitle on every
@@ -81,7 +82,12 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
             {top && (
               <span className="text-[12px] text-ink-muted truncate">
                 <span className="text-ink-faint">·</span>{" "}
-                <span className="text-ink font-medium">{top.name}</span>{" "}
+                <span className="text-ink font-medium">{top.name}</span>
+                <FootnoteMark
+                  benchmark={benchmark}
+                  slug={top.slug}
+                  className="ml-0.5 top-0"
+                />{" "}
                 <span className="text-ink-faint">
                   {fmtHeadline(top.value, benchmark, top.slug)}
                 </span>
@@ -126,6 +132,7 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
           {top && (
             <InfoPair label={`Leader (${valueQualifier(benchmark)})`}>
               <span className="font-medium text-ink">{top.name}</span>
+              <FootnoteMark benchmark={benchmark} slug={top.slug} />
               <span className="text-ink-faint">
                 {" "}
                 · {fmtHeadline(top.value, benchmark, top.slug)}

@@ -15,7 +15,7 @@ import {
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 const DESCRIPTION =
@@ -468,14 +468,13 @@ export default async function TradingAppsHubPage() {
           pump.fun&apos;s own app, formerly Padre. Fill quality from our own
           on-chain swaps, app store ratings from the Apple iTunes lookup API.
           {pausedNote}All harnesses open source on{" "}
-          <Link
-            href={withUtm("https://github.com/ChainBench/OpenChainBench")}
+          <OutboundLink
+            href={SITE.github}
             className="underline hover:text-ink"
-            rel="noopener noreferrer"
             target="_blank"
           >
             GitHub
-          </Link>
+          </OutboundLink>
           . Data under{" "}
           <Link
             href="https://creativecommons.org/licenses/by/4.0/"

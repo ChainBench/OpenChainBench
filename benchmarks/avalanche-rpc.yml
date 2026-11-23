@@ -87,6 +87,30 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="avalanche", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="avalanche", region="sgp"}[1h])
 
+  - slug: rpcnode
+    name: RpcNode
+    endpoint: https://public-avax-mainnet.rpcnode.dev
+    tag: Public node, 20 mainnets, 5 RPS per IP
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to RpcNode's no-key Avalanche C-Chain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="avalanche"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode", chain="avalanche"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="rpcnode", chain="avalanche"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="rpcnode", chain="avalanche"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="rpcnode", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="rpcnode", chain="avalanche"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="rpcnode", chain="avalanche"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="avalanche"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="avalanche", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="avalanche", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="avalanche", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="avalanche", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="avalanche", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="avalanche", region="sgp"}[1h])
+
   - slug: drpc
     name: dRPC
     endpoint: https://avalanche.drpc.org

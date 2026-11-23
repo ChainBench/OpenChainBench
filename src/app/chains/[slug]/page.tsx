@@ -29,7 +29,7 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { padSnippet } from "@/lib/seo-text";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 export const revalidate = 3600;
 export const maxDuration = 60;
@@ -228,15 +228,14 @@ export default async function ChainPage({
               unfindable, which is how a reader concluded the site had no
               official link at all. */}
           {chain.website && (
-            <a
-              href={withUtm(chain.website)}
+            <OutboundLink
+              href={chain.website}
               target="_blank"
-              rel="noopener noreferrer"
               className="lnk mt-2 inline-flex items-center gap-1 text-sm font-medium text-ink hover:text-accent transition-colors break-all"
             >
               {chain.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
               <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
-            </a>
+            </OutboundLink>
           )}
         </div>
       </header>

@@ -20,6 +20,7 @@ var (
 	healthGauge       *prometheus.GaugeVec
 	lastRefreshGauge  *prometheus.GaugeVec
 	allInTierGauge    *prometheus.GaugeVec
+	spreadTierGauge   *prometheus.GaugeVec
 	tierSkippedCtr    *prometheus.CounterVec
 )
 
@@ -128,6 +129,15 @@ func init() {
 	)
 	prometheus.MustRegister(allInTierGauge)
 
+	spreadTierGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_fees_spread_bps_tier",
+			Help: "Spread plus impact at a given notional tier, taker fee excluded, in bps. notional label is the USD trade size.",
+		},
+		[]string{"venue", "chain", "notional"},
+	)
+	prometheus.MustRegister(spreadTierGauge)
+
 	tierSkippedCtr = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "perp_fees_tier_skipped_total",
@@ -140,14 +150,18 @@ func init() {
 
 func recordSample(s PerpSample) {
 	if s.Err != "" {
-		errType := classifyErr(s.Err)
+		errType := s.ErrType
+		if errType == "" {
+			errType = classifyErr(s.Err)
+		}
 		fetchErrorsCtr.WithLabelValues(s.Venue, s.Asset, errType).Inc()
 		healthGauge.WithLabelValues(s.Venue, s.Asset).Set(0)
-		// Permanent failures (asset delisted, unsupported venue) must delete
-		// the gauge series so stale values don't persist as ghost metrics.
+		// Permanent failures (asset delisted, unsupported venue, a response
+		// the parser can no longer read) must delete the gauge series so
+		// stale values don't persist as ghost metrics.
 		// Transient failures (timeout, rate limit, server error) intentionally
 		// keep the last good value so a brief outage doesn't blank the board.
-		if errType == "not_found" {
+		if errType == errTypeNotFound || errType == errTypeBadData {
 			allInGauge.DeleteLabelValues(s.Venue, s.Asset)
 			spreadGauge.DeleteLabelValues(s.Venue, s.Asset)
 			takerFeeGauge.DeleteLabelValues(s.Venue, s.Asset)
@@ -157,6 +171,7 @@ func recordSample(s PerpSample) {
 			lastRefreshGauge.DeleteLabelValues(s.Venue, s.Asset)
 			for _, n := range tierNotionals {
 				allInTierGauge.DeleteLabelValues(s.Venue, s.Asset, notionalLabel(n))
+				spreadTierGauge.DeleteLabelValues(s.Venue, s.Asset, notionalLabel(n))
 			}
 		}
 		return
@@ -171,13 +186,18 @@ func recordSample(s PerpSample) {
 	}
 	spreadGauge.WithLabelValues(s.Venue, s.Asset).Set(s.SpreadBps)
 	allInGauge.WithLabelValues(s.Venue, s.Asset).Set(s.AllInBps)
-	fundingGauge.WithLabelValues(s.Venue, s.Asset).Set(s.FundingRatePerHrBps)
+	if s.FundingUnmeasured {
+		fundingGauge.DeleteLabelValues(s.Venue, s.Asset)
+	} else {
+		fundingGauge.WithLabelValues(s.Venue, s.Asset).Set(s.FundingRatePerHrBps)
+	}
 	fetchLatencyGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(s.FetchLatencyMs))
 	lastRefreshGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(time.Now().Unix()))
 	healthGauge.WithLabelValues(s.Venue, s.Asset).Set(1)
 
 	for _, t := range s.Tiers {
 		allInTierGauge.WithLabelValues(s.Venue, s.Asset, t.Notional).Set(t.AllInBps)
+		spreadTierGauge.WithLabelValues(s.Venue, s.Asset, t.Notional).Set(t.SpreadBps)
 	}
 	// A skipped tier means the fetched book could not fill that notional.
 	// Unlike whole-venue failures (where we keep the previous gauge and rely
@@ -187,23 +207,34 @@ func recordSample(s PerpSample) {
 	for _, n := range s.SkippedTiers {
 		tierSkippedCtr.WithLabelValues(s.Venue, s.Asset, n).Inc()
 		allInTierGauge.DeleteLabelValues(s.Venue, s.Asset, n)
+		spreadTierGauge.DeleteLabelValues(s.Venue, s.Asset, n)
 	}
 }
+
+const (
+	errTypeNotFound    = "not_found"
+	errTypeBadData     = "bad_data"
+	errTypeTimeout     = "timeout"
+	errTypeAuth        = "auth"
+	errTypeRateLimit   = "rate_limit"
+	errTypeServerError = "server_error"
+	errTypeOther       = "other"
+)
 
 func classifyErr(msg string) string {
 	switch {
 	case contains(msg, "asset_not_found") || contains(msg, "unsupported_venue"):
-		return "not_found"
+		return errTypeNotFound
 	case contains(msg, "timeout"):
-		return "timeout"
+		return errTypeTimeout
 	case contains(msg, "401") || contains(msg, "403"):
-		return "auth"
+		return errTypeAuth
 	case contains(msg, "429"):
-		return "rate_limit"
+		return errTypeRateLimit
 	case contains(msg, "5"):
-		return "server_error"
+		return errTypeServerError
 	default:
-		return "other"
+		return errTypeOther
 	}
 }
 

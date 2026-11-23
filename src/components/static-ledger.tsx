@@ -19,7 +19,7 @@ import { valueColumnLabel, valueQualifier } from "@/lib/value-window";
 import type { Benchmark } from "@/types/benchmark";
 import { rateDecimals } from "@/lib/sample-precision";
 import { panelsForStaticLedger } from "@/lib/static-panels";
-
+import { FootnoteMark, ProviderFootnotes } from "@/components/provider-footnotes";
 
 export function StaticLedger({
   benchmark,
@@ -62,10 +62,9 @@ export function StaticLedger({
   // Metric panels are tabs in the interactive body, so the served HTML
   // carried the headline and nothing else: bench 273's origin split and
   // its two weekly columns existed for a reader and not for a crawler
-  // (SEO audit 2026-09-23). Render the first few here, inside the same
-  // horizontal scroller, so the table stays readable on a phone.
-  // WHICH panels, and why it is not simply the first three, lives in
-  // panelsForStaticLedger with its own tests.
+  // (SEO audit 2026-09-23). They render here inside the same horizontal
+  // scroller. WHICH of them, and why it is not simply the first three,
+  // lives in panelsForStaticLedger with its own tests.
   const panels = panelsForStaticLedger(benchmark);
   // The region count comes from the page, which already worked out which
   // declared regions actually have data: the heading a crawler reads said
@@ -102,6 +101,7 @@ export function StaticLedger({
       <h2 id="results" className="label-mono text-ink-faint mb-4">
         {heading}
       </h2>
+      <ProviderFootnotes benchmark={benchmark} className="mb-4" />
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
@@ -154,6 +154,7 @@ export function StaticLedger({
                       </a>
                     );
                   })()}
+                  <FootnoteMark benchmark={benchmark} slug={r.slug} />
                   {r.priceReading && (
                     <span className="ml-2 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
                       {r.priceReading}
@@ -168,9 +169,9 @@ export function StaticLedger({
                       has shown it since the ledger existed (ledger-table.tsx)
                       and this table never did, so 1,710 tagged rows across
                       256 specs carried it for a reader and not for a crawler:
-                      "On-chain DEX price", "RFQ or batch", and on the chain
-                      RPC pages the plan each key is on, which is what
-                      separates a 0 (their product) from a blank (our access). */}
+                      "On-chain DEX price", "RFQ or batch", and on bench 311
+                      the plan each key is on, which is what separates a 0
+                      (their product) from a blank (our access). */}
                   {r.tag && (
                     <span className="ml-2 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
                       {r.tag}

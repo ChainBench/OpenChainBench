@@ -119,7 +119,11 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // copy above, so a new `endpoint` shows without a worker sweep.
     .map((r) => {
       const sp = providerByCanonSlug.get(r.slug);
-      return sp?.endpoint ? { ...r, endpoint: sp.endpoint } : r;
+      return {
+        ...r,
+        endpoint: sp?.endpoint || r.endpoint,
+        venueType: sp?.venue_type,
+      };
     });
 
   const overlaid: Benchmark = {
@@ -134,6 +138,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,
+    headlineSlice: spec.headline_slice ?? stored.headlineSlice,
     faq: spec.faq ?? stored.faq,
     excludedProviders: spec.excluded_providers ?? stored.excludedProviders,
     window: spec.prometheus?.window ?? stored.window,
@@ -166,6 +171,8 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // Overlay so newly added notes surface immediately without waiting
     // on the materialize worker to rewrite the snapshot.
     providerNotes: spec.provider_notes ?? stored.providerNotes,
+    providerFootnotes: spec.provider_footnotes,
+    feesRemovable: spec.fees_removed ? true : undefined,
     // expected_n is a YAML editorial declaration too: drives the
     // sample-health badge logic on the page + the citable APIs. A
     // freshly added/edited value must take effect immediately, before
@@ -528,140 +535,561 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // deployed, but staging renders it and a stale entry there would show the
   // board without its rows, which is the state we are trying to avoid
   // reviewing. It declares a bucket dimension, so bench-filters moves too.
-  // v103: the methodology array renders on the bench page for the first
+  // v103: benches 307 and 301 arrive with four providers between them. Both
+  // are held out of production, but staging renders them and a stale entry
+  // there would show the boards without their rows, which is the state we
+  // are trying to review. 301 declares a bucket dimension, so bench-filters
+  // moves too.
+  // v104: bench 308 arrives with seven providers. No dimensions, so
+  // bench-filters stays put this time.
+  // v105: bench 306 gains THORChain, a rail its harness had been measuring
+  // for hours while the spec declared two. 306 declares a bucket dimension,
+  // so bench-filters moves with this one.
+  // v106: bench 307 gains THORChain and, more importantly, zero_is_a_value.
+  // Its rows for every rail that REFUSES a shielded address were being
+  // v107: the seven keyed chain pages gain a RouteMesh row, warm and cold,
+  //       the first router in the private cohort. It is declared unranked,
+  //       so a cached set written before it would not merely misorder the
+  //       page, it would omit the row entirely.
+  // v108: and out again the next morning. The trial key ran out of credits
+  //       overnight (HTTP 402), so 78% of probes were refused and the row
+  //       published a 22% success rate that describes our balance, not
+  //       their service. A cached set still holding the row keeps serving
+  //       it, which is why a removal moves these keys too.
+  // dropped as no-value, so the board published only the rail that accepts,
+  // which is the opposite of what it measured.
+  // v108: the methodology array renders on the bench page for the first
   //       time, and seven specs reworded their tehcscreener citation to
   //       credit the project rather than only its endpoint. overlayEditorial
   //       prefers the spec over the stored copy, but an entry cached before
-  //       the edit still carries the old prose, so the new wording stayed
-  //       invisible on production after the deploy. An editorial change
-  //       needs this bump exactly as a provider change does.
-  // v104: bench 010's latency methodology said percentiles were computed
+  //       the edit still carries the old prose. Production proved it: the
+  //       deploy went green, the bullets rendered, and the sentence was
+  //       still the old one until the key moved. An editorial change needs
+  //       this bump exactly as a provider change does, and the provider-set
+  //       hash test does not catch it because no provider moved.
+  // v109: bench 309 wallet-cost arrives with thirteen embedded wallet
+  //       vendors, the first bench in the Wallets category.
+  // v110: bench 010's latency methodology said percentiles were computed
   //       "via histogram_quantile / quantile_over_time" over a gauge AND a
-  //       histogram. Only half of that was ever true: every published
+  //       histogram. Only half of that was ever true. Every published
   //       percentile comes from quantile_over_time over the gauge, nothing
-  //       in the repo ever selected rpc_latency_milliseconds_histogram_bucket,
-  //       and the histogram is removed in the same change. An editorial
-  //       change needs this bump for the same reason a provider change does.
-  //
-  //       Numbered for THIS branch, not carried over from dev. dev was at
-  //       v109 when this landed there as v110; production is its own
-  //       sequence, and a cherry-picked literal would either conflict or
-  //       land on a number production had already cached under.
-  // v105: bench 001's Base reference gains a second source. The published
-  //       methodology now says the zero point is the earliest of the
-  //       flashblock stream and the sequencer's pendingLogs, and warns that
-  //       Base figures from before 2026-10-29 are smaller by up to the CDN
-  //       tail the second source removes. Numbered for THIS branch: dev
-  //       landed the same change as v113 on its own sequence.
-  // v106: bench 309 wallet-cost released, thirteen embedded wallet
-  //       vendors and the first bench in the Wallets category. Numbered for
-  //       THIS branch: dev carried it through v109 to v115.
-  // v107: wallet pricing release (main) 2026-10-30. Bench 309 re-priced
-  //       (Dynamic on its card, Portal in, Openfort Free stops), the
-  //       price-reading pill, {{year}} titles; bench 310 code ships gated.
-  // v108: BlockVectra joins the Ink, Unichain and Fraxtal RPC pages (dev
-  //       #3463). An ARRIVAL: a cached entry holds the old provider set.
-  // v109: discussion #2270 release. Benches 006, 031, 034 and 026 gain
-  //       the requested chains (Algorand, Aptos, NEAR, Somnia, ICP, Sei,
-  //       Cronos, Kaia, Gram), with their audit fixes and new copy.
-  // v110: BlockVectra joins the Katana RPC page. An ARRIVAL: a cached
+  //       in the repo selected rpc_latency_milliseconds_histogram_bucket,
+  //       and the histogram is removed in the same PR. Editorial change, so
+  //       it needs the bump for the v108 reason two notes above.
+  // v111: bench 309's copy moves after its first audit round (the
+  //       Openfort reading, validate running the scorer, six of thirteen
+  //       pages); an entry cached before the edit still carries the old
+  //       prose.
+  // v112: bench 309 lists its unpriced vendors on every tab, and its
+  //       freshness copy names the new alert.
+  // v113: bench 001's Base reference gains a second source. The methodology
+  //       now says the zero point is the earliest of the flashblock stream
+  //       and the sequencer's pendingLogs, and warns that figures published
+  //       before today are smaller by up to the CDN tail the second source
+  //       removes. Editorial change on a live page, so the keys move.
+  // v114: bench 309 round three. Each unpriced vendor carries its own
+  //       reason per view, Privy's 10,000-user band edge is badged, and
+  //       the copy states validate's sample size.
+  // v115: bench 309 SEO round: title, metric, intro and description
+  //       move to placeholders and a plainer wording.
+  // v116: the brand is Quicknode, not QuickNode, in every spec.
+  // v117: bench 310 server-wallet-cost arrives (eleven vendors), and
+  //       bench 309 gains Portal and re-prices Openfort's free plan.
+  // v118: bench 311 rpc-api-coverage arrives, a support matrix for the keyed
+  //       RPC cohort. New slug, new metric family, nothing existing moves: an
+  //       `api` dimension on an existing RPC spec would inject api=... into
+  //       rpc_latency_milliseconds, which carries no such label, and empty
+  //       every ledger column.
+  // v119: bench 311's editorial, three times in one evening. The success
+  //       column became a measurement rather than the default 100, the
+  //       unranked row gained its own cause in place of the generic caption,
+  //       and two sentences that described the previous rendering were
+  //       realigned. Entries written between v118 and now carry the old
+  //       prose, and overlayEditorial prefers the spec but cannot beat an
+  //       already-cached entry (measured on prod 2026-10-28: a green deploy
+  //       serving the old sentence). providers-v31 deliberately does NOT
+  //       move: the provider set is untouched, only its copy.
+  // v120: four benches declared ledger_reliability: false, so the Success
+  //       column stops being filled from the loader's default of 100 where
+  //       nothing measured a success: perp-asset-breadth, privacy-coin-books,
+  //       rpc-free-tier and token-deployment-cost, none of which claims
+  //       anything about requests it sent. Moves with all-benchmarks-v113 and
+  //       bench-filters-v58. providers-v31 deliberately does NOT move: no
+  //       provider entered or left and no provider copy changed.
+  // v121: bench 311 gained two panels and swapped two ledger columns. On a
+  //       single chain tab the boolean columns read alike for nearly the
+  //       whole cohort, which is why the robinhood tab showed four providers
+  //       tied at 88.9: a five-block window is a question everyone can
+  //       answer. The widest window each one accepts is where they separate,
+  //       from 500 blocks to a million, so the two filtered-shape booleans
+  //       are now the windows that subsume them (0 is the refusal the
+  //       boolean carried). Panels are computed by the loader and live in
+  //       the cached entry, so a new panel cannot reach a page without this.
+  //       Moves in lockstep with all-benchmarks-v114 and bench-filters-v59.
+  //       providers-v31 deliberately does NOT move: no provider entered or
+  //       left and no provider copy changed.
+  // v122: Helius enters the keyed Solana cohort, warm and cold. A new
+  //       provider changes the ranked set, the count placeholders and the
+  //       disclosure prose, none of which overlayEditorial can repair on an
+  //       entry already cached. Moves with all-benchmarks-v115,
+  //       bench-filters-v60 and, unusually, providers-v32: a provider
+  //       entering is the case that key exists for.
+  // v123: bench 311 gains four selectable views, the first measurements on a
+  //       board that was all booleans and shares: the eth_call work term, the
+  //       archive read, the address-filtered log query and Solana's v2
+  //       getProgramAccounts. Panels are computed by the loader and live in
+  //       the cached entry, so a new one cannot reach a page without this.
+  //       Moves with all-benchmarks-v116 and bench-filters-v61.
+  //       providers-v32 deliberately does NOT move: no provider entered or
+  //       left and no provider copy changed.
+  // v124: the eth_call work view withholds a non-positive difference. The
+  //       first published pass read minus 1.6 ms for one provider, which on
+  //       a lower-is-better view ranks the noisiest first, so the panel
+  //       query now drops it and the cell reads as a dash. A panel's values
+  //       live in the cached entry, so the old reading would otherwise sit
+  //       there for the full TTL. Moves with all-benchmarks-v117 and
+  //       bench-filters-v62.
+  // v125: wallet pricing audit 2026-10-30: Dynamic re-priced on its card,
+  //       Circle's signing-only plan, the price-reading pill, rewritten prose.
+  //       Moves with all-benchmarks-v118 and bench-filters-v63.
+  // v126: the audit's root cause. Every selector on bench 311 aggregated
+  //       rpc_api_supported and rpc_api_probe_total with no `api` filter, so
+  //       each probe added today silently joined the headline, the success
+  //       rate, the sample size, the rank gate and the freshness column. The
+  //       two eth_call legs made each chain contribute 9 cells where the copy
+  //       describes 7, putting every ranked headline 0.9 to 5.2 points high;
+  //       the range ladder writes a probe counter without a capability gauge,
+  //       so the success denominator grew by two APIs and every ranked row
+  //       read 81.8 percent where the spec's own definition gives 100. All 67
+  //       selectors now carry the capability allowlist, the freshness column
+  //       reads the OLDEST stamp rather than the newest, the Solana view is
+  //       gone (its chain pin survived injection and showed Solana values on
+  //       every EVM tab), and the FAQ no longer answers that the window
+  //       measurement does not exist above the columns that publish it.
+  //       Moves with all-benchmarks-v119 and bench-filters-v64.
+  // v127: the two wallet pricing titles say {{year}} instead of a typed
+  //       2026. Moves with all-benchmarks-v120 and bench-filters-v65.
+  // v128: the wallet pricing findings and FAQ read their winners and
+  //       bills from the curve ({{cell:...}}). Moves with
+  //       all-benchmarks-v121 and bench-filters-v66.
+  // v158: solana-rpc published Helius in the excluded list, with the
+  //       reason "no key held yet, so it is not in the private cohort
+  //       either", on the same page that ranks Helius fifth in that
+  //       cohort and discloses its plan. The excluded list lives in the
+  //       cached entry, so the contradiction would survive a green
+  //       deploy. Moves with all-benchmarks-v151 and bench-filters-v88;
+  //       providers-v52 does NOT move, the provider set is unchanged.
+  // v129: bench 312 paymaster-cost arrives (nine vendors; Pimlico,
+  //       Etherspot and Candide new to the site). Moves with
+  //       all-benchmarks-v122 and bench-filters-v67.
+  // v129: the per-chain leader stash stops crowning a gated row and stops
+  //       breaking ties by spec order. bestPerChain lives in the cached
+  //       entry and feeds the product-page chip, so a stale one keeps
+  //       publishing "#1 of 5 on Robinhood Chain" for a row the board shows
+  //       unranked. Moves with all-benchmarks-v122, bench-filters-v67 and
+  //       providers-v34, which is the key the chip itself reads through.
+  // v130: the per-chain leader stash stops crowning a gated row and
+  //       stops breaking ties by spec order. bestPerChain feeds the
+  //       product-page chip, so a stale entry keeps publishing
+  //       "#1 of 5 on Robinhood Chain" for a row the board shows
+  //       unranked. Moves with all-benchmarks-v123, bench-filters-v68
+  //       and providers-v35.
+  // v131: the two window columns select bound=~"refused|top", so a figure
+  //       the ladder reached before one of OUR OWN calls failed is no longer
+  //       printed as the provider's limit; the audit found Quicknode
+  //       publishing 10,000 on seven chains after an HTTP error at the
+  //       100,000 rung. The eth_call view's copy moves with it: both legs
+  //       are primed now, so the handshake is paid outside the measurement
+  //       instead of inside a difference of a few milliseconds. Moves with
+  //       all-benchmarks-v124 and bench-filters-v69.
+  // v132: cost bench audit round (309, 310, 312): headline_slice, copy
+  //       read from the curve, the bot FAQ. Moves with all-benchmarks-v125
+  //       and bench-filters-v70.
+  // v133: the eth_call work panel declares carry: false. Measured on the
+  //       published blob: chainstack read minus 1.84 ms with staleSince in
+  //       its valuesMeta, so the `> 0` guard was working and the panel carry
+  //       was resurrecting the value it had refused, for the length of this
+  //       bench's 24 h ceiling, first on a lower-is-better view. The cached
+  //       entry holds panel values, so the old one stays without this.
+  // v134: audit round on bench 311. The eth_call legs are renamed
+  //       eth_call_{heavy,light}_warm, because they stopped being measured
+  //       cold and kept their names, so a 24 h window averaged two methods:
+  //       dwellir published 44.00 ms against 2.97 under the stated method.
+  //       Ten capability and age panels declare carry: false, the rank gate
+  //       fails closed on a null, the static table follows ledger_columns,
+  //       and the badge says verdict rather than asked. Moves with
+  //       all-benchmarks-v127 and bench-filters-v72.
+  // v135: the three measured views are per-chain (per_chain_only), the plan
+  //       each key is on is published as a provider tag, the crawler-facing
+  //       table renders tags at all, and a long methodology is split so the
+  //       board is not buried under it. The cached entry holds panel values
+  //       and provider tags, so the old one keeps the pooled views.
+  // v136: Quicknode's plan is Build, confirmed by the account holder. The
+  //       row said "Plan not recorded" for three days, because the record it
+  //       replaced named an account that is no longer ours. A provider tag
+  //       lives in the cached entry, so the old one keeps the old text.
+  // v137: SushiSwap joins benches 033 and 304, the only one of seven names
+  //       asked on 2026-11-02 that answers on Robinhood Chain. A cached
+  //       entry holds the provider set current when it was written, so
+  //       without this the row never appears however good the data is.
+  // v138: bench 304 gains a Routing only column, the shortfall with each
+  //       provider's own declared fee removed. Panel values live in the
+  //       cached entry, so without this the column renders empty on every
+  //       bench already cached.
+  // v139: Trnch joins benches 033 and 304 on Robinhood Chain. An ADDITION,
+  //       so the cached entry holds a provider set without it and the row
+  //       would never appear.
+  // v140: the API capability matrix moves from bench 311 onto the eight
+  //       chain RPC pages, under the Private tab, where the data's
+  //       (provider, chain) granularity actually lives and where the reader
+  //       already is. Bench 311 is retired, so the provider set changes. A
+  //       panel can now declare `tiers`, and a ledger column whose panel was
+  //       not published is dropped rather than drawing a column of dashes.
+  // v141: bench 304 names Trnch as the third row built on other rows, and
+  //       says none of the three can beat the best of the set it polls.
+  //       Findings live in the cached entry, so the old one keeps the
+  //       sentence that counted two.
+  // v142: Trnch is withdrawn from benches 033 and 304 at the provider's
+  //       request, one day after arriving. A REMOVAL, and a cached entry
+  //       holds the provider set current when it was written, so without
+  //       this the row keeps rendering with no data behind it.
+  // v143: BlockVectra joins the Ink, Unichain and Fraxtal RPC pages. An
+  //       ARRIVAL: a cached entry holds the old provider set, so the new
+  //       row would never render however good its data.
+  // v144: tuleep.trade is Proliquid on bench 030 (same builder address, same
+  //       slug). An editorial change, which a cached entry would otherwise
+  //       keep under the old name.
+  // v145: a third tier on the eight chain RPC pages, keyed-heavy, sitting
+  //       beside Pooled and Cold start as a Heavy button. Same endpoints on
+  //       a Multicall3 of fifty state reads, read from the recording rules
+  //       added in the previous PR, plus a Work column that subtracts the
+  //       light reference leg. Six providers ENTER under -heavy slugs, so
+  //       providers-v moves with it and both alias tables gained a line each
+  //       or every slug would have built its own duplicate product page.
+  // v146: the Work column on the heavy tab was empty. A metric_panel is
+  //       queried as <metric>{provider="<the row slug>"}, and that tier
+  //       rows are suffixed -heavy while the recorded series is not, so the
+  //       selector matched nothing and the column rendered blank in silence.
+  //       The relabelled series is read instead.
+  // v147: bench 313 token-sellability arrives as a draft. Two rows, the
+  //       two sell timings. A cached entry holds the provider set current
+  //       when it was written, so without this the rows never appear.
+  // v148: the heavy lane runs in all three regions, so the Heavy tab is no
+  //       longer one region beside a Pooled figure averaged over three, and
+  //       its spec queries aggregate the way the tip probe does. Cadence
+  //       moves to two hours to pay for the extra regions.
+  // v149: bench 031 network-fees gains eight Layer 1 rows (Sei, Cronos,
+  //       Kaia, Somnia, Algorand, Aptos, NEAR, Internet Computer) and its
+  //       copy is rewritten (Sui model, L2 data fee wording, live counts).
+  // v150: bench 034 token-deployment-cost adds Algorand, Gram, NEAR, the
+  //       Internet Computer and eight EVM L1s (a real OpenZeppelin ERC20 now
+  //       replaces the placeholder bytecode), and its copy is rewritten. An
+  //       ARRIVAL plus an editorial change: a cached entry holds the old
+  //       provider set and the old "7 non-EVM" copy.
+  // v151: bench 006 l1-finality gains six chains (Sei, Cronos, Kaia, NEAR,
+  //       the Internet Computer, Algorand) and rewrites its copy (Stellar
+  //       and Gram methods, TRON 19 blocks, median not mean in formulas).
+  //       New rows and editorial text both need the key to move.
+  // v152: bench 026 validator-yield grows from 7 chains to 15 (Aptos,
+  //       NEAR, Kaia, Algorand, ICP, Gram, Sei, Cronos) and its copy is
+  //       rewritten. An ARRIVAL plus an editorial change: a cached entry
+  //       holds the old provider set and the old copy.
+  // v153: bench 026's meta description was cut at "incl." by the
+  //       snippet cap; the chain list goes and the sentence ends whole.
+  // v154: bench 313 is rebuilt. Its rows were the two sell timings, which
+  //       are settings of the probe, not competitors; they are now the
+  //       aggregators, two rows per vendor under a tier. A cached entry
+  //       holds the old provider set, so without this the board keeps
+  //       showing "Sold a few blocks later" as a product.
+  // v155: bench 313's eight row queries read only the last sweep while
+  //       their published formula said "over 24h". The queries now span
+  //       the window and the formulas say how they are weighted. Both
+  //       the numbers and the copy change, so a cached entry is wrong
+  //       twice over.
+  // v156: bench 313 goes live. A draft bench publishes no rows at all,
+  //       so the board was correct and the page was empty; the cached
+  //       entry holds that empty set and would keep serving it.
+  // v157: BlockVectra joins the Katana RPC page. An ARRIVAL: a cached
   //       entry holds the old provider set, so the row would never render.
-  // v111: the API capability matrix, the Heavy tab and the per-method
-  //       latency arrive on the eight chain RPC pages, with a capability
-  //       board on solana-rpc, from dev. A metric_panel can declare
-  //       `carry`, `per_chain_only` and `tiers`; a ledger column whose
-  //       panel was not published is dropped rather than drawing dashes;
-  //       the rank gate retries once then fails closed. Cached entries
-  //       hold columns, panels and provider tags.
-  // v112: Helius joins the keyed cohort on solana-rpc, warm and cold. An
-  //       ARRIVAL, and a correction: the port that removed Helius from the
-  //       excluded list left main mentioning it nowhere, while the new
-  //       cap_gpa_v2 panel published helius=100 with no row to render it.
-  //       Production therefore read as "nobody serves getProgramAccountsV2",
-  //       which is false and is the one differentiator the report names.
-  //       Moves with all-benchmarks-v105, bench-filters-v52 and
-  //       providers-v29.
-  // v113: QuickNode becomes Quicknode, the brand's own spelling since
-  //       November 2025. dev was renamed on 29 October (#3372) and main
-  //       never received it, so production wrote one spelling and staging
-  //       the other. 312 occurrences in 81 files. Slugs are unchanged and
-  //       lowercase, so the provider set and its hash do not move, but the
-  //       display name is held in the cached entry: without this bump a
-  //       green deploy would still say QuickNode. Moves with
-  //       all-benchmarks-v106, bench-filters-v53 and providers-v30.
-  // v114: bench 001 Base methodology after Denim (sealed 200 ms blocks,
+  // v158: bench 313's two panel columns rendered empty on every row.
+  //       A panel value is matched to a row by a label equal to the ROW
+  //       SLUG: the Examined panel had no labels at all and could never
+  //       match, and the Tokens asked panel named the aggregator where
+  //       the same-block rows carry a suffixed slug. The first is gone,
+  //       the second now reads a provider label the harness publishes.
+  // v160: the archive read and eth_getLogs are published as latency on the
+  //       Heavy tier, and solana-rpc gets a capability board at all. The
+  //       per-method latency was being measured since 30 Oct and read by
+  //       nothing: `rpc_api_latency_milliseconds` appeared in 0 of 261
+  //       specs. Measured on ethereum 2026-11-04, dwellir reads 33.9 ms on
+  //       the cheap call and 413.0 ms on the archive read, and chainstack
+  //       is fourth on the cheap call but first on getLogs. Solana's three
+  //       getProgramAccounts probes had 10 series in Prom and no column.
+  //       A cached entry holds the old column list, so the new columns
+  //       would not render. Moves with all-benchmarks-v153 and
+  //       bench-filters-v89; providers-v52 does NOT move.
+  // v159: solana-rpc published Helius in the excluded list, with the
+  //       reason "no key held yet, so it is not in the private cohort
+  //       either", on the same page that ranks Helius fifth in that
+  //       cohort and discloses its plan. The excluded list lives in the
+  //       cached entry, so the contradiction would survive a green
+  //       deploy. Moves with all-benchmarks-v152 and bench-filters-v88;
+  //       providers-v52 does NOT move, the provider set is unchanged.
+  // v161: Trnch joins bench 313 with two rows. It asked to be withdrawn
+  //       from quote and latency on 2026-11-03 and said in the same
+  //       message that the security bench interested it, which is this
+  //       one. An ARRIVAL: a cached entry holds the old provider set.
+  // v162: bench 313 ranks on counters instead of gauges and declares
+  //       expected_n, so a row resting on one or two token-questions is
+  //       withheld from the ranking instead of publishing a confident
+  //       100%. Both the numbers and the gating change, and a cached
+  //       entry holds the ungated set.
+  // v163: bench 313's ranking divisor was clamp_min(n, 1), which turns
+  //       no evidence into 0%, and 0% is the BEST score on this board:
+  //       every row read as a perfect record. The division is guarded
+  //       instead, so a row with no questions publishes nothing.
+  // v164: bench 313 back to draft. Its same-block tab published a 0 for
+  //       every row, and 0 is the BEST score here, so five named
+  //       companies carried an unearned perfect record. The sample is
+  //       7 questions against an expected 120 either way.
+  // v165: bench 313 live again. Both tabs resolve and every row carries
+  //       about 106 token-questions against the 120 expected, so the
+  //       sample is healthy rather than a rounding error. The second
+  //       tab was never a publish bug: increase() reads 0 on a counter
+  //       that has not re-incremented, and both tabs were young.
+  // v166: FluxRPC enters the keyed Solana cohort, warm and cold. New rows,
+  //       new count and new disclosure prose, none of which overlayEditorial
+  //       repairs on a cached entry. Moves with all-benchmarks-v159,
+  //       bench-filters-v91 and providers-v54.
+  // v167: FluxRPC leaves the Singapore probe (no Asian endpoint): its
+  //       queries exclude region="sgp" and the disclosure says so. Moves
+  //       with all-benchmarks-v160 and bench-filters-v92.
+  // v168: bench 314 solana-rpc-ws, the private Solana WebSocket race,
+  //       returns (Chainstack, FluxRPC, GetBlock, Quicknode). A new bench
+  //       and four new appearances. Moves with all-benchmarks-v161,
+  //       bench-filters-v93 and providers-v55.
+  // v169: bench 313 stops scoring tokens it has itself sold. A third of
+  //       its unsellable cohort carried both verdicts in one window, the
+  //       chain's wrapped ether among them, so the published shares were
+  //       computed against evidence the probe contradicted. The metric is
+  //       renamed off "traps", which claimed intent the measurement does
+  //       not carry. Numbers and copy both move.
+  // v170: bench 313 drops its SushiSwap rows. Sushi supplies the routes
+  //       the probe signs, so a token only enters the cohort if Sushi
+  //       quoted a way into it: it was being scored on a population it
+  //       selected, and quoted 98.6% of it. A REMOVAL, which needs the
+  //       keys as much as an arrival. The metric is renamed off
+  //       "unsellable", which claimed more than one tested route shows.
+  // v171: bench 313's method described a rule the code no longer runs, and
+  //       its disclaimer promised a reproducibility the page does not
+  //       offer. Both are editorial and a cached entry keeps the old
+  //       words through a green deploy.
+  // v172: bench 313 counts DISTINCT tokens instead of questions, adds a
+  //       floor under what counts as an exit, and puts the Tokens asked
+  //       column on the same 24h window as the score it sits beside.
+  //       Every number on the board moves.
+  // v173: the queries that were supposed to move to distinct tokens in
+  //       v172 never reached the file. The script asserted on an
+  //       unrelated string after rewriting in memory and before writing,
+  //       so the commit said one thing and the spec another. They move
+  //       here, verified by reading the file back.
+  // v174: bench 313's numerator is constrained to the tokens its
+  //       denominator covers. routed_token is six hours older than
+  //       asked_token, so the ratio divided six hours by one and
+  //       published 1000% as a percentage.
+  // v175: bench 001 Base methodology after Denim (sealed 200 ms blocks,
   //       log reference instead of flashblocks).
-  // v115: thirteen chain RPC pages retire (celo, taiko, kaia, bob,
+  // v176: bench 313 can finally publish a clean record. count() over an
+  //       empty vector returns no series, so an aggregator asked about
+  //       every failed token that routed into none of them produced an
+  //       empty expression and no row. The best score on the board was
+  //       the one score it could not show.
+  // v177: bench 313 stops calling a thin pool a failed exit. The floor
+  //       compared the aggregator's quote against the stake and never the
+  //       proceeds, so USDG, the chain's own stablecoin, sat in a cohort of
+  //       traps at a 4% round trip it had been quoted exactly. Four rows
+  //       lose tokens from their numerator and the copy states the delay.
+  // v178: bench 313 carried two findings bullets its own table contradicts.
+  //       One said the screening router and the deny-list router show "a low
+  //       score" when neither is lowest; the other called anti-bot cooldowns
+  //       "most of a launch cohort" when Prometheus has 2 in 1573 over a
+  //       day. The subtitle also said the exit reverted on the route the
+  //       token was bought through, and the sale is a separate quote.
+  // v179: bench 313 says on the page that LI.FI's row rests on fewer
+  //       tokens than the others, which the Tokens asked column already
+  //       showed without explaining. LI.FI answers one request and then
+  //       asks for an hour, so no pacing makes its denominator match.
+  // v180: bench 313 was still counting the tokens the exit floor had
+  //       wrongly condemned, for 23 hours after the floor was removed,
+  //       because max_over_time does not care that the binary changed.
+  //       7 of 27 tokens, both USDG contracts among them, and it moved
+  //       first place: without them ParaSwap's lead over LI.FI falls from
+  //       18.0 points to 1.7. A `rule` label now pins the method, so a
+  //       window cannot span two of them. LI.FI goes unranked (20 tokens
+  //       against 27), the delay is 48 seconds and not 36, and the
+  //       block-height blind spot is stated.
+  // v181: declaring a provider unranked also declared it responsive. The
+  //       loader cleared `unresponsive` and forced availability live for
+  //       every labelled row, so a row that returned nothing kept the zeros
+  //       it arrived with. Bench 313 published LI.FI at 0% with no series in
+  //       Prometheus at all, on a board where 0 is the best score. Absent
+  //       from the order and absent from the data are two absences.
+  // v182: bench 313's delayed tier sells 30 minutes after the buy instead
+  //       of 48 seconds, so the selector can finally move: the two timings
+  //       had never disagreed about one token across 1036 of them, which is
+  //       what 48 seconds buys you against a cooldown measured in minutes.
+  //       149 empty blocks, measured accepted on the probe's real shape with
+  //       104 blocks of headroom under the node's 255 ceiling. The rule label
+  //       moves to reverts-v2 with it, which also restarts the same-block
+  //       window: that window was 90 minutes old, so one transition beats
+  //       two. The block-height blind spot is unaffected and stays stated.
+  // v183: LI.FI is ranked again on bench 313. It was unranked because its
+  //       row divided by 20 tokens where the others divided by 27; the
+  //       per-sweep budget in #3552 fixed that and its column now reads 9,
+  //       the same as everyone. Leaving the label in place hid the best
+  //       score on the board behind a reason that had stopped being true,
+  //       and the strip printed Best 33.3% beside a table whose first row
+  //       was 55.6%.
+  // v184: Trnch returns to benches 033 and 304, reversing the withdrawal
+  //       of 2026-11-03 at their own request and with their agreement. The
+  //       Railway key went back on all three quote probes FIRST, because
+  //       buildProviders does not construct the provider without it and the
+  //       rows would have published nothing. Same ordering as the
+  //       withdrawal, in reverse.
+  // v185: every keyed row now counts its own connection arm. rpc_call_total
+  //       carries conn=warm|cold since 4 November and the three
+  //       ocb:rpc_call rules group by it, but the specs still read both
+  //       arms together, so a cold-start row published the warm row's
+  //       success rate and the sum of both sample counts. Measured on
+  //       ethereum us-east the day this shipped: 358 warm readings, 361
+  //       cold, and both rows showing 719. 53 warm and 53 cold rows across
+  //       9 specs now pin their arm; public rows deliberately do not,
+  //       their harness emits no such label. Cached entries hold the
+  //       pooled figures. Moves with all-benchmarks-v178 and
+  //       bench-filters-v103; providers-v59 does NOT move.
+  // v186: bench 313 grades a refusal instead of reading it as one thing.
+  //       Screened out names the TOKEN (deny list, screen, impact guard),
+  //       No market names the market, and they are opposite claims about a
+  //       router that the board was adding together. A third panel records
+  //       a route returned WITH a reservation the aggregator states, which
+  //       only Trnch publishes, so it is a column and never the score.
+  // v187: thirteen chain RPC pages retire (celo, taiko, kaia, bob,
   //       bitlayer, gravity, axelar, hedera, litecoin, soneium, zircuit,
   //       merlin, comdex; see removed-benches.ts), so the provider set the
   //       guard hashes shrinks and every cached entry still carries their
-  //       rows and appearances. Moves with all-benchmarks-v108,
-  //       bench-filters-v54 and providers-v31.
-  // v116: BlockVectra joins the public cohorts on ethereum-rpc and
+  //       rows and appearances. Moves with all-benchmarks-v180,
+  //       bench-filters-v105 and providers-v61.
+  // v188: bench 313 publishes what each aggregator quotes IN GENERAL,
+  //       beside what it quotes among the failed tokens. A score alone is
+  //       unreadable: KyberSwap routes into all ten failed tokens and also
+  //       quotes 98.3% of every token examined, so its row is a coverage
+  //       fact. ParaSwap and LI.FI share a baseline to the decimal, 78.7%
+  //       each, and route into the cohort at 60% and 30%. Trnch has the
+  //       lowest baseline, 78.1%, and the second highest trap rate at 90%,
+  //       the only row whose score sits above its own coverage.
+  // v189: BlockVectra joins the public cohorts on ethereum-rpc and
   //       arbitrum-rpc (issue #3573), one more public row on each. Cached
-  //       entries hold the old provider set. Moves with all-benchmarks-v109,
-  //       bench-filters-v55 and providers-v32.
-  // v117: Afterbell joins bench 030 as a builder row (#3578). Cached
-  //       entries hold the old provider set. Moves with all-benchmarks-v110
-  //       and providers-v33; bench 030 declares no dimensions, so
-  //       bench-filters stays.
-  // v119: the Alchemy plan disclosure on the nine chain specs and the six
-  //       WebSocket specs main carries. Alchemy upgraded the account behind
-  //       our seven-chain key in place to an Enterprise trial on 10
-  //       November 2026, so "a Free plan key ... the tier any reader gets"
-  //       was false on fifteen pages production serves. Measured the same
-  //       day, directly against the endpoints: debug_traceTransaction
-  //       answers on all eight EVM chains where the free key served two,
-  //       trace_block on five, and all nine chains read 100% success over
-  //       24 hours with no quota pause in 30 days of retention. The
-  //       HyperEVM and Robinhood specs were wrong in the other direction:
-  //       both disclosed a Free plan key when those two chains have always
-  //       run on a separate enterprise key, verified by key fingerprint.
-  //       Ported from dev #3589. Moves with all-benchmarks-v112 and
-  //       bench-filters-v57; providers does NOT move, the provider registry
-  //       is untouched.
-  // v121: bench 001 methodology, BNB Chain moves to Codex's iad edge
-  //       node at Processed. Editorial only, and that is why the key
-  //       has to move: an entry already cached holds the benchmark
-  //       with its methodology already merged, so a reworded sentence
-  //       invalidates nothing and the old one keeps being served.
-  // v123: MOJO joins bench 030 as its 108th Hyperliquid builder (#3601,
+  //       entries hold the old provider set. Moves with all-benchmarks-v182,
+  //       bench-filters-v107 and providers-v62.
+  // v190: two of bench 313's columns told the reader the opposite of what
+  //       they measure. Quotes overall was marked lower-is-better, which
+  //       says quoting less is a virtue, and Routed with a reservation too,
+  //       which says warning you less is one. The score is the column where
+  //       lower wins; a column that counts a behaviour answers whether more
+  //       of that behaviour helps the reader choosing a router.
+  // v191: Afterbell joins bench 030 as its 107th builder row (#3578).
+  //       Cached entries hold the old provider set. Moves with
+  //       all-benchmarks-v184 and providers-v63; bench 030 declares no
+  //       dimensions, so bench-filters stays.
+  // v192: Bubblemaps joins bench 008. Their endpoint answers by ADDRESS
+  //       with no chain, so six of this bench's eleven are in scope and
+  //       TON is not: their /v0/chains lists it and their address endpoint
+  //       rejects a TON address outright. Each address is asked once every
+  //       6h, because 163 anchors at 1 credit on every 30 minute sweep
+  //       would spend 235k against a 30k monthly quota.
+  // v193: Thyme Gate joins the public cohorts on ethereum, polygon,
+  //       optimism and bnb (#3586, an outside contribution). Verified
+  //       before merge rather than on the contributor's word: all four
+  //       endpoints answered the right chain id, a head block 0 to 10 s
+  //       old, and a batch of ten, from this machine on 2026-11-10.
+  // v194: the Alchemy plan disclosure on the nine chain specs and the seven
+  //       WebSocket specs. Alchemy upgraded the account behind our
+  //       seven-chain key in place to an Enterprise trial on 10 November
+  //       2026, so "a Free plan key ... the tier any reader gets" became
+  //       false on sixteen published pages. Measured the same day, directly
+  //       against the endpoints: debug_traceTransaction answers on all eight
+  //       EVM chains where the free key served two, trace_block on five, and
+  //       every one of the nine chains reads 100% success over 24 hours with
+  //       no quota pause in 30 days of retention. The HyperEVM and Robinhood
+  //       specs were separately wrong in the other direction: both disclosed
+  //       a Free plan key when those two chains have always run on a
+  //       different, enterprise key, which is why they were the only two
+  //       serving debug_traceTransaction while the other seven were capped.
+  //       Verified by key fingerprint, 7 chains on one key and 2 on the
+  //       other. Moves with all-benchmarks-v187 and bench-filters-v112;
+  //       providers-v59 does NOT move, the provider registry is untouched.
+  // v195: BlockVectra joins the public Optimism cohort (#3585); regions and provider appearances move with it.
+  // v196: bench 001 methodology, BNB Chain moves to Codex's iad edge node
+  //       at Processed (#3590). Editorial only, and that is exactly why
+  //       the key has to move: overlayEditorial prefers the repo spec,
+  //       but an entry already cached holds the benchmark with its
+  //       methodology already merged, so a reworded sentence changes no
+  //       key and the old sentence keeps being served (#3342 shipped
+  //       green on 2026-10-28 with the old text still on the page).
+  // v197: BlockVectra joins the public Boba and World Chain cohorts
+  //       (#3594, an outside contribution). Both endpoints were probed
+  //       before merge rather than taken from the issue: chain id 0x120
+  //       and 0x1e0, heads 0 and 1 s old, a batch of ten accepted.
+  // v198: MOJO joins bench 030 as its 108th Hyperliquid builder (#3601,
   //       from the operator). Every figure in the request was recomputed
   //       from the public builder-fills bucket before merge: 1,365 fills,
-  //       $142,513 of notional, $71.26 of builder fees, 113 wallets, a fee
-  //       of exactly 5.0 bp on all 1,365, and zero fills whose
+  //       $142,513 of notional, $71.26 of builder fees, 113 wallets, a
+  //       fee of exactly 5.0 bp on all 1,365, and zero fills whose
   //       counterparty is another wallet of that cohort.
-  // v118: Thyme Gate joins the public cohorts on ethereum, polygon,
-  //       optimism and bnb (#3586, an outside contribution). The four
-  //       endpoints were checked before merge: right chain id, a head
-  //       block 0 to 10 s old, a batch of ten, 141 to 166 ms.
-  // v120: BlockVectra joins the public Optimism cohort (#3585, an outside
-  //       contribution). The endpoint was checked before merge rather than
-  //       taken on the contributor's word: chain id 0xa, a head 0 s old, a
-  //       batch of ten accepted, 230 ms. Regions and provider appearances
-  //       move with it.
-  // v122: BlockVectra joins the public Boba and World Chain cohorts
-  //       (#3594, an outside contribution). Both endpoints were probed
-  //       before merge rather than taken from the issue, which says its own
-  //       check was an identity read: chain id 0x120 and 0x1e0, heads 0 and
-  //       1 s old, a batch of ten accepted.
-  // v124: the WebSocket races publish one figure, the share of the blocks
-  //       (or slots) each provider received that it pushed first, as a
-  //       percentage with higher better, in place of the lag behind the
-  //       first arrival in milliseconds. race_leader and its share panel
-  //       are gone: the share IS the headline. Alchemy joins the six keyed
-  //       races on this deployment under a monthly byte budget in the
-  //       probe. Unit, direction and every row change, so no cached entry
-  //       may survive it.
-  // v125: True Markets joins bench 030 as its 109th Hyperliquid builder
+  // v199: the ten WebSocket races publish one figure, the share of the
+  //       blocks (or slots) each provider received that it pushed first,
+  //       as a percentage with higher better, in place of the lag behind
+  //       the first arrival in milliseconds. race_leader and its share
+  //       panel are gone: the share IS the headline. Alchemy joins the
+  //       seven keyed races under a monthly byte budget in the probe.
+  //       Unit, direction and every row change, so no cached entry may
+  //       survive it.
+  // v200: True Markets joins bench 030 as its 109th Hyperliquid builder
   //       (#3615, from the operator). Recomputed from the public
-  //       builder-fills bucket before merge: 2,904 fills, $51,610 of
-  //       notional, $11.32 of builder fees and 24 wallets over the 30
-  //       files to 2026-11-15, zero fills between them, 2.0 bp on 2,589.
-  // v127: Metastreams on benches 001, 004, 305 and 008; 004 gains Base and Robinhood tabs.
-  // v128: bench 305 ranks its on-chain feeds on their asset tabs (ranked_on); field stats skip unranked rows.
-  // v129: Codex on bench 008, on seven of its eleven chains (the six EVM chains and Solana).
-  ["bench-unfiltered-v129", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  //       builder-fills bucket before merge: the 30 files to 2026-11-15
+  //       hold 2,904 fills, $51,610 of notional, $11.32 of builder fees
+  //       and 24 wallets, zero fills between them; the fee is 2.0 bp on
+  //       2,589 fills, not the 0 the request stated, and valid_from is
+  //       2026-07-13, the first file, not the funding day.
+  // v201: Metastreams joins bench 001 (Solana, BNB Chain, Robinhood
+  //       Chain) and bench 004 (Solana, BNB Chain). Tested 3h40 in
+  //       eu-west next to the other feeds before adding.
+  // v202: Codex joins bench 008. Its `wallets` query is asked on the
+  //       anchor's own chain, so seven of this bench's eleven are in
+  //       scope: the six EVM chains and Solana. Run through the
+  //       harness's own provider before the request, 119 of the 134
+  //       anchors on those chains came back named, with 0 errors.
+  // v203: RpcNode joins ten public RPC benches (Ethereum, Polygon,
+  //       Arbitrum, Optimism, Base, BNB, Avalanche, Monad, Arc, Solana)
+  //       and the rpc-capabilities aggregate. Keyless endpoints at 5 RPS
+  //       per IP; every one answered a head block from the Mac before
+  //       the change.
+  // v204: RpcNode leaves Polygon, Arbitrum, Optimism and Base, where its
+  //       public tier refuses eth_getBlockByNumber (403) from every region.
+  // v205: bench 004 quantiles skip hours with no checks (one NaN hour
+  //       blanked Metastreams after its credit outage), and Metastreams'
+  //       BNB presence divides by Mobula on BNB, not Solana + BNB.
+  // v206: RpcNode joins the Bitcoin, Bitcoin Cash, Dogecoin and Aptos RPC
+  //       benches. Each answered the bench's own probe method before the
+  //       change; Tron, Stellar (Horizon, not Soroban) and Sui (502) did not.
+  // v207: bench 004 gains Base and Robinhood Chain tabs. Base had no
+  //       checks since 2026-11-18 20:00 UTC (Pulse renamed its sources);
+  //       Robinhood is new, with Mobula, Codex, Serialized and Metastreams.
+  // v209: bench 007 declares a fees-removed view and two panels.
+  // v210: bench 007 gains seven CEX rows and every row a venue type.
+  // v211: Metastreams joins benches 305 and 008.
+  // v212: bench 305 ranks Metastreams and Serialized on the asset tabs they price (ranked_on).
+  ["bench-unfiltered-v212", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -919,42 +1347,140 @@ const loadAllBenchmarksCached = unstable_cache(
   // v93: lockstep with bench-unfiltered-v100 (0x leaves benches 304 and 033).
   // v94: lockstep with bench-unfiltered-v101 (Enso leaves bench 033).
   // v95: lockstep with bench-unfiltered-v102 (bench 306 arrives).
-  // v96: lockstep with bench-unfiltered-v103 (methodology renders).
-  // v97: lockstep with bench-unfiltered-v104 (bench 010's latency
-  //       methodology no longer credits a histogram that drove nothing).
-  // v98: lockstep with bench-unfiltered-v105 (bench 001's Base reference
-  //       gains the sequencer's pendingLogs as a second source).
-  // v99: lockstep with bench-unfiltered-v106 (bench 309 released).
-  // v100: lockstep with bench-unfiltered-v107 (main release).
-  // v101: lockstep with bench-unfiltered-v108 (BlockVectra joins 3 RPC pages).
-  // v102: lockstep with bench-unfiltered-v109 (discussion #2270 release).
-  // v103: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
-  // v104: lockstep with bench-unfiltered-v111 (capability matrix, Heavy
-  //       tab, per-method latency, Solana capability board).
-  // v105: lockstep with bench-unfiltered-v112 (Helius joins the keyed
-  //       cohort on solana-rpc).
-  // v106: lockstep with bench-unfiltered-v113 (Quicknode spelling).
-  // v107: lockstep with bench-unfiltered-v114 (bench 001 Denim copy).
-  // v108: lockstep with bench-unfiltered-v115 (thirteen chain RPC pages
+  // v96: lockstep with bench-unfiltered-v103 (benches 307 and 301 arrive).
+  // v97: lockstep with bench-unfiltered-v104 (bench 308 arrives).
+  // v98: lockstep with bench-unfiltered-v105 (bench 306 gains a third rail).
+  // v99: lockstep with bench-unfiltered-v106 (bench 307 gains a row and
+  // stops dropping its zeros).
+  // v100: lockstep with bench-unfiltered-v107 (RouteMesh joins the keyed
+  //        cohort on seven chain pages, warm and cold).
+  // v101: lockstep with bench-unfiltered-v108 (RouteMesh back out, trial
+  //        credits exhausted).
+  // v101: lockstep with bench-unfiltered-v108 (methodology renders).
+  // v102: lockstep with bench-unfiltered-v109 (bench 309 arrives).
+  // v103: lockstep with bench-unfiltered-v110 (bench 010's latency
+  //        methodology no longer credits a histogram that drove nothing).
+  // v104: lockstep with bench-unfiltered-v111 (bench 309 copy round).
+  // v105: lockstep with bench-unfiltered-v112 (bench 309 round two).
+  // v106: lockstep with bench-unfiltered-v113 (bench 001's Base reference
+  //        gains the sequencer's pendingLogs as a second source).
+  // v107: lockstep with bench-unfiltered-v114 (bench 309 round three).
+  // v108: lockstep with bench-unfiltered-v115 (bench 309 SEO round).
+  // v109: lockstep with bench-unfiltered-v116 (Quicknode spelling).
+  // v110: lockstep with bench-unfiltered-v117 (bench 310 arrives).
+  // v111: lockstep with bench-unfiltered-v118 (bench 311 arrives).
+  // v112: lockstep with bench-unfiltered-v119 (bench 311's editorial:
+  //        a measured success column, the unranked row's own cause, and
+  //        two sentences realigned to the rendering they describe).
+  // v113: lockstep with bench-unfiltered-v120, and with bench-filters-v58, for the
+  //       four specs that declared ledger_reliability: false. The aggregate
+  //       carries each bench's rendered reliability column, so an entry
+  //       written before this holds the fabricated 100 percent.
+  // v114: lockstep with bench-unfiltered-v121, and with bench-filters-v59, for
+  //       bench 311's two window panels. The aggregate carries each bench's
+  //       rendered columns, so an entry written before this holds the two
+  //       booleans the windows replaced.
+  // v115: lockstep with bench-unfiltered-v122, Helius entering the keyed
+  //       Solana cohort.
+  // v116: lockstep with bench-unfiltered-v123, bench 311's four views.
+  // v117: lockstep with bench-unfiltered-v124.
+  // v118: lockstep with bench-unfiltered-v125 (wallet pricing audit).
+  // v119: lockstep with bench-unfiltered-v126.
+  // v120: lockstep with bench-unfiltered-v127 (wallet titles).
+  // v121: lockstep with bench-unfiltered-v128 (cell placeholders).
+  // v122: lockstep with bench-unfiltered-v129 (bench 312).
+  // v122: lockstep with bench-unfiltered-v129 (per-chain leader).
+  // v123: lockstep with bench-unfiltered-v130 (per-chain leader).
+  // v124: lockstep with bench-unfiltered-v131 (ladder bound, primed legs).
+  // v125: lockstep with bench-unfiltered-v132 (cost bench audit round).
+  // v126: lockstep with bench-unfiltered-v133 (panel carry).
+  // v127: lockstep with bench-unfiltered-v134 (bench 311 audit round).
+  // v128: lockstep with bench-unfiltered-v135 (per-chain views, plans).
+  // v129: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
+  // v130: lockstep with bench-unfiltered-v137 (SushiSwap joins quote benches).
+  // v131: lockstep with bench-unfiltered-v138 (Routing only column).
+  // v132: lockstep with bench-unfiltered-v139 (Trnch joins the quote benches).
+  // v133: lockstep with bench-unfiltered-v140 (capability on chain pages).
+  // v134: lockstep with bench-unfiltered-v141 (envelope rows named).
+  // v135: lockstep with bench-unfiltered-v142 (Trnch withdrawn).
+  // v136: lockstep with bench-unfiltered-v143 (BlockVectra joins 3 RPC pages).
+  // v137: lockstep with bench-unfiltered-v144 (tuleep.trade is Proliquid).
+  // v138: lockstep with bench-unfiltered-v145 (heavy call tier).
+  // v139: lockstep with bench-unfiltered-v146 (heavy Work column label).
+  // v140: lockstep with bench-unfiltered-v147 (bench 313 arrives).
+  // v141: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
+  // v142: lockstep with bench-unfiltered-v149 (bench 031 gains 8 chains).
+  // v143: lockstep with bench-unfiltered-v150 (bench 034 adds 12 chains).
+  // v144: lockstep with bench-unfiltered-v151 (l1-finality six chains).
+  // v145: lockstep with bench-unfiltered-v152 (bench 026 gains 8 chains).
+  // v146: lockstep with bench-unfiltered-v153 (bench 026 description).
+  // v147: lockstep with bench-unfiltered-v154 (bench 313 rebuilt).
+  // v148: lockstep with bench-unfiltered-v155 (bench 313 window fix).
+  // v149: lockstep with bench-unfiltered-v156 (bench 313 live).
+  // v150: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
+  // v151: lockstep with bench-unfiltered-v158 (bench 313 panel columns).
+  // v152: lockstep with bench-unfiltered-v159 (Helius was listed as
+  //       excluded on the page that ranks it).
+  // v153: lockstep with bench-unfiltered-v160 (per-method latency on the
+  //       Heavy tier, Solana capability board).
+  // v154: lockstep with bench-unfiltered-v161 (Trnch joins bench 313).
+  // v155: lockstep with bench-unfiltered-v162 (bench 313 sample gating).
+  // v156: lockstep with bench-unfiltered-v163 (bench 313 zero divisor).
+  // v157: lockstep with bench-unfiltered-v164 (bench 313 to draft).
+  // v158: lockstep with bench-unfiltered-v165 (bench 313 live again).
+  // v159: lockstep with bench-unfiltered-v166 (FluxRPC, keyed Solana).
+  // v160: lockstep with bench-unfiltered-v167 (FluxRPC without Singapore).
+  // v161: lockstep with bench-unfiltered-v168 (bench 314 solana-rpc-ws).
+  // v162: lockstep with bench-unfiltered-v169 (bench 313 cohort rule).
+  // v163: lockstep with bench-unfiltered-v170 (bench 313 drops sushi).
+  // v164: lockstep with bench-unfiltered-v171 (bench 313 copy).
+  // v165: lockstep with bench-unfiltered-v172 (bench 313 distinct tokens).
+  // v166: lockstep with bench-unfiltered-v173 (bench 313 queries land).
+  // v167: lockstep with bench-unfiltered-v174 (bench 313 subset guard).
+  // v168: lockstep with bench-unfiltered-v175 (bench 001 Denim copy).
+  // v169: lockstep with bench-unfiltered-v176 (bench 313 publishes a zero).
+  // v170: lockstep with bench-unfiltered-v177 (bench 313 drops the floor).
+  // v171: lockstep with bench-unfiltered-v178 (bench 313 false claims).
+  // v172: lockstep with bench-unfiltered-v179 (bench 313 LI.FI caveat).
+  // v173: lockstep with bench-unfiltered-v180 (bench 313 rule label).
+  // v174: lockstep with bench-unfiltered-v181 (unranked is not responsive).
+  // v175: lockstep with bench-unfiltered-v182 (bench 313 delay 30 min).
+  // v176: lockstep with bench-unfiltered-v183 (bench 313 ranks LI.FI).
+  // v177: lockstep with bench-unfiltered-v184 (Trnch returns to 033/304).
+  // v178: lockstep with bench-unfiltered-v185 (each keyed row counts its
+  //       own connection arm).
+  // v179: lockstep with bench-unfiltered-v186 (bench 313 grades refusals).
+  // v180: lockstep with bench-unfiltered-v187 (thirteen chain RPC pages
   //       retired 2026-11-06; a cached catalog would keep linking them).
-  // v109: lockstep with bench-unfiltered-v116 (BlockVectra on Ethereum and
+  // v181: lockstep with bench-unfiltered-v188 (bench 313 coverage column).
+  // v182: lockstep with bench-unfiltered-v189 (BlockVectra on Ethereum and
   //       Arbitrum).
-  // v110: lockstep with bench-unfiltered-v117 (Afterbell on bench 030).
-  // v112: lockstep with bench-unfiltered-v119 (the Alchemy plan
+  // v183: lockstep with bench-unfiltered-v190 (bench 313 column directions).
+  // v184: lockstep with bench-unfiltered-v191 (Afterbell on bench 030).
+  // v185: lockstep with bench-unfiltered-v192 (Bubblemaps joins 008).
+  // v186: lockstep with bench-unfiltered-v193 (Thyme Gate, four cohorts).
+  // v187: lockstep with bench-unfiltered-v194 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
-  // v114: lockstep with bench-unfiltered-v121 (bench 001 methodology).
-  // v116: lockstep with bench-unfiltered-v123 (MOJO on bench 030).
-  // v117: lockstep with bench-unfiltered-v124 (WebSocket races in
-  //       first-to-push share; Alchemy on six of them).
-  // v118: lockstep with bench-unfiltered-v125 (True Markets on bench 030).
-  // v119: lockstep with bench-unfiltered-v126 (FiatBear on bench 030).
-  // v120: lockstep with bench-unfiltered-v127 (Metastreams).
-  // v121: lockstep with bench-unfiltered-v128.
-  // v122: lockstep with bench-unfiltered-v129 (Codex on bench 008).
-  ["all-benchmarks-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
-  // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
-  // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
-  // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).
+  // v188: lockstep with bench-unfiltered-v195 (BlockVectra on Optimism).
+  // v189: lockstep with bench-unfiltered-v196 (bench 001 methodology).
+  // v190: lockstep with bench-unfiltered-v197 (BlockVectra, two cohorts).
+  // v191: lockstep with bench-unfiltered-v198 (MOJO on bench 030).
+  // v192: lockstep with bench-unfiltered-v199 (WebSocket races in
+  //       first-to-push share; Alchemy on seven of them).
+  // v193: lockstep with bench-unfiltered-v200 (True Markets on bench 030).
+  // v194: lockstep with bench-unfiltered-v201 (Metastreams on 001/004).
+  // v195: lockstep with bench-unfiltered-v202 (Codex joins 008).
+  // v196: lockstep with bench-unfiltered-v203 (RpcNode on ten RPC benches).
+  // v197: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
+  // v198: lockstep with bench-unfiltered-v205 (bench 004 NaN hours).
+  // v199: lockstep with bench-unfiltered-v206 (RpcNode on four more RPC benches).
+  // v200: lockstep with bench-unfiltered-v207 (bench 004 Base and Robinhood).
+  // v201: lockstep with bench-unfiltered-v208 (bench 030 adds FiatBear).
+  // v202: lockstep with bench-unfiltered-v209 (bench 007 fees-removed view).
+  // v203: lockstep with bench-unfiltered-v210 (bench 007 CEX rows).
+  // v204: lockstep with bench-unfiltered-v211 (Metastreams on 305 and 008).
+  // v205: lockstep with bench-unfiltered-v212 (ranked_on on bench 305).
+  ["all-benchmarks-v205", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1087,45 +1613,165 @@ const loadBenchmarkFiltered = unstable_cache(
   // v43: lockstep with bench-unfiltered-v102. Bench 306's three size rungs
   // are filtered variants, so without this the selector renders only its
   // default tab.
-  // v44: lockstep with bench-unfiltered-v104. Bench 010 declares a chain
+  // v44: lockstep with bench-unfiltered-v103. Bench 301 declares a bucket
+  // dimension, so its two size tabs are filtered variants.
+  // v45: lockstep with bench-unfiltered-v105. Without it the new row is
+  // invisible on every size tab but the default.
+  // v46: lockstep with bench-unfiltered-v107. The chain pages declare tier
+  //      and region, so without this bump RouteMesh is missing from every
+  //      tab including the Private one it lives on.
+  // v47: lockstep with bench-unfiltered-v108. Same reason inverted: without
+  //      it the paused row survives on every filtered tab.
+  // v48: lockstep with bench-unfiltered-v109. Bench 309 declares kind and
+  //      bucket dimensions, so its profile and size tabs are filtered
+  //      variants that need their own entries.
+  // v49: lockstep with bench-unfiltered-v110. Bench 010 declares a chain
   //      dimension, so its reworded latency methodology is cached once per
   //      chain tab; without this the correction lands on the default tab
-  //      only and every other tab keeps crediting the histogram.
-  // v45: lockstep with bench-unfiltered-v105. Bench 001 declares chain and
+  //      only and the other tabs keep crediting the histogram.
+  // v50: lockstep with bench-unfiltered-v111. Bench 309's profile and
+  //      size tabs cache the copy alongside the rows.
+  // v51: lockstep with bench-unfiltered-v112. Bench 309's filtered
+  //      tabs gain rows (unpriced vendors with their label), and a cached
+  //      variant would keep the old, shorter set.
+  // v52: lockstep with bench-unfiltered-v113. Bench 001 declares chain and
   //      region dimensions, so its reworded Base methodology is cached once
   //      per tab and a bump of the other two alone would correct only one.
-  // v46: lockstep with bench-unfiltered-v106. Bench 309 declares kind
-  //      and bucket, so its tabs are filtered variants with their own entries.
-  // v47: lockstep with bench-unfiltered-v107 (main release).
-  // v48: lockstep with bench-unfiltered-v108 (BlockVectra on the region tabs
-  //      of three chain RPC pages).
-  // v49: lockstep with bench-unfiltered-v109 (discussion #2270 release).
-  // v50: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
-  // v51: lockstep with bench-unfiltered-v111 (capability matrix, Heavy
-  //      tab, per-method latency, Solana capability board).
-  // v52: lockstep with bench-unfiltered-v112 (Helius joins the keyed
-  //      cohort on solana-rpc).
-  // v53: lockstep with bench-unfiltered-v113 (Quicknode spelling).
-  // v54: lockstep with bench-unfiltered-v115 (thirteen chain RPC pages
-  //      retired, each with region and tier tabs).
-  // v55: lockstep with bench-unfiltered-v116. The new public rows carry
-  //      region tabs.
-  // v57: lockstep with bench-unfiltered-v119 (the Alchemy plan
-  //      disclosure, now an Enterprise trial).
-  // v59: lockstep with bench-unfiltered-v121. Bench 001 declares chain
-  //      and region and the methodology renders on every tab.
-  // v61: lockstep with bench-unfiltered-v124. The WebSocket races declare
-  //      regions, and every region tab now ranks by share of first pushes.
-  // v62: lockstep with bench-unfiltered-v127. Metastreams rows on chain and kind tabs.
-  // v63: lockstep with bench-unfiltered-v128. Bench 305 asset tabs.
-  // v64: lockstep with bench-unfiltered-v129. Codex rows on bench 008's chain and kind tabs.
-  ["bench-filters-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
-  // v56: lockstep with bench-unfiltered-v118. All four benches declare
-  //      regions and Thyme carries all three, so every region tab moves.
-  // v58: lockstep with bench-unfiltered-v120; the Optimism row carries all
-  //      three regions, so every region tab moves.
-  // v60: lockstep with bench-unfiltered-v122. Both benches declare
-  //      regions and the new row carries all three.
+  // v53: lockstep with bench-unfiltered-v114. Bench 309's filtered
+  //      tabs now carry per-vendor reasons; a cached variant keeps the old.
+  // v54: lockstep with bench-unfiltered-v115. Bench 309's tabs cache
+  //      the title and metric with the rows.
+  // v55: lockstep with bench-unfiltered-v117. Bench 310 declares kind
+  //      and bucket, and bench 309's tabs gain a row.
+  // v56: lockstep with bench-unfiltered-v118. Bench 311 declares a chain
+  //      dimension and its whole board is panel-backed columns, so every tab
+  //      is a filtered variant.
+  // v57: lockstep with bench-unfiltered-v119. Same editorial, and it has
+  //      to move with it: every one of this bench's eight tabs is a
+  //      filtered variant, so copy fixed only on the default view would
+  //      stay wrong on all eight.
+  // v58: lockstep with bench-unfiltered-v120, and with all-benchmarks-v113. Filtered
+  //      views are cached per filter set and each one carries the same
+  //      column, so leaving this behind would serve the fabricated figure on
+  //      every tab of the four benches while the unfiltered view was correct.
+  // v59: lockstep with bench-unfiltered-v121, and with all-benchmarks-v114.
+  //      The chain tabs are exactly where this matters: the window columns
+  //      exist because the per-chain view was the one reading as a four-way
+  //      tie, so a stale filtered entry would keep serving the tie on every
+  //      tab while the unfiltered view carried the fix.
+  // v60: lockstep with bench-unfiltered-v122. The Access selector is a
+  //      filtered view, so the keyed and cold cohorts are exactly the
+  //      entries that would otherwise keep a four-provider Solana board.
+  // v61: lockstep with bench-unfiltered-v123. A view is selectable on every
+  //      chain tab, so a stale filtered entry would offer the tabs without
+  //      the panels behind them.
+  // v62: lockstep with bench-unfiltered-v124.
+  // v63: lockstep with bench-unfiltered-v125 (wallet pricing audit).
+  // v64: lockstep with bench-unfiltered-v126. Every chain tab carried the
+  //      same inflated headline and the same 9/11 success rate.
+  // v65: lockstep with bench-unfiltered-v127.
+  // v66: lockstep with bench-unfiltered-v128.
+  // v67: lockstep with bench-unfiltered-v129.
+  // v68: lockstep with bench-unfiltered-v130 (per-chain leader).
+  // v69: lockstep with bench-unfiltered-v131 (ladder bound).
+  // v70: lockstep with bench-unfiltered-v132 (cost bench audit round).
+  // v71: lockstep with bench-unfiltered-v133 (panel carry).
+  // v72: lockstep with bench-unfiltered-v134 (bench 311 audit round).
+  // v73: lockstep with bench-unfiltered-v135 (per-chain views, plans).
+  // v74: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
+  // v75: lockstep with bench-unfiltered-v137 (SushiSwap joins the quote
+  //      benches, which both declare a chain dimension).
+  // v76: lockstep with bench-unfiltered-v138 (Routing only column).
+  // v77: lockstep with bench-unfiltered-v139 (Trnch, Robinhood tab only,
+  // v78: lockstep with bench-unfiltered-v140 (capability on chain pages).
+  //      so without this the row is missing from the one tab it belongs to).
+  // v79: lockstep with bench-unfiltered-v141 (envelope rows named).
+  // v80: lockstep with bench-unfiltered-v142 (Trnch withdrawn; it was the
+  //      Robinhood tab only, so the stale row would sit on that tab alone).
+  // v81: lockstep with bench-unfiltered-v143 (BlockVectra, on the region
+  //      and endpoint tabs of three chain RPC pages).
+  // v82: lockstep with bench-unfiltered-v145 (heavy call tier).
+  // v83: lockstep with bench-unfiltered-v146 (heavy Work column label).
+  // v84: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
+  // v85: lockstep with bench-unfiltered-v149 (bench 031 gains 8 chains on
+  //      its L1 layer tab).
+  // v86: lockstep with bench-unfiltered-v154. Bench 313 now declares a
+  //      tier dimension, so without this the second timing is invisible
+  //      on the only tab it lives on.
+  // v87: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
+  // v88: lockstep with bench-unfiltered-v159 (Helius was listed as
+  //       excluded on the page that ranks it).
+  // v89: lockstep with bench-unfiltered-v160 (per-method latency on the
+  //       Heavy tier, Solana capability board).
+  // v90: lockstep with bench-unfiltered-v161. Bench 313 gains a vendor on
+  //      BOTH tier values, so each tab's provider set changes.
+  // v91: lockstep with bench-unfiltered-v166. The Private and Cold start
+  //      tabs are filtered views and both gain the FluxRPC row.
+  // v92: lockstep with bench-unfiltered-v167. The Singapore tab of the
+  //      Private cohort loses its FluxRPC row.
+  // v93: lockstep with bench-unfiltered-v168. Bench 314 declares regions.
+  // v94: lockstep with bench-unfiltered-v170. A vendor leaves BOTH tier
+  //      values, so each tab's provider set changes.
+  // v95: lockstep with bench-unfiltered-v176. Both tier tabs of bench 313
+  //      gain the rows whose figure is zero.
+  // v96: lockstep with bench-unfiltered-v177. Both tier tabs carry the
+  //      formula that now names the delay in seconds.
+  // v97: lockstep with bench-unfiltered-v178. The delayed tab's own
+  //      label changes from "A few blocks later" to "36 seconds later".
+  // v98: lockstep with bench-unfiltered-v180. Both tier tabs change: the
+  //      delayed label reads 48 seconds and LI.FI is unranked on each.
+  // v99: lockstep with bench-unfiltered-v181. Filtered views carry the
+  //      same unranked rows, and bench 304 reaches this loop on every tab.
+  // v100: lockstep with bench-unfiltered-v182. The delayed tab's own
+  //       label changes from "48 seconds later" to "30 minutes later".
+  // v101: lockstep with bench-unfiltered-v183. Both tier tabs gain a
+  //       ranked row.
+  // v102: lockstep with bench-unfiltered-v184. Bench 033 declares regions
+  //       and Trnch's row carries all three, so every region tab changes.
+  // v103: lockstep with bench-unfiltered-v185 (each keyed row counts its
+  //       own connection arm).
+  // v104: lockstep with bench-unfiltered-v186. Three panels arrive and each
+  //       tier tab renders them as its own selector.
+  // v105: lockstep with bench-unfiltered-v187 (thirteen chain RPC pages
+  //       retired, each with region and tier tabs).
+  // v106: lockstep with bench-unfiltered-v188. The coverage panel is
+  //       written under both row slugs, so each tier tab carries it.
+  // v107: lockstep with bench-unfiltered-v189. The new public rows carry
+  //       region tabs.
+  // v108: lockstep with bench-unfiltered-v190. Both tier tabs sort and
+  //       colour those two panels by the corrected direction.
+  // v110: lockstep with bench-unfiltered-v192. Bench 008 splits by chain
+  //       and by kind, so every tab gains a row where they are in scope.
+  // v111: lockstep with bench-unfiltered-v193. All four benches declare
+  //       regions and Thyme carries all three, so every region tab moves.
+  // v112: lockstep with bench-unfiltered-v194 (the Alchemy plan
+  //       disclosure, now an Enterprise trial).
+  // v113: lockstep with bench-unfiltered-v195; the Optimism row carries all three regions.
+  // v114: lockstep with bench-unfiltered-v196. Bench 001 declares chain
+  //       and region, and the methodology renders on every tab, so the
+  //       filtered entries hold the old sentence too.
+  // v115: lockstep with bench-unfiltered-v197. Both benches declare
+  //       regions and the new row carries all three, so every region
+  //       tab moves.
+  // v116: lockstep with bench-unfiltered-v199. The ten WebSocket races
+  //       declare regions, and every region tab now ranks by share of
+  //       first pushes.
+  // v117: lockstep with bench-unfiltered-v201. Both benches declare chain
+  //       dimensions and the new row lives on per-chain tabs.
+  // v118: lockstep with bench-unfiltered-v202. Bench 008 splits by chain
+  //       and by kind, so every tab gains a row where Codex is in scope.
+  // v119: lockstep with bench-unfiltered-v203. The RPC benches declare
+  //       region (and Solana tier) dimensions, so every tab gains RpcNode.
+  // v120: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
+  // v121: lockstep with bench-unfiltered-v205. Both fixes show on the
+  //       chain tabs.
+  // v122: lockstep with bench-unfiltered-v206. Region tabs gain RpcNode.
+  // v123: lockstep with bench-unfiltered-v207. Bench 004 declares two new chain tabs.
+  // v124: lockstep with bench-unfiltered-v209. Bench 007 gains fees=removed tabs.
+  // v125: lockstep with bench-unfiltered-v210. Bench 007 CEX rows, all tabs.
+  // v126: lockstep with bench-unfiltered-v211. 305 and 008 declare kind tabs.
+  // v127: lockstep with bench-unfiltered-v212. Bench 305 asset tabs rank its on-chain feeds.
+  ["bench-filters-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
@@ -1178,6 +1824,7 @@ export const loadBenchmark = cache(async function loadBenchmark(
     // page that calls getBenchmark during a Prom blackout. The safe
     // wrapper catches that throw and substitutes draft placeholders so
     // the page still renders.
+    if (options.fees) return undefined;
     const all = await loadAllBenchmarksSafe();
     return all.find((b) => b.slug === slug);
   }

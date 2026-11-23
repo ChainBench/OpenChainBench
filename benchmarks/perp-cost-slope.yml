@@ -4,8 +4,8 @@ slug: perp-cost-slope
 number: "117"
 title: "Perp DEX cost invariance: all-in bps at $1M vs $1k, live slope ranked"
 seo_title: "Perp cost at $1M vs $1k: {{best_p50}} at the flattest, live"
-seo_description: "Flattest perp cost slope: {{best_names}} at {{best_p50}} all-in at $1M over $1k (24h avg). Oracle venues score 1.00, orderbooks above; {{ranked_count}} of {{count}} ranked live."
-subtitle: "Ratio of all-in opening cost at $1,000,000 vs $1,000 notional, per venue per asset. A venue with flat cost at every size scores 1.00. A deeper book scores closer to 1.00 than a thin one. Oracle-priced venues (no orderbook to walk) always score 1.00 by construction."
+seo_description: "Flattest perp cost slope: {{best_names}} at {{best_p50}} all-in at $1M over $1k (24h avg). {{ranked_count}} of {{count}} ranked live."
+subtitle: "Ratio of all-in opening cost at $1,000,000 vs $1,000 notional, per venue per asset. A venue with flat cost at every size scores 1.00. A deeper book scores closer to 1.00 than a thin one. Oracle-priced venues have no book: GMX and Gains on SOL charge an on-chain price impact that grows with size, while Gains on ETH and BTC stays flat."
 category: Trading
 status: live
 metric: "Cost slope ($1M / $1k)"
@@ -20,11 +20,12 @@ seo_intro: |
   What changes is the price impact from walking the orderbook. A $1M
   market order eats deeper into the book than a $1k order, so the spread
   component grows. Venues with no orderbook (oracle-priced: Gains,
-  GMX v2) are immune to this effect because there is no book to walk: the
-  protocol charges a flat percentage of notional regardless of size. On
-  those venues, a $1M trade costs exactly the same number of bps as a $1k
-  trade, giving a cost slope of 1.00. On an orderbook venue the slope
-  exceeds 1.00 by however much impact the extra notional adds. The wider
+  GMX v2) have no book to walk, but the protocol charges its own price
+  impact, read on-chain at each size, and it grows with notional too: on
+  2026-11-22 Gains on Arbitrum quoted SOL at 0.01 bp of impact at $1k and
+  about 11 bps at $1M. The slope exceeds 1.00 by however much impact the
+  extra notional adds, and stays at 1.00 where it adds none, as on Gains
+  for ETH and BTC. The wider
   the gap above 1.00, the more the venue penalises large orders relative
   to small ones. A venue whose visible book cannot absorb $1M at all shows
   no slope because the $1M tier is skipped: that absence is a depth signal
@@ -39,10 +40,9 @@ abstract: |
   published by the perp-fees harness (bench 007). No new data collection
   is required: the bench derives the ratio in PromQL at query time. A
   ratio of 1.00 means the venue charges the same basis points per unit of
-  notional at $1M as at $1k, which is only possible for oracle-priced
-  venues where the fee is a flat percentage of position size with no
-  orderbook to walk. For orderbook venues the ratio rises above 1.00
-  because deeper book levels carry progressively wider prices. The
+  notional at $1M as at $1k. The ratio rises above 1.00 as size adds
+  impact: deeper book levels on orderbook venues, the protocol's own
+  price impact on oracle-priced ones. The
   companion fill-rate panel shows the fraction of measurement cycles in
   which the $1M tier was successfully filled: venues that cannot reliably
   absorb $1M show a fill rate below 1.00, which is a stronger signal than
@@ -54,7 +54,7 @@ abstract: |
 methodology:
   - "Cadence: derived in PromQL from perp_fees_all_in_bps_tier, refreshed every 5 minutes by the perp-fees harness (bench 007)."
   - "Cost slope = avg_over_time(all_in_bps_tier{notional=1000000}[24h]) / ignoring(notional) avg_over_time(all_in_bps_tier{notional=1000}[24h]) per venue per asset. A ratio of 1.00 means flat cost across sizes."
-  - "Oracle-priced venues (Gains, GMX v2): the fee is a flat percentage of position size with no orderbook. The $1M all-in equals the $1k all-in in bps exactly, so slope = 1.00 always."
+  - "Oracle-priced venues (Gains, GMX v2): no orderbook. Their spread and impact at each size are read from the protocol's on-chain pricing as the mean of a long and a short (see perp-fees), so their slope follows the protocol's impact curve."
   - "Orderbook venues (Hyperliquid, dYdX, Lighter, Extended, Aster, edgeX): the $1M tier walks deeper into the book than the $1k tier, so the spread component grows and slope > 1.00."
   - "Missing $1M tier: when the visible book cannot absorb $1M the harness skips the tier and increments perp_fees_tier_skipped_total rather than extrapolating. The slope PromQL returns no data for that venue, shown as N/A in the leaderboard."
   - "Fill-rate panel: count_over_time(tier{notional=1000000}[24h]) / ignoring(notional) count_over_time(tier{notional=1000}[24h]) per venue per asset. 1.00 = tier always filled; 0.50 = tier filled half the time; 0.00 = tier never filled."
@@ -67,28 +67,26 @@ per_chain_explainer:
     body: |
       ETH-PERP is the deepest pair on every venue in the cohort. On orderbook venues the $1M
       tier is usually filled because ETH books carry several million USD of visible depth on the
-      ask side. The slope is therefore computable for most venues on ETH, and the spread between
-      the oracle-priced 1.00 and the orderbook venues reveals the raw cost of depth-limited execution.
-      Gains and GMX always read 1.00 because their protocol charges a flat open fee regardless of
-      notional; there is no book to walk for ETH on those venues.
+      ask side. The slope is therefore computable for most venues on ETH. Gains and GMX have no
+      book to walk. GMX's slope comes from the price impact it charges on-chain as the position
+      grows; Gains charges no cumulative-volume impact on ETH, so its slope is 1.00.
   - slug: BTC
     h2: "BTC perp cost slope: tightest books, flattest slopes"
     body: |
       BTC carries the highest open interest on most venues and typically has the tightest spread
       at any given notional. Orderbook venues therefore show their flattest slopes on BTC: the
-      $1M impact is minimised by depth. Oracle-priced venues (gains, gmx) remain at exactly 1.00
-      regardless.
+      $1M impact is minimised by depth. GMX follows its protocol's impact curve instead;
+      Gains charges no cumulative-volume impact on BTC and stays at 1.00.
   - slug: SOL
     h2: "SOL perp cost slope: where thin books expose the gap"
     body: |
       SOL books are thinner than ETH or BTC on most venues. The $1M tier is frequently skipped
       on smaller venues (shown as N/A), and on the venues that do fill it the slope is noticeably
-      higher than on ETH. This is the asset where the flat-cost advantage of oracle-priced venues
-      is most visible: gains and gmx score 1.00 while orderbook venues may show slopes of 1.50
-      or higher.
+      higher than on ETH. Oracle-priced venues are not spared: their protocol impact on SOL rises
+      steeply with size as well.
 
 findings:
-  - "{{name:gains}} and {{name:gmx}} always score 1.00 by construction, not by performance: oracle-priced venues charge a flat percentage of notional with no orderbook, so the $1M all-in is identical to the $1k all-in in basis points regardless of market conditions. Their top leaderboard position reflects fee structure, not execution quality."
+  - "{{name:gains}} reads {{p50:gains}} and {{name:gmx}} {{p50:gmx}} (24h avg). Neither has an orderbook: the slope is the price impact each protocol charges on-chain at $1M against $1k, averaged over a long and a short."
   - "Among orderbook venues, {{name:hyperliquid}} sits at {{p50:hyperliquid}} cost slope (24h avg) on the deepest onchain book in the cohort. Depth and slope are not the same ranking: the slope is what a $1M order pays over a $1k one, so a smaller book whose $1M tier still fills can sit below it. Read the column, not the reputation."
   - "Venues showing N/A in the slope column cannot reliably fill a $1M market order. The fill-rate panel shows what fraction of measurement cycles the $1M tier was successfully absorbed."
   - "The cost slope is asset-specific: use the chain tabs to compare ETH (deepest books), BTC (tightest books) and SOL (thinnest books) separately."
@@ -102,9 +100,9 @@ prometheus:
 
 faq:
   - q: "What does cost slope of 1.00 mean?"
-    a: "A cost slope of 1.00 means the all-in basis points for a $1M trade are identical to a $1k trade on that venue. This is only possible for oracle-priced venues where the fee is a flat percentage of notional and there is no orderbook impact term."
-  - q: "Why are Gains and GMX always 1.00?"
-    a: "Both venues use oracle pricing with no orderbook. Their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. Trading $1M costs the same bps as $1k by construction. This is the core design tradeoff: flat cost at any size, in exchange for using a price oracle rather than a live orderbook."
+    a: "A cost slope of 1.00 means the all-in basis points for a $1M trade are identical to a $1k trade on that venue: the extra size adds no price impact."
+  - q: "How do Gains and GMX get a slope without an orderbook?"
+    a: "Both price against an oracle, and their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. On top of it each protocol charges a price impact that grows with size: cumulative-volume impact on Gains, position price impact on GMX. The perp-fees harness reads it on-chain at each size, as the mean of a long and a short, and that is what moves their slope. On Arbitrum, Gains charges no cumulative-volume impact on ETH and BTC, so its slope on those two assets stays at 1.00."
   - q: "What does N/A in the slope column mean?"
     a: "The venue's visible book could not absorb $1M of notional during the measurement period. The perp-fees harness skips a tier rather than extrapolate when the book depth is insufficient, so the $1M all-in gauge is absent. No slope can be computed. The fill-rate panel shows what fraction of cycles the $1M tier was successfully filled."
   - q: "Is a 1.00 slope always better?"
@@ -137,8 +135,8 @@ metric_panels:
 providers:
   - slug: gains
     name: Gains
-    tag: "Synthetic perps on Base, oracle-priced, flat cost at any size"
-    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (flat % of notional, no orderbook): ratio always 1.00 by construction."
+    tag: "Synthetic perps on Arbitrum, oracle-priced, impact read on-chain"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced: open fee plus on-chain price impact at each size, mean of long and short."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
       p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
@@ -150,8 +148,8 @@ providers:
 
   - slug: gmx
     name: GMX
-    tag: "Synthetics on Arbitrum, oracle-priced, flat cost at any size"
-    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (positionFeeFactor flat % of notional, no orderbook): ratio always 1.00."
+    tag: "Synthetics on Arbitrum, oracle-priced, impact read on-chain"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced: position fee plus on-chain execution-price impact at each size, mean of long and short."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
       p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])

@@ -20,23 +20,26 @@
  * chain- or region-restricted "#1" as a global finish (e.g. dRPC leading
  * only from Singapore reading as the worldwide chain leader).
  *
- * `?chain=` without cell data falls back to the legacy bestPerChain
- * approximation. `?region=` requires cell data (404 otherwise).
+ * Without cell data there is no scoped figure to print, so the scope is
+ * not printed either: `?chain=` serves the unfiltered ranking labelled
+ * "all chains" (see src/lib/badge-scope.ts for what that replaced), and
+ * `?region=` withholds the rank, because no coarser figure stands in for
+ * a region.
  *
- * When NO scope is provided, the badge falls back to the unfiltered
- * aggregate AND adds an "all chains" / "all regions" textual hint to the
- * SVG so the scope of the rank is visible at a glance.
+ * When NO scope is provided, the badge serves the unfiltered aggregate
+ * AND adds an "all chains" / "all regions" textual hint to the SVG so the
+ * scope of the rank is visible at a glance.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { defaultViewLabel } from "@/lib/bench-view";
 import { fmtUnit } from "@/lib/format";
-import { readBestPerChain } from "@/lib/per-chain-contract";
+import { resolveBadgeScope } from "@/lib/badge-scope";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { PROVIDER_RE, SLUG_RE } from "@/lib/slug";
 import { matchesChainSlug } from "@/lib/chain-aliases";
-import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import type { Benchmark } from "@/types/benchmark";
 
 export const dynamic = "force-dynamic";
 
@@ -71,51 +74,6 @@ function rankOf(
   );
   if (idx === -1) return null;
   return { rank: idx + 1, total: sorted.length, value: sorted[idx].ms.p50 };
-}
-
-/**
- * Per-chain rank computation. Uses `bestPerChain` (the precomputed leader
- * per chain stash from spec.ts) to scope the rank to providers active on
- * the requested chain. The leader is forced to rank #1; everyone else is
- * ranked by their unfiltered p50 within the providers whose bestPerChain
- * entry exists on at least one chain (soft approximation — full per-chain
- * leaderboards live on the bench page chain tabs).
- *
- * Returns null when:
- *  - the bench has no `bestPerChain` (no chain dimensions on this bench).
- *  - the chain is unknown or has no leader this cycle.
- *  - the provider isn't present in the unfiltered results.
- */
-function rankOfChain(
-  b: Benchmark,
-  providerSlug: string,
-  chain: string,
-): { rank: number; total: number; value: number; leader: ProviderResult } | null {
-  const bestPerChain = readBestPerChain(b);
-  if (!bestPerChain) return null;
-  const leader = bestPerChain[chain];
-  if (!leader) return null;
-  const live = b.results.filter((r) => r.ms.p50 > 0);
-  if (live.length === 0) return null;
-  const lower = providerSlug.toLowerCase();
-  const others = live.filter(
-    (r) => r.slug.toLowerCase() !== leader.slug.toLowerCase(),
-  );
-  const sortedOthers = [...others].sort((a, c) =>
-    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
-  );
-  const total = live.length;
-  if (leader.slug.toLowerCase() === lower) {
-    return { rank: 1, total, value: leader.ms.p50, leader };
-  }
-  const idx = sortedOthers.findIndex((r) => r.slug.toLowerCase() === lower);
-  if (idx === -1) return null;
-  return {
-    rank: idx + 2, // +1 for 1-index, +1 because leader took slot 1
-    total,
-    value: sortedOthers[idx].ms.p50,
-    leader,
-  };
 }
 
 /**
@@ -238,53 +196,62 @@ export async function GET(
     });
   }
 
-  let r: { rank: number; total: number; value: number } | null;
-  let scopeLabel: string;
-  if (chainParam || regionParam) {
-    const cell = rankOfCell(b, provider, chainParam, regionParam);
-    if (cell) {
-      r = cell;
-    } else if (chainParam && !regionParam) {
-      // Legacy approximation for chain-dimensioned benches without a
-      // rank_matrix_query in their spec.
-      const scoped = rankOfChain(b, provider, chainParam);
-      // Serve a placeholder SVG instead of 404 on a transient scoped miss
-      // (bench cache entry predating cellRanks, Prom hiccup on the matrix
-      // query, provider without data on the scope). Keeps external embeds
-      // from displaying broken images and Ahrefs from flagging inbound.
-      if (!scoped) return placeholderSvg(b.title);
-      r = { rank: scoped.rank, total: scoped.total, value: scoped.value };
-    } else {
-      return placeholderSvg(b.title);
-    }
-    scopeLabel = [
-      chainParam ? chainLabel(b, chainParam) : null,
-      regionParam ? regionLabel(b, regionParam) : null,
-      cohortOption ? cohortOption.label : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
-  } else {
-    r = rankOf(b.results, provider, b.higherIsBetter);
-    if (!r) return placeholderSvg(b.title);
-    // Hint the aggregate scope when the bench declares dimensions so
-    // embedders can read it. Benches without dimensions get no scope
-    // label (it would be noise).
-    scopeLabel = [
-      (b.dimensions?.chain?.filter((c) => c.value !== "all").length ?? 0) > 0
-        ? "all chains"
-        : null,
-      (b.dimensions?.region?.filter((d) => d.value !== "all").length ?? 0) > 0
-        ? "all regions"
-        : null,
-      cohortOption ? cohortOption.label : null,
-      // The slice the unfiltered rank was earned on, for benches ranked
-      // per profile, volume or plan band: "#1" alone reads as overall.
-      defaultViewLabel(b) || null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+  // A row the bench publishes OUTSIDE its ranking must not be ranked here.
+  // Measured on bench 311: Alchemy read "#1/6 (Robinhood Chain), 100.0%" while
+  // the board had it unranked with "asked on only 86% of cells", because it
+  // leads that chain only on a denominator missing the one method the rest of
+  // the cohort refuses. All three rank paths below would have published it, so
+  // the check sits before them rather than in each.
+  //
+  // placeholderSvg is the existing graceful answer for "no defensible
+  // position" and names the bench without claiming a rank. This can only
+  // withhold a rank, never invent one.
+  const providerRow = b.results.find(
+    (row) => row.slug.toLowerCase() === provider.toLowerCase(),
+  );
+  if (providerRow?.unrankedLabel) {
+    // The figure exists and the board publishes it; only the rank is
+    // withheld. Saying "measurement pending" here would replace a false
+    // rank with a false status, which is the same fault facing the other way.
+    //
+    // No figure in the badge, deliberately: `b` is the unfiltered bench, so
+    // printing providerRow.ms.p50 under a ?chain= request would put a
+    // cross-chain value behind a scoped label, which is the exact fault the
+    // scope fix removed from rankOfChain. "Not ranked" is true on every
+    // scope and asserts no number; the board carries the figure.
+    return placeholderSvg(b.title, "Not ranked");
   }
+
+  // The figure and the scope printed next to it come out of one decision,
+  // so neither can be chosen without the other. Everything the rule needs
+  // is passed in; see src/lib/badge-scope.ts for the production readings
+  // that made the pairing a single function.
+  const scope = resolveBadgeScope({
+    chain: chainParam,
+    region: regionParam,
+    cell:
+      chainParam || regionParam
+        ? rankOfCell(b, provider, chainParam, regionParam)
+        : null,
+    chainLabel: (c) => chainLabel(b, c),
+    regionLabel: (d) => regionLabel(b, d),
+    hasChainDimension:
+      (b.dimensions?.chain?.filter((c) => c.value !== "all").length ?? 0) > 0,
+    hasRegionDimension:
+      (b.dimensions?.region?.filter((d) => d.value !== "all").length ?? 0) > 0,
+    cohortLabel: cohortOption ? cohortOption.label : null,
+    defaultViewLabel: defaultViewLabel(b) || null,
+  });
+  // A withheld rank is a placeholder, not a 404: these are embedded in
+  // other people's README files, where a broken image outlives the gap
+  // that caused it and Ahrefs flags the inbound link.
+  if (scope.serve === "withhold") return placeholderSvg(b.title);
+  const scopeLabel = scope.scopeLabel;
+  const r =
+    scope.serve === "cell"
+      ? scope.rank
+      : rankOf(b.results, provider, b.higherIsBetter);
+  if (!r) return placeholderSvg(b.title);
 
   // Colour signals rank. green for #1, dark ink for everyone else.
   const accent = r.rank === 1 ? "#3F7B47" : "#22272F";
@@ -409,17 +376,22 @@ export async function GET(
  *  on partner sites during transient data gaps and keeps Ahrefs from
  *  flagging inbound links as broken. Short CDN TTL (60s) so a resolved
  *  gap surfaces quickly. */
-function placeholderSvg(benchTitle: string): NextResponse {
+/** `status` overrides the second line, the aria-label tail and the <title>.
+ *  Default "Measurement pending" is accurate for the three callers that mean
+ *  it: a transient scoped miss, an unknown cell, a bench with no cell data.
+ *  It is NOT accurate for a row we measured and chose not to rank, which is
+ *  what the unranked guard passes instead. */
+function placeholderSvg(benchTitle: string, status?: string): NextResponse {
   const title = truncate(benchTitle, 60);
-  const line1 = "Measurement pending";
+  const line1 = status ?? "Measurement pending";
   const line2 = "OpenChainBench";
   const W = Math.min(
     W_MAX,
     Math.max(W_MIN, TEXT_X + title.length * CH_11 + 30),
   );
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(title)}, measurement pending">
-  <title>OpenChainBench. ${escapeXml(title)}. Measurement pending.</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(title)}, ${escapeXml(line1.toLowerCase())}">
+  <title>OpenChainBench. ${escapeXml(title)}. ${escapeXml(line1)}.</title>
   <rect width="${W}" height="${H}" rx="6" fill="#F5F1E8"/>
   <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="5.5" fill="none" stroke="#22272F" stroke-opacity="0.12"/>
   <circle cx="24" cy="22" r="10" fill="none" stroke="#22272F" stroke-opacity="0.35" stroke-dasharray="2 2"/>

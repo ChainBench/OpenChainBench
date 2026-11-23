@@ -180,23 +180,23 @@ metric_panels:
   - id: cap_archive_ms
     label: "Archive read, 5M blocks back"
     label_key: provider
-    metric: avg by (provider) (ocb:rpc_api_archive_heavy_milliseconds:mean_24h{chain="ethereum"})
+    metric: avg by (provider) (ocb:rpc_api_archive_heavy_milliseconds:p50_24h{chain="ethereum"})
     unit: ms
     higher_is_better: false
     tab: false
     tiers: [keyed-heavy]
     carry: false
-    description: "Mean round trip for a balance read five million blocks behind the head. Providers cache the tip and index history differently, so this is the column where a fast headline can come apart. Blank means the provider does not serve the call."
+    description: "Median round trip for a balance read five million blocks behind the head. Providers cache the tip and index history differently, so this is the column where a fast headline can come apart. Blank means the provider does not serve the call."
   - id: cap_getlogs_ms
     label: "eth_getLogs, address filter"
     label_key: provider
-    metric: avg by (provider) (ocb:rpc_api_getlogs_heavy_milliseconds:mean_24h{chain="ethereum"})
+    metric: avg by (provider) (ocb:rpc_api_getlogs_heavy_milliseconds:p50_24h{chain="ethereum"})
     unit: ms
     higher_is_better: false
     tab: false
     tiers: [keyed-heavy]
     carry: false
-    description: "Mean round trip for an address-filtered eth_getLogs inside the width each provider accepts. This is the call where indexing quality shows, and the order here is not the order on the cheap call."
+    description: "Median round trip for an address-filtered eth_getLogs inside the width each provider accepts. This is the call where indexing quality shows, and the order here is not the order on the cheap call."
 
 ledger_columns:
   # The default latency columns, re-declared: any ledger_columns block
@@ -272,6 +272,30 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="ethereum", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="ethereum", region="sgp"}[1h])
+
+  - slug: rpcnode
+    name: RpcNode
+    endpoint: https://public-ethereum-mainnet.rpcnode.dev
+    tag: Public node, 20 mainnets, 5 RPS per IP
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to RpcNode's no-key Ethereum endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="ethereum"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode", chain="ethereum"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="rpcnode", chain="ethereum"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="rpcnode", chain="ethereum"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="rpcnode", chain="ethereum"}) / sum(ocb:rpc_call:rate_24h{provider="rpcnode", chain="ethereum"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="rpcnode", chain="ethereum"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="ethereum"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="ethereum", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="ethereum", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="ethereum", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="ethereum", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="ethereum", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="ethereum", region="sgp"}[1h])
 
   - slug: nownodes
     name: NOWNodes
@@ -454,8 +478,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="ethereum",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="ethereum",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="ethereum",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -479,8 +503,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="ethereum",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="ethereum",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="ethereum",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -504,8 +528,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="getblock",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="getblock",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="getblock",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="ethereum",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="ethereum",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="ethereum",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="getblock",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -529,8 +553,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="ethereum",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="ethereum",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="ethereum",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -554,8 +578,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="dwellir",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="ethereum",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="ethereum",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="ethereum",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="dwellir",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -579,8 +603,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="alchemy",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="ethereum",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="ethereum",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="ethereum",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="alchemy",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -603,8 +627,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="chainstack",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="ethereum",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="ethereum",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="ethereum",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="chainstack",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -627,8 +651,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="getblock",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="getblock",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="getblock",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="ethereum",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="ethereum",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="ethereum",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="getblock",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -651,8 +675,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="quicknode",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="ethereum",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="ethereum",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="ethereum",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="quicknode",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -675,8 +699,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="dwellir",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="ethereum",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="ethereum",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="ethereum",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -700,8 +724,8 @@ providers:
       p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="ethereum",tier="keyed",conn="warm"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="ethereum",tier="keyed",conn="warm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="ethereum",tier="keyed",conn="warm"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockmachine",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east
@@ -725,8 +749,8 @@ providers:
       p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="ethereum",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="ethereum",tier="keyed",conn="cold"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="ethereum",tier="keyed",conn="cold"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="ethereum",tier="keyed",conn="cold"})
       series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="blockmachine",chain="ethereum",tier="keyed"}[1h]))
       regions:
         - region: us-east

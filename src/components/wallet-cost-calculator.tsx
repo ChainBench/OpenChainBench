@@ -597,8 +597,11 @@ export function fmtUSD(usd: number | null): string {
   if (usd === null || !Number.isFinite(usd)) return "-";
   const cents = Math.round(usd * 100) / 100;
   if (cents === 0) return "$0";
-  if (cents < 100) return `$${cents.toFixed(2).replace(/\.00$/, "")}`;
-  return `$${Math.round(cents).toLocaleString("en-US")}`;
+  // To the cent whenever there are cents, as the product tables and the API
+  // print: Dfns Pro is $35,000 / 12 = $2,916.67, which this printed $2,917
+  // beside a product page saying $2,916.67 (audit 2026-10-30).
+  if (Number.isInteger(cents)) return `$${cents.toLocaleString("en-US")}`;
+  return `$${cents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** Per-user cost, three significant figures: $0.0274 reads as $0.0274, not <$0.01. */

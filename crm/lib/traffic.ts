@@ -78,7 +78,7 @@ export type ReferrerRow = { domain: string; channel: Channel; visitors: number; 
 export type NamedCount = { name: string; visitors: number; share: number };
 export type EntryRow = { path: string; section: Section; sessions: number };
 export type ActionRow = { name: string; count: number; prevCount: number; visitors: number };
-export type OutboundRow = { host: string; clicks: number; prevClicks: number; visitors: number; topPage: string };
+export type OutboundRow = { host: string; clicks: number; prevClicks: number; visitors: number; topPage: string; cookielessClicks: number; uncheckedClicks: number };
 export type SearchRow = { query: string; count: number; kind: string; url: string };
 export type CopyRow = { kind: string; value: string; bench: string; count: number };
 export type VitalsRow = { device: string; samples: number; lcpP75: number; inpP75: number; clsP75: number; fcpP75: number };
@@ -287,7 +287,9 @@ export const QUERIES = {
     GROUP BY event ORDER BY n DESC`,
   outbound: (w: ReportWindow) => `
     SELECT properties.host AS host, countIf(timestamp >= now() - INTERVAL ${w.days} DAY) AS clicks, countIf(timestamp < now() - INTERVAL ${w.days} DAY) AS prev_clicks,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS visitors, topK(1)(properties.page) AS top_page
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS visitors, topK(1)(properties.page) AS top_page,
+           countIf(timestamp >= now() - INTERVAL ${w.days} DAY AND properties.visitor_source = 'go') AS cookieless_clicks,
+           countIf(timestamp >= now() - INTERVAL ${w.days} DAY AND toString(properties.repeat_checked) = 'false') AS unchecked_clicks
     FROM events WHERE event = 'outbound_click' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY
     GROUP BY host ORDER BY greatest(clicks, prev_clicks) DESC LIMIT 40`,
   searches: (w: ReportWindow) => `
@@ -475,7 +477,7 @@ export async function loadTrafficSection(section: TrafficSection, w: ReportWindo
       return { actions: rows.map((r) => ({ name: str(r[0]), count: num(r[1]), prevCount: num(r[2]), visitors: num(r[3]) })) };
     case "outbound":
       return {
-        outbound: rows.map((r) => ({ host: str(r[0]) || "?", clicks: num(r[1]), prevClicks: num(r[2]), visitors: num(r[3]), topPage: str(Array.isArray(r[4]) ? r[4][0] : r[4]) })),
+        outbound: rows.map(outboundRow),
       };
     case "searches":
       return { searches: rows.map((r) => ({ query: str(r[0]), count: num(r[1]), kind: str(Array.isArray(r[2]) ? r[2][0] : r[2]), url: str(Array.isArray(r[3]) ? r[3][0] : r[3]) })) };
@@ -526,6 +528,18 @@ export function engagedBySection(pages: { section: Section; leaves: number; medi
 function withShare(rows: { name: string; visitors: number }[]): NamedCount[] {
   const total = rows.reduce((a, r) => a + r.visitors, 0);
   return rows.map((r) => ({ ...r, share: total > 0 ? r.visitors / total : 0 }));
+}
+
+function outboundRow(r: unknown[]): OutboundRow {
+  return {
+    host: str(r[0]) || "?",
+    clicks: num(r[1]),
+    prevClicks: num(r[2]),
+    visitors: num(r[3]),
+    topPage: str(Array.isArray(r[4]) ? r[4][0] : r[4]),
+    cookielessClicks: num(r[5]),
+    uncheckedClicks: num(r[6]),
+  };
 }
 
 /** Derived views, computed from the snapshot at render time. */
