@@ -13,19 +13,23 @@
 
 import { AI_CRAWLER_RE } from "@/data/ai-crawlers";
 
-/** Hard cap on the in-memory bucket Map. Prevents an attacker rotating
- *  X-Forwarded-For across millions of fake IPs from growing the Map
- *  unboundedly. When the cap is hit we evict the least-recently-updated
- *  entry, which under attack will be the spoofed keys (they don't come
- *  back) rather than the real victim IP buckets. */
 const MAX_BUCKETS = 5000;
 
-const buckets = new Map<string, { tokens: number; updatedAt: number }>();
+type Bucket = { tokens: number; updatedAt: number; fullAt: number };
+
+const buckets = new Map<string, Bucket>();
+const GLOBAL_PREFIX = "__global__:";
 
 export type RateLimitResult = {
   ok: boolean;
   remaining: number;
   retryAfterSec: number;
+};
+
+const MISCONFIGURED: RateLimitResult = {
+  ok: false,
+  remaining: 0,
+  retryAfterSec: 60,
 };
 
 /** Known AI crawler User-Agent substrings. Matched case-insensitively.
@@ -85,47 +89,62 @@ export function rateLimit(
   if (capacity <= 0 || windowSec <= 0) {
     // Defensive: a misconfigured caller would otherwise produce Infinity
     // retry-after via /0 below. Treat as "denied with finite backoff".
-    return { ok: false, remaining: 0, retryAfterSec: 60 };
+    return MISCONFIGURED;
   }
 
   const now = Date.now();
   const refillPerMs = capacity / (windowSec * 1000);
-  const prev = buckets.get(key);
-  let tokens: number;
-  if (!prev) {
-    tokens = capacity;
-  } else {
-    // Clamp `elapsed` so a clock step backward (NTP correction) can't
-    // produce negative tokens that lock the bucket forever.
-    const elapsed = Math.max(0, now - prev.updatedAt);
-    tokens = Math.max(0, Math.min(capacity, prev.tokens + elapsed * refillPerMs));
-  }
+  let tokens = tokensAt(key, { capacity, refillPerMs, now });
   if (tokens < 1) {
-    const need = 1 - tokens;
-    const retryAfterMs = Math.ceil(need / refillPerMs);
     // Don't re-`set` on the rejected path - avoids Map churn under
     // sustained 429 spam and preserves the original updatedAt for refill.
-    return { ok: false, remaining: 0, retryAfterSec: Math.ceil(retryAfterMs / 1000) };
+    return emptyBucket(tokens, refillPerMs);
   }
   tokens -= 1;
-  buckets.set(key, { tokens, updatedAt: now });
-  if (buckets.size > MAX_BUCKETS) evictOne();
+  const fullAt = now + (capacity - tokens) / refillPerMs;
+  buckets.set(key, { tokens, updatedAt: now, fullAt });
+  if (buckets.size > MAX_BUCKETS) evictSoonestFull(key);
   return { ok: true, remaining: Math.floor(tokens), retryAfterSec: 0 };
 }
 
-/** Evict the least-recently-updated bucket. Single-pass O(n) - n is
- *  bounded to MAX_BUCKETS, so amortised O(1) per request. Cheaper than
- *  the previous age-cutoff sweep that did full scans under load. */
-function evictOne() {
-  let oldestKey: string | null = null;
-  let oldestAt = Infinity;
+type Refill = { capacity: number; refillPerMs: number; now: number };
+
+function tokensAt(key: string, { capacity, refillPerMs, now }: Refill): number {
+  const prev = buckets.get(key);
+  if (!prev) return capacity;
+  const elapsed = Math.max(0, now - prev.updatedAt);
+  return Math.max(0, Math.min(capacity, prev.tokens + elapsed * refillPerMs));
+}
+
+function emptyBucket(tokens: number, refillPerMs: number): RateLimitResult {
+  const retryAfterMs = Math.ceil((1 - tokens) / refillPerMs);
+  const retryAfterSec = Math.ceil(retryAfterMs / 1000);
+  return { ok: false, remaining: 0, retryAfterSec };
+}
+
+export function peekLimit(
+  key: string,
+  capacity: number,
+  windowSec: number,
+): RateLimitResult {
+  if (capacity <= 0 || windowSec <= 0) return MISCONFIGURED;
+  const refillPerMs = capacity / (windowSec * 1000);
+  const tokens = tokensAt(key, { capacity, refillPerMs, now: Date.now() });
+  if (tokens < 1) return emptyBucket(tokens, refillPerMs);
+  return { ok: true, remaining: Math.floor(tokens), retryAfterSec: 0 };
+}
+
+function evictSoonestFull(kept: string) {
+  let soonestKey: string | null = null;
+  let soonestAt = Infinity;
   for (const [k, v] of buckets) {
-    if (v.updatedAt < oldestAt) {
-      oldestAt = v.updatedAt;
-      oldestKey = k;
+    if (k === kept || k.startsWith(GLOBAL_PREFIX)) continue;
+    if (v.fullAt < soonestAt) {
+      soonestAt = v.fullAt;
+      soonestKey = k;
     }
   }
-  if (oldestKey !== null) buckets.delete(oldestKey);
+  if (soonestKey !== null) buckets.delete(soonestKey);
 }
 
 /** Extract a stable client identifier from request headers.
@@ -143,6 +162,60 @@ function evictOne() {
 export function clientKey(req: Request, suffix = ""): string {
   const ip = resolveClientIp(req);
   return `${ip}:${suffix}`;
+}
+
+const IPV6_GROUPS = 8;
+const IPV6_GROUP_BITS = 16;
+
+const HOST_PREFIX = 64;
+const SITE_PREFIX = 48;
+const MAPPED_IPV4 = /^::ffff:(.+)$/i;
+const HEX_PAIR = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i;
+const BYTE_BITS = 8;
+const BYTE_MASK = 0xff;
+
+function unmappedIpv4(ip: string): string {
+  const mapped = MAPPED_IPV4.exec(ip)?.[1];
+  if (!mapped) return ip;
+  if (mapped.includes(".")) return mapped;
+  const pair = HEX_PAIR.exec(mapped);
+  if (!pair) return ip;
+  const word = (hex: string | undefined) => Number.parseInt(hex ?? "0", 16);
+  return [word(pair[1]), word(pair[2])]
+    .flatMap((w) => [w >> BYTE_BITS, w & BYTE_MASK])
+    .join(".");
+}
+
+function ipv6Network(ip: string, prefix: number): string | null {
+  if (!ip.includes(":") || ip.includes(".")) return null;
+  const [head = "", tail = ""] = ip.toLowerCase().split("::");
+  const front = head ? head.split(":") : [];
+  const back = tail ? tail.split(":") : [];
+  const missing = Math.max(0, IPV6_GROUPS - front.length - back.length);
+  const groups = ip.includes("::")
+    ? [...front, ...Array<string>(missing).fill("0"), ...back]
+    : front;
+  const network = groups
+    .slice(0, prefix / IPV6_GROUP_BITS)
+    .map((g) => g.replace(/^0+(?=.)/, ""));
+  return `${network.join(":")}::/${prefix}`;
+}
+
+export function clientNetworkKey(req: Request, suffix: string): string {
+  const ip = unmappedIpv4(resolveClientIp(req));
+  return `${ipv6Network(ip, HOST_PREFIX) ?? ip}:${suffix}`;
+}
+
+const IPV4_ADDRESS = /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/;
+
+function ipv4Subnet(ip: string): string | null {
+  const prefix = IPV4_ADDRESS.exec(ip)?.[1];
+  return prefix ? `${prefix}.0/24` : null;
+}
+
+export function clientSubnetKey(req: Request, suffix: string): string {
+  const ip = unmappedIpv4(resolveClientIp(req));
+  return `${ipv6Network(ip, SITE_PREFIX) ?? ipv4Subnet(ip) ?? ip}:${suffix}`;
 }
 
 function resolveClientIp(req: Request): string {
@@ -173,7 +246,25 @@ function resolveClientIp(req: Request): string {
  *  coordinated swarm can still saturate the route. Key the global bucket
  *  by the route suffix, not by IP. */
 export function globalLimit(suffix: string, capacity: number, windowSec: number): RateLimitResult {
-  return rateLimit(`__global__:${suffix}`, capacity, windowSec);
+  return rateLimit(`${GLOBAL_PREFIX}${suffix}`, capacity, windowSec);
+}
+
+export function peekGlobalLimit(
+  suffix: string,
+  capacity: number,
+  windowSec: number,
+): RateLimitResult {
+  return peekLimit(`${GLOBAL_PREFIX}${suffix}`, capacity, windowSec);
+}
+
+const LOG_WINDOW_SEC = 60;
+
+export function logAtMost(
+  perMinute: number,
+  name: string,
+  log: () => void,
+): void {
+  if (globalLimit(`${name}-log`, perMinute, LOG_WINDOW_SEC).ok) log();
 }
 
 /** Helper: build a 429 JSON Response with the standard headers. */
