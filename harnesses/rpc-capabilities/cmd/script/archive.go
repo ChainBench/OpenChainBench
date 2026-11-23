@@ -132,7 +132,7 @@ func getHeadBlock(ctx context.Context, url string) (uint64, error) {
 	if resp.StatusCode != 200 {
 		return 0, fmt.Errorf("http %d", resp.StatusCode)
 	}
-	raw, _ := io.ReadAll(resp.Body)
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	var r rpcEnvelope
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return 0, err
@@ -165,7 +165,7 @@ func probeBalance(ctx context.Context, url string, block uint64) bool {
 	if resp.StatusCode != 200 {
 		return false
 	}
-	raw, _ := io.ReadAll(resp.Body)
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	var r rpcEnvelope
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return false
