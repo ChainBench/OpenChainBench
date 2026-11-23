@@ -61,6 +61,7 @@ import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { withUtm } from "@/lib/utm";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { offPinCoverage } from "@/lib/off-pin-coverage";
+import { loadOffPinView, type OffPinView } from "@/lib/off-pin-view";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
 import { ServerWalletVendorPricing, serverWalletVendorHeadline, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
 
@@ -620,6 +621,18 @@ export default async function ProviderPage({
     if (a.totalRanked !== b.totalRanked) return b.totalRanked - a.totalRanked;
     return a.benchmark.title.localeCompare(b.benchmark.title);
   });
+  // A row with no figure on its bench's pinned chain borrows its row on the
+  // chain tab where it ranks best (off-pin-view.ts), instead of reading
+  // "data warming up" for a chain it does not serve.
+  const offPinViews = new Map<string, OffPinView>();
+  await Promise.all(
+    sorted
+      .filter((a) => a.rank === 0 && a.benchmark.pinnedChain)
+      .map(async (a) => {
+        const v = await loadOffPinView(a.benchmark, a.result.slug).catch(() => null);
+        if (v) offPinViews.set(a.tier ? `${a.benchmark.slug}#${a.tier}` : a.benchmark.slug, v);
+      }),
+  );
 
   // Data-driven prose summary of the provider's OCB standing. Replaces the
   // identical templated intro paragraph that used to sit above the fold
@@ -1290,13 +1303,20 @@ export default async function ProviderPage({
             const hasData =
               (a.rank > 0 || (a.unrankedCohort === true && a.result.availability !== "unavailable")) &&
               (a.result.ms.p50 !== 0 || a.zeroIsAValue === true);
+            const pinView = hasData
+              ? null
+              : offPinViews.get(a.tier ? `${a.benchmark.slug}#${a.tier}` : a.benchmark.slug) ?? null;
             // A race bench's p50 is the lag behind the first arrival, so the
             // winner reads ~0 ms by construction: show its share of wins.
             const value = hasData
               ? a.raceShare
                 ? `${Math.round(a.raceShare.share)}%`
                 : fmtUnit(a.result.ms.p50, a.benchmark.unit)
-              : null;
+              : pinView
+                ? pinView.raceShare
+                  ? `${Math.round(pinView.raceShare.share)}%`
+                  : fmtUnit(pinView.result.ms.p50, a.benchmark.unit)
+                : null;
             // Per-chain leadership chips, rendered alongside the aggregate
             // rank when the bench declares chain dimensions. Leaders only:
             // a chip means "leads this chain", and its absence means "does
@@ -1320,7 +1340,7 @@ export default async function ProviderPage({
                 : [];
             const hasChainRanks = chainRanks.length > 0;
             // No figure on the pinned chain but measured on other tabs: say so.
-            const offPin = hasData ? null : offPinCoverage(a.benchmark, a.result.slug);
+            const offPin = hasData || pinView ? null : offPinCoverage(a.benchmark, a.result.slug);
             return (
               <li key={a.tier ? `${a.benchmark.slug}#tier=${a.tier}` : a.benchmark.slug}>
                 <RowLink
@@ -1344,6 +1364,13 @@ export default async function ProviderPage({
                         #{a.rank}
                         <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
                           of {a.totalRanked}
+                        </span>
+                      </>
+                    ) : pinView ? (
+                      <>
+                        #{pinView.rank}
+                        <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                          of {pinView.totalRanked}
                         </span>
                       </>
                     ) : (
@@ -1393,6 +1420,13 @@ export default async function ProviderPage({
                               ? "latest value"
                               : valueWindowLabel(a.benchmark)}
                           {a.result.priceReading ? ` · ${a.result.priceReading}` : ""}
+                        </p>
+                      </>
+                    ) : pinView ? (
+                      <>
+                        <p className="font-sans tabular text-base text-ink">{value}</p>
+                        <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
+                          {pinView.raceShare ? `${pinView.raceShare.label} · 24h` : valueWindowLabel(a.benchmark)} · on {pinView.chainLabel}
                         </p>
                       </>
                     ) : (
