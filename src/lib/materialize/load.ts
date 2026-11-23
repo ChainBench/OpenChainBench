@@ -454,13 +454,16 @@ export async function specToBenchmark(
         .filter((p) => p.unranked)
         .map((p) => [
           p.slug.toLowerCase(),
-          { label: p.unranked as string, hide: p.unranked_hides_value },
+          { label: p.unranked as string, hide: p.unranked_hides_value, rankedOn: p.ranked_on },
         ]),
     );
     if (unrankedBySlug.size > 0) {
+      const view = activeFilterLabels(labelFilters(options));
       for (const r of live.results) {
         const entry = unrankedBySlug.get(r.slug.toLowerCase());
         if (!entry) continue;
+        // `ranked_on`: on these tabs the row is like for like and ranks.
+        if (isRankedOnView(entry.rankedOn, view)) continue;
         r.unrankedLabel = entry.label;
         r.unresponsive = undefined;
         r.availability = "live";
@@ -832,6 +835,21 @@ export function applyFullCoverageScope(
       mean: avg((m) => m.mean) || p50,
     };
   }
+}
+
+/** True when the view filters every dimension `rankedOn` names to one of
+ *  its listed values (bench 305: kind=sol ranks Metastreams, kind=all does
+ *  not). An unfiltered view never matches. */
+export function isRankedOnView(
+  rankedOn: Record<string, string[]> | undefined,
+  view: Record<string, string>,
+): boolean {
+  if (!rankedOn) return false;
+  const dims = Object.entries(rankedOn);
+  return (
+    dims.length > 0 &&
+    dims.every(([dim, vals]) => typeof view[dim] === "string" && vals.includes(view[dim]))
+  );
 }
 
 function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {

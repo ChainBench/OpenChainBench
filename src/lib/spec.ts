@@ -659,7 +659,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       notional, $11.32 of builder fees and 24 wallets over the 30
   //       files to 2026-11-15, zero fills between them, 2.0 bp on 2,589.
   // v127: Metastreams on benches 001, 004, 305 and 008; 004 gains Base and Robinhood tabs.
-  ["bench-unfiltered-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v128: bench 305 ranks its on-chain feeds on their asset tabs (ranked_on); field stats skip unranked rows.
+  ["bench-unfiltered-v128", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -947,7 +948,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v118: lockstep with bench-unfiltered-v125 (True Markets on bench 030).
   // v119: lockstep with bench-unfiltered-v126 (FiatBear on bench 030).
   // v120: lockstep with bench-unfiltered-v127 (Metastreams).
-  ["all-benchmarks-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v121: lockstep with bench-unfiltered-v128.
+  ["all-benchmarks-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
   // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).
@@ -1113,7 +1115,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v61: lockstep with bench-unfiltered-v124. The WebSocket races declare
   //      regions, and every region tab now ranks by share of first pushes.
   // v62: lockstep with bench-unfiltered-v127. Metastreams rows on chain and kind tabs.
-  ["bench-filters-v62", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v63: lockstep with bench-unfiltered-v128. Bench 305 asset tabs.
+  ["bench-filters-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v56: lockstep with bench-unfiltered-v118. All four benches declare
   //      regions and Thyme carries all three, so every region tab moves.
   // v58: lockstep with bench-unfiltered-v120; the Optimism row carries all
