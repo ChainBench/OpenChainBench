@@ -1301,7 +1301,11 @@ export default async function ProviderPage({
             // figure and no rank; on a bench where 0 is a value, $0 is that
             // figure, not missing data.
             const hasData =
-              (a.rank > 0 || (a.unrankedCohort === true && a.result.availability !== "unavailable")) &&
+              // A spec-unranked row (Serialized and Metastreams on bench 305,
+              // "On-chain DEX price") has a figure and no rank, like an
+              // unranked cohort: it read "data warming up" with live data.
+              (a.rank > 0 ||
+                ((a.unrankedCohort === true || !!a.result.unrankedLabel) && a.result.availability !== "unavailable")) &&
               (a.result.ms.p50 !== 0 || a.zeroIsAValue === true);
             const pinView = hasData
               ? null
