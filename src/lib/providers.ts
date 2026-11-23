@@ -1083,7 +1083,9 @@ const buildProvidersCached = unstable_cache(
   //      bench 007 appearance. Lockstep with bench-unfiltered-v210.
   // v79: appearances carry the bench's pinned chain, so a provider with
   //      no figure there reads "not measured on Base" (off-pin-coverage).
-  ["providers-v79"],
+  // v80: Metastreams gains bench 305 and 008 appearances.
+  //      Lockstep with bench-unfiltered-v211.
+  ["providers-v80"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

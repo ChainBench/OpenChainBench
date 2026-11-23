@@ -233,6 +233,8 @@ describe("the provider set behind the cache keys", () => {
     // dimensions): v208/v201, providers-v77.
     // An ADDITION on 2026-11-22: seven CEX rows join bench 007, which
     // has chain tabs: v210/v203/v125, providers-v78.
+    // An ADDITION on 2026-11-23: Metastreams joins benches 305 and 008:
+    // v211/v204/v126, providers-v80.
     expect(
       hash,
       [
@@ -251,6 +253,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("d1edef5087c087b4");
+    ).toBe("7efe1dcde38553b5");
   });
 });
