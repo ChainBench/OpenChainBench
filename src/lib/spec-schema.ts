@@ -245,6 +245,12 @@ const provider = z.object({
    *  perp-pf-ratio's Paradex reads 29.85 off an adapter the spec itself
    *  labels incomplete. Only meaningful alongside `unranked`. */
   unranked_hides_value: z.boolean().default(false),
+  /** Tabs on which an `unranked` row IS ranked, as dimension -> values.
+   *  For a provider whose headline basket differs from the field's but
+   *  whose per-tab figure is like for like: on bench 305 Metastreams prices
+   *  only SOL, ETH and BNB, so its pooled "All majors" figure is not
+   *  comparable, while its SOL tab figure is. Absent = unranked everywhere. */
+  ranked_on: z.record(z.string(), z.array(z.string())).optional(),
   /** Optional secondary metric (e.g. "Chains covered") shown in the table. */
   secondary: z
     .object({ label: z.string(), value: z.string() })
