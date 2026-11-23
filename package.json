@@ -13,11 +13,14 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate-specs.ts",
     "readme:sync": "tsx scripts/sync-readme-stats.ts",
+    "contract:crm": "tsx scripts/sync-crm-contract.ts",
     "check:scalars": "tsx scripts/check-scalar-cardinality.ts",
     "spec:dry-run": "tsx scripts/dry-run-spec.ts",
     "rpc-hub:dry-run": "tsx scripts/dry-run-rpc-hub.ts",
     "status-page": "tsx scripts/build-status-page.ts",
-    "check": "pnpm validate && pnpm typecheck && pnpm lint && pnpm status-page --check && pnpm test",
+    "check": "pnpm validate && pnpm check:generated && pnpm check:code",
+    "check:generated": "pnpm contract:crm --check && pnpm status-page --check",
+    "check:code": "pnpm typecheck && pnpm lint && pnpm test",
     "worker": "tsx worker/index.ts"
   },
   "pnpm": {
