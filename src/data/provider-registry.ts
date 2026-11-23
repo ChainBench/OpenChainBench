@@ -190,6 +190,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Onchain data aggregator covering 80+ chains. WebSocket fast-trade feed, REST market and metadata, wallet portfolio APIs. Its swap endpoint routes multi-hop across named pools, so it is typed as an aggregator on the quote benches.",
     twitter: "@MobulaIO",
   },
+  metastreams: {
+    url: "https://metastreams.io",
+    description:
+      "Real-time on-chain market data API for spot, perps and prediction markets. REST token endpoints plus a WebSocket stream of trades filtered by chain and pool.",
+    longDescription:
+      "Metastreams streams enriched on-chain market data over one WebSocket (wss://api.metastreams.io/v1/stream): a spot.trades channel takes chain and pool filters, so a subscriber receives only the pools it asked for. The REST side (api.metastreams.io/v1/tokens) returns token price, market cap, liquidity, holders, security flags and metadata (logo, description, socials) in one call. Spot coverage is Solana, BNB Chain, Robinhood Chain and Elysium; Base is not indexed. Auth is a Bearer API key.",
+    docs: "https://docs.metastreams.io",
+    chains: ["solana", "bnb", "robinhood"],
+    features: [
+      "WebSocket spot.trades stream filtered by chain and pool",
+      "Token endpoint with price, liquidity, holders, security and metadata",
+      "Token metadata: logo, description, twitter and website",
+    ],
+  },
   codex: {
     url: "https://www.codex.io",
     description:

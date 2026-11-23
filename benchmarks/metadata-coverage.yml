@@ -8,6 +8,14 @@ seo_description: "Best crypto data API for token metadata live: share of logo, d
 subtitle: Share of metadata fields (logo, description, twitter, website) populated for fresh-launch tokens, audited every launch on Solana, BNB and Base.
 
 per_chain_explainer:
+  - slug: base
+    h2: "Base token metadata coverage"
+    body: |
+      {{best_name:chain:base}} currently leads Base token metadata coverage at {{best_p50:chain:base}} (p50 of hourly rate, 24h). Base launches come from Zora, Clanker, Bankr and Doppler, discovered through Mobula Pulse V2. Jupiter and Metastreams do not index Base, so the tab is read between Mobula, Codex and Serialized on the same four fields (logo, description, twitter, website).
+  - slug: robinhood
+    h2: "Robinhood Chain token metadata coverage"
+    body: |
+      {{best_name:chain:robinhood}} currently leads Robinhood Chain token metadata coverage at {{best_p50:chain:robinhood}} (p50 of hourly rate, 24h). Robinhood Chain is an Arbitrum Orbit L2 whose launchpads (Pons, Doppler, Long, Lift, Flywheel) mint a few tokens a minute. Mobula, Codex, Serialized and Metastreams all index it; Jupiter does not.
   - slug: solana
     h2: "Best Solana token metadata coverage"
     body: |
@@ -62,7 +70,7 @@ abstract: |
   themselves; numerical p50 is the headline.
 
 methodology:
-  - "Token discovery: Mobula Pulse V2 WebSocket on `solana`, `evm:56` (BNB), `evm:8453` (Base) for known launchpads (pump.fun, Meteora DBC, Four.meme, Raydium CPMM, Zora, BaseApp, Bags, Moonshot)."
+  - "Token discovery: Mobula Pulse V2 WebSocket on `solana`, `evm:56` (BNB), `evm:8453` (Base) and `evm:4663` (Robinhood Chain) for known launchpads (pump.fun, Meteora DBC, Raydium LaunchLab, Four.meme, Flap, Zora, Clanker, Bankr, Doppler, Pons, Bags, Moonshot and others). Pulse source names are matched without their version suffix, so `zora-v4` counts as Zora."
   - "Coverage check: for each fresh token, query each aggregator's metadata endpoint and record whether `logo`, `description`, `twitter` and `website` are populated."
   - "Aggregators in scope: Mobula (`/api/2/token/details`), Codex (GraphQL `token` query, JWT-authenticated), Jupiter (`/v6/tokens/<mint>`, Solana only)."
   - "Cadence: queue-driven; every newly-discovered token is checked once across the three aggregators. Steady-state ≈ several hundred checks per provider per hour."
@@ -106,6 +114,8 @@ dimensions:
   chain:
     - { value: solana, label: Solana }
     - { value: bnb,    label: BNB Chain }
+    - { value: base,   label: Base }
+    - { value: robinhood, label: Robinhood Chain }
 
 # Rank matrix query gates the per-region badge scoping. Coverage is a
 # success-rate ratio; metric labels already carry the `provider` token
@@ -125,6 +135,17 @@ rank_matrix_query: avg by (provider, chain) (rate(metadata_coverage_success_tota
 #   100 * sum(rate(metadata_coverage_success_total{provider="X"}[24h]))
 #       / sum(rate(metadata_coverage_checks_total{provider="X"}[24h]))
 #
+# The `>= 0` inside each quantile drops hours where a provider made no
+# check at all (0/0 = NaN). One NaN hour turns quantile_over_time itself
+# into NaN, which removed Metastreams from every view for a day after its
+# credits ran out (2026-11-18 20:00 to 11-19 11:20). Hours with checks are
+# unaffected: Mobula's p50 was identical before and after.
+#
+# Metastreams' presence divides by Mobula on `chain!="base"`, not
+# `chain=~"solana|bnb"`: a selector whose matcher starts with `=` reads as
+# already filtered, so on a chain tab the denominator stayed Solana + BNB
+# and BNB showed 1.8 % presence instead of 16 %.
+#
 # We use quantile_over_time on a rolling 1h rate to give p50/p90/p99 the
 # same shape as latency benchmarks. so a coverage rate that drifts during
 # the day shows tail behaviour, not a single flat value.
@@ -135,9 +156,9 @@ providers:
     tag: REST `/token/details`
     formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Mobula `/token/details` for fresh tokens, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
-      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
-      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
+      p50: quantile_over_time(0.50, ((100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h]))) >= 0)[24h:1h])
+      p90: quantile_over_time(0.90, ((100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h]))) >= 0)[24h:1h])
+      p99: quantile_over_time(0.99, ((100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h]))) >= 0)[24h:1h])
       mean: 100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h]))
       success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h]))), 1)
       sample_size: sum(increase(metadata_coverage_checks_total{provider="mobula"}[24h]))
@@ -148,9 +169,9 @@ providers:
     tag: GraphQL `token` query
     formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Codex GraphQL `token` query for fresh tokens, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
-      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
-      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
+      p50: quantile_over_time(0.50, ((100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h]))) >= 0)[24h:1h])
+      p90: quantile_over_time(0.90, ((100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h]))) >= 0)[24h:1h])
+      p99: quantile_over_time(0.99, ((100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h]))) >= 0)[24h:1h])
       mean: 100 * sum(rate(metadata_coverage_success_total{provider="codex"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[24h]))
       success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="codex"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="codex"}[24h]))), 1)
       sample_size: sum(increase(metadata_coverage_checks_total{provider="codex"}[24h]))
@@ -161,22 +182,35 @@ providers:
     tag: REST `/v1/token/metadata`
     formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Serialized `/v1/token/metadata` for fresh tokens, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h])))[24h:1h])
-      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h])))[24h:1h])
-      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h])))[24h:1h])
+      p50: quantile_over_time(0.50, ((100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h]))) >= 0)[24h:1h])
+      p90: quantile_over_time(0.90, ((100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h]))) >= 0)[24h:1h])
+      p99: quantile_over_time(0.99, ((100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h]))) >= 0)[24h:1h])
       mean: 100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[24h]))
       success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="serialized"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h]))), 1)
       sample_size: sum(increase(metadata_coverage_checks_total{provider="serialized"}[24h]))
       series: 100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h]))
+
+  - slug: metastreams
+    name: Metastreams
+    tag: REST `/v1/tokens`
+    formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Metastreams `/v1/tokens` for fresh tokens, p50 over 24h. Solana, BNB and Robinhood; no Base."
+    queries:
+      p50: quantile_over_time(0.50, ((100 * sum(rate(metadata_coverage_success_total{provider="metastreams"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="metastreams"}[1h]))) >= 0)[24h:1h])
+      p90: quantile_over_time(0.90, ((100 * sum(rate(metadata_coverage_success_total{provider="metastreams"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="metastreams"}[1h]))) >= 0)[24h:1h])
+      p99: quantile_over_time(0.99, ((100 * sum(rate(metadata_coverage_success_total{provider="metastreams"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="metastreams"}[1h]))) >= 0)[24h:1h])
+      mean: 100 * sum(rate(metadata_coverage_success_total{provider="metastreams"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="metastreams"}[24h]))
+      success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="metastreams"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="mobula", chain!="base"}[24h]))), 1)
+      sample_size: sum(increase(metadata_coverage_checks_total{provider="metastreams"}[24h]))
+      series: 100 * sum(rate(metadata_coverage_success_total{provider="metastreams"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="metastreams"}[1h]))
 
   - slug: jupiter
     name: Jupiter
     tag: REST `/v6/tokens` (Solana)
     formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Jupiter `/v6/tokens` for fresh Solana mints, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
-      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
-      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
+      p50: quantile_over_time(0.50, ((100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h]))) >= 0)[24h:1h])
+      p90: quantile_over_time(0.90, ((100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h]))) >= 0)[24h:1h])
+      p99: quantile_over_time(0.99, ((100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h]))) >= 0)[24h:1h])
       mean: 100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[24h]))
       success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="jupiter"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="jupiter"}[24h]))), 1)
       sample_size: sum(increase(metadata_coverage_checks_total{provider="jupiter"}[24h]))

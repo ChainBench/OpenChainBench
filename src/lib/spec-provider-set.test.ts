@@ -142,6 +142,8 @@ describe("the provider set behind the cache keys", () => {
     // bench-filters does not: v125/v118, providers-v39.
     // An ADDITION on 2026-11-20: FiatBear joins bench 030 (#3627):
     // v126/v119, providers-v40.
+    // An ADDITION on 2026-11-23: Metastreams on 001, 004, 305 and 008, and
+    // 004 gains Base and Robinhood tabs: v127/v120/v62, providers-v41.
     expect(
       hash,
       [
@@ -160,6 +162,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("41a4dfe27b00f9df");
+    ).toBe("8d04611cd2e17cf1");
   });
 });
