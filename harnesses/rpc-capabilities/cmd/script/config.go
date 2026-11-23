@@ -212,6 +212,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "solana", Name: "Solana", URL: envDefault("RPC_URL_SOLANA_OFFICIAL", "https://api.mainnet-beta.solana.com")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SOLANA_PUBLICNODE", "https://solana-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_SOLANA_RPCNODE", "https://public-solana-mainnet.rpcnode.dev")},
 				{Slug: "leorpc", Name: "LeoRPC", URL: envDefault("RPC_URL_SOLANA_LEORPC", "https://solana.leorpc.com/?api_key=FREE")},
 				{Slug: "solanavibestation", Name: "Solana Vibe Station", URL: envDefault("RPC_URL_SOLANA_SVS", "https://public.rpc.solanavibestation.com")},
 			},
@@ -226,6 +227,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "monad-official", Name: "Monad Official", URL: envDefault("RPC_URL_MONAD_OFFICIAL", "https://rpc.monad.xyz")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MONAD_DRPC", "https://monad-mainnet.drpc.org")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_MONAD_RPCNODE", "https://public-monad-mainnet.rpcnode.dev")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MONAD_TENDERLY", "https://monad.gateway.tenderly.co")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MONAD_ONFINALITY", "https://monad-mainnet.api.onfinality.io/public")},
 			},
@@ -282,6 +284,7 @@ func chains() []Chain {
 				{Slug: "arc-official", Name: "Arc", URL: envDefault("RPC_URL_ARC_OFFICIAL", "https://rpc.mainnet.arc.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ARC_DRPC", "https://arc.drpc.org")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARC_PUBLICNODE", "https://arc-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_ARC_RPCNODE", "https://public-arc-mainnet.rpcnode.dev")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARC_TENDERLY", "https://arc.gateway.tenderly.co")},
 				{Slug: "blockdaemon", Name: "Blockdaemon", URL: envDefault("RPC_URL_ARC_BLOCKDAEMON", "https://rpc.blockdaemon.mainnet.arc.io")},
 				{Slug: "arc-quicknode", Name: "Quicknode (Arc endpoint)", URL: envDefault("RPC_URL_ARC_QUICKNODE", "https://rpc.quicknode.mainnet.arc.io")},
@@ -293,6 +296,12 @@ func chains() []Chain {
 			Name: "Ethereum",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ETHEREUM_PUBLICNODE", "https://ethereum-rpc.publicnode.com")},
+				// RpcNode (2026-11-19): public-<net>-mainnet.rpcnode.dev. Only on
+				// Ethereum, BNB, Avalanche, Monad, Arc and Solana: on Polygon,
+				// Arbitrum, Optimism and Base the public tier answers 403 "method
+				// eth_getBlockByNumber is not available on the public endpoint",
+				// from all three regions, so it cannot produce a sample there.
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_ETHEREUM_RPCNODE", "https://public-ethereum-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETHEREUM_DRPC", "https://eth.drpc.org")},
 				{Slug: "meowrpc", Name: "MeowRPC", URL: envDefault("RPC_URL_ETHEREUM_MEOWRPC", "https://eth.meowrpc.com")},
 				{Slug: "flashbots", Name: "Flashbots Protect", URL: envDefault("RPC_URL_ETHEREUM_FLASHBOTS", "https://rpc.flashbots.net")},
@@ -377,6 +386,7 @@ func chains() []Chain {
 			Name: "BNB Chain",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BNB_PUBLICNODE", "https://bsc-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BNB_RPCNODE", "https://public-bsc-mainnet.rpcnode.dev")},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BNB_NOWNODES", "https://public-bsc.nownodes.io")},
@@ -391,6 +401,7 @@ func chains() []Chain {
 			Name: "Avalanche C-Chain",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_AVALANCHE_PUBLICNODE", "https://avalanche-c-chain-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_AVALANCHE_RPCNODE", "https://public-avax-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_AVALANCHE_DRPC", "https://avalanche.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_AVALANCHE_TENDERLY", "https://gateway.tenderly.co/public/avalanche")},
 				{Slug: "avalanche-official", Name: "Avalanche Official", URL: envDefault("RPC_URL_AVALANCHE_OFFICIAL", "https://api.avax.network/ext/bc/C/rpc")},
@@ -1417,6 +1428,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "aptoslabs", Name: "Aptos Labs", URL: envDefault("RPC_URL_APTOS_APTOSLABS", "https://api.mainnet.aptoslabs.com/v1/")},
 				{Slug: "aptos-fullnode", Name: "Aptos Labs (Fullnode)", URL: envDefault("RPC_URL_APTOS_FULLNODE", "https://fullnode.mainnet.aptoslabs.com/v1/")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_APTOS_RPCNODE", "https://public-apt-mainnet.rpcnode.dev/v1/")},
 			},
 		},
 		// XRP Ledger — ledger_current JSON-RPC probe, ~3-4 s ledger close. 3 keyless providers.
@@ -1514,6 +1526,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BTC_PUBLICNODE", "https://bitcoin-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BTC_DRPC", "https://bitcoin.drpc.org")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BTC_RPCNODE", "https://public-bitcoin-mainnet.rpcnode.dev")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BTC_NOWNODES", "https://public-btc.nownodes.io")},
 			},
 		},
@@ -1664,6 +1677,8 @@ func chains() []Chain {
 				{Slug: "blockchair", Name: "Blockchair", URL: envDefault("RPC_URL_BCH_BLOCKCHAIR", "https://api.blockchair.com/bitcoin-cash/stats")},
 				{Slug: "bitcore", Name: "Bitcore (Bitpay)", URL: envDefault("RPC_URL_BCH_BITCORE", "https://api.bitcore.io/api/BCH/mainnet/block/tip")},
 				{Slug: "biggestfan", Name: "BiggestFan Node", URL: envDefault("RPC_URL_BCH_BIGGESTFAN", "https://rest1.biggestfan.net/v2/blockchain/getBlockchainInfo")},
+				// JSON-RPC getblockcount, not a REST GET: probe.go routes it by host.
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BCH_RPCNODE", "https://public-bch-mainnet.rpcnode.dev")},
 			},
 		},
 		// 2026-08-23 wave-9. Dogecoin — getblockcount JSON-RPC (Tatum, dRPC) + BlockCypher REST GET. ~60 s/block.
@@ -1674,6 +1689,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_DOGECOIN_TATUM", "https://dogecoin-mainnet.gateway.tatum.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_DOGECOIN_DRPC", "https://dogecoin.drpc.org")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_DOGECOIN_RPCNODE", "https://public-doge-mainnet.rpcnode.dev")},
 				{Slug: "blockcypher", Name: "BlockCypher", URL: envDefault("RPC_URL_DOGECOIN_BLOCKCYPHER", "https://api.blockcypher.com/v1/doge/main")},
 			},
 		},

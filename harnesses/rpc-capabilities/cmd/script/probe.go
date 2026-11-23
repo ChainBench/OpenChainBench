@@ -22,6 +22,22 @@ const (
 	// (1440/day/region).
 	probeInterval = 60 * time.Second
 	probeTimeout  = 8 * time.Second
+	// Ceiling on a single probe response, applied at every read in this
+	// harness.
+	//
+	// Found in the keyed harness on 2026-10-30 and ported here because the
+	// exposure is larger: a getProgramAccounts reply measured 517 MB, and
+	// this binary probes roughly six hundred endpoints rather than fifty.
+	// Every read here was an unbounded io.ReadAll on a body we do not
+	// control, two of them in archive.go also discarding the error, on a box
+	// with four cores and no swap.
+	//
+	// Nothing this harness asks for is remotely this large: the log probe
+	// uses a ten-block window with an address filter, the archive probe
+	// reads one balance, and every tip probe returns a header. So reaching
+	// the cap means something is wrong rather than big, and a truncated body
+	// fails to parse, which the callers already treat as a failed probe.
+	maxProbeResponseBytes int64 = 8 << 20
 	// staleBlockGap: a returned block more than this far behind the
 	// cross-provider tip is classified as `stale`. 20 blocks ≈ 4 min
 	// on Ethereum which generously covers cross-provider drift.
@@ -202,7 +218,7 @@ func callLatestBlock(ctx context.Context, url string) (block uint64, hash string
 		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "", "http_err", latencyMs, err
 	}
@@ -318,6 +334,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				block, result, latency, err = callBlockchairBCH(probeCtx, p.URL)
 			} else if strings.Contains(p.URL, "bitcore.io") {
 				block, result, latency, err = callBitcoreTip(probeCtx, p.URL)
+			} else if strings.Contains(p.URL, "rpcnode.dev") {
+				block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
 			} else {
 				block, result, latency, err = callBCHNodeInfo(probeCtx, p.URL)
 			}
@@ -509,7 +527,7 @@ func callLatestSlot(ctx context.Context, url string) (slot uint64, result string
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -575,7 +593,7 @@ func callSubstrateHeader(ctx context.Context, url string) (block uint64, hash st
 		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "", "http_err", latencyMs, err
 	}
@@ -649,7 +667,7 @@ func callCosmosStatus(ctx context.Context, url string) (block uint64, hash strin
 		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "", "http_err", latencyMs, err
 	}
@@ -701,7 +719,7 @@ func callCosmosRESTBlock(ctx context.Context, url string) (block uint64, hash st
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "", "http_err", latencyMs, err
 	}
@@ -755,7 +773,7 @@ func callStarknetBlockNumber(ctx context.Context, url string) (block uint64, res
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -858,7 +876,7 @@ func callStellarLatestLedger(ctx context.Context, url string) (ledger uint64, re
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -911,7 +929,7 @@ func callSuiCheckpoint(ctx context.Context, url string) (seq uint64, result stri
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -963,7 +981,7 @@ func callAptosLedger(ctx context.Context, url string) (height uint64, result str
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1008,7 +1026,7 @@ func callXrplLedger(ctx context.Context, url string) (idx uint64, result string,
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1052,7 +1070,7 @@ func callAlgorandStatus(ctx context.Context, url string) (round uint64, result s
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1096,7 +1114,7 @@ func callGramSeqno(ctx context.Context, url string) (seqno uint64, result string
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1161,7 +1179,7 @@ func callNearBlock(ctx context.Context, url string) (height uint64, result strin
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1219,7 +1237,7 @@ func callFlowBlock(ctx context.Context, url string) (height uint64, result strin
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1266,7 +1284,7 @@ func callCkbTipBlockNumber(ctx context.Context, url string) (height uint64, resu
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1328,7 +1346,7 @@ func callMultiversxNonce(ctx context.Context, url string) (nonce uint64, result 
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1378,7 +1396,7 @@ func callTezosBlock(ctx context.Context, url string) (level uint64, result strin
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1425,7 +1443,7 @@ func callAntelopeChainInfo(ctx context.Context, url string) (blockNum uint64, re
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1471,7 +1489,7 @@ func callWavesBlock(ctx context.Context, url string) (height uint64, result stri
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1517,7 +1535,7 @@ func callVeChainBlock(ctx context.Context, url string) (blockNum uint64, result 
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1567,7 +1585,7 @@ func callICONBlock(ctx context.Context, url string) (height uint64, result strin
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1610,7 +1628,7 @@ func callNeoBlockCount(ctx context.Context, url string) (count uint64, result st
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
@@ -1875,7 +1893,7 @@ func callLitecoinSpaceAPI(ctx context.Context, url string) (height uint64, resul
 		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
