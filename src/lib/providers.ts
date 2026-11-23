@@ -373,6 +373,10 @@ export type ProviderAppearance = {
      *  band ("Consumer app, 5 transactions a user · 10,000 users"), from
      *  defaultViewLabel. Empty or absent on every other bench. */
     defaultView?: string;
+    /** The chain the bench pins its headline to (`aggregate_filters.chain`),
+     *  so a provider with no figure there can say where it IS measured
+     *  instead of "data warming up" (see off-pin-coverage.ts). */
+    pinnedChain?: string;
     /** Exact per-cell rankings from the bench's `rank_matrix_query`
      *  (key = `<chain>|<region>`, "all" for an undeclared dimension or a
      *  derived marginal). When present this is the authoritative source
@@ -502,6 +506,11 @@ function rankPerChainForBench(
   return out;
 }
 
+function pinnedChainOf(b: Benchmark): string | undefined {
+  const pinned = (b.aggregateFilters as { chain?: unknown } | undefined)?.chain;
+  return typeof pinned === "string" && pinned !== "all" ? pinned : undefined;
+}
+
 async function buildProviders(): Promise<ProviderProfile[]> {
   const benches = await getBenchmarksSafe();
   return buildProvidersFromBenches(benches);
@@ -591,6 +600,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           bestPerChain: benchBestPerChain,
           regionDimensions: b.dimensions?.region,
           defaultView: defaultViewLabel(b),
+          pinnedChain: pinnedChainOf(b),
           cellRanks: b.cellRanks,
         },
         result: r,
@@ -690,6 +700,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
             bestPerChain: benchBestPerChain,
             regionDimensions: b.dimensions?.region,
             defaultView: defaultViewLabel(b),
+            pinnedChain: pinnedChainOf(b),
             cellRanks: b.cellRanks,
           },
           result: r,
@@ -1070,7 +1081,9 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v208.
   // v78: Binance, Bybit, OKX, Bitget, MEXC, Gate and KuCoin gain a
   //      bench 007 appearance. Lockstep with bench-unfiltered-v210.
-  ["providers-v78"],
+  // v79: appearances carry the bench's pinned chain, so a provider with
+  //      no figure there reads "not measured on Base" (off-pin-coverage).
+  ["providers-v79"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
