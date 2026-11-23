@@ -144,6 +144,8 @@ describe("the provider set behind the cache keys", () => {
     // v126/v119, providers-v40.
     // An ADDITION on 2026-11-23: Metastreams on 001, 004, 305 and 008, and
     // 004 gains Base and Robinhood tabs: v127/v120/v62, providers-v41.
+    // An ADDITION on 2026-11-23: Codex joins bench 008 (#3618 on dev), a
+    // provider already on the site: v129/v122/v64, providers-v42.
     expect(
       hash,
       [
@@ -162,6 +164,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("8d04611cd2e17cf1");
+    ).toBe("6c33da8b37829e00");
   });
 });

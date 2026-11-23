@@ -979,7 +979,9 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v126.
   // v41: Metastreams is new to the site (benches 001, 004, 305, 008), and
   //      appearances carry pinnedChain. Lockstep with bench-unfiltered-v127.
-  ["providers-v41"],
+  // v42: Codex gains its bench 008 appearance. Already on the site, so
+  //      no new product page. Lockstep with bench-unfiltered-v129.
+  ["providers-v42"],
   // v35: BlockVectra gains its Optimism appearance (#3585). An existing
   //      provider, one more bench on its product page. Lockstep with
   //      bench-unfiltered-v120.
