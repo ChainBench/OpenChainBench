@@ -82,6 +82,27 @@ describe("replies over REST", () => {
     expect(await failureOf(heartbeat())).toBeInstanceOf(down);
   });
 
+  const throwing = (err: unknown) => () => {
+    throw err;
+  };
+  test.each([
+    ["a full store", () => Response.json({ error: "OOM command" }), true],
+    ["a quota", () =>
+      Response.json({ error: "ERR max requests" }, { status: 400 }), true],
+    ["a bad token", failing(401).single, true],
+    ["a refused connection", throwing(new TypeError("fetch failed",
+      { cause: { code: "ECONNREFUSED" } })), true],
+    ["a failing service", failing(503).single, false],
+    ["a timeout", throwing(new DOMException("timed out", "TimeoutError")),
+      false],
+    ["a reset connection", throwing(new TypeError("fetch failed",
+      { cause: { code: "ECONNRESET" } })), false],
+  ])("%s says whether the command never reached Redis",
+    async (_, answer, unsent) => {
+      upstashAnswering(answer);
+      expect(await failureOf(heartbeat())).toMatchObject({ unsent });
+    });
+
   test("a reply cut off while its body is read is an outage", async () => {
     upstashAnswering(() =>
       new Response(new ReadableStream({

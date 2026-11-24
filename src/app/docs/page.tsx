@@ -2,6 +2,7 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/page-metadata";
 import { SITE } from "@/data/site";
 import { OutboundLink } from "@/components/outbound-link";
+import { CodeSnippet } from "@/components/code-snippet";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/docs",
@@ -134,16 +135,13 @@ function SectionHeader({ number, label, id }: { number: string; label: string; i
   );
 }
 
-function Code({ children }: { children: React.ReactNode }) {
-  return (
-    <pre
-      className="mt-4 overflow-x-auto rounded-xl px-5 py-4 text-[12px] font-mono leading-relaxed"
-      style={{ background: "var(--color-ink)", color: "var(--color-paper, #fff)" }}
-    >
-      {children}
-    </pre>
-  );
-}
+const MARKDOWN_EXAMPLE =
+  `curl -H 'Accept: text/markdown' ${SITE.url}/benchmarks/ethereum-rpc`;
+
+const CITE_EXAMPLE = `${SITE.url}/api/cite/ethereum-rpc/bib  # BibTeX
+${SITE.url}/api/cite/ethereum-rpc/ris  # RIS, for Zotero and EndNote
+${SITE.url}/api/cite/ethereum-rpc/apa  # APA, as plain text
+${SITE.url}/api/cite/ethereum-rpc/txt  # one sentence with the value and date`;
 
 export default function DocsPage() {
   return (
@@ -216,7 +214,7 @@ export default function DocsPage() {
           </Link>{" "}
           in Claude Desktop, Cursor or VS Code.
         </p>
-        <Code>{MCP_URL}</Code>
+        <CodeSnippet label="MCP server address">{MCP_URL}</CodeSnippet>
         <dl className="mt-6 card-soft rounded-xl divide-y divide-rule overflow-hidden">
           {TOOLS.map((t) => (
             <div
@@ -274,7 +272,9 @@ export default function DocsPage() {
           Send <code className="font-mono text-[13px]">Accept: text/markdown</code> and these paths
           answer with the table instead of the DOM. An agent gets the numbers without parsing HTML.
         </p>
-        <Code>{`curl -H 'Accept: text/markdown' ${SITE.url}/benchmarks/ethereum-rpc`}</Code>
+        <CodeSnippet label="Markdown request example">
+          {MARKDOWN_EXAMPLE}
+        </CodeSnippet>
         <div className="mt-4 flex flex-wrap gap-2">
           {MARKDOWN_PATHS.map((p) => (
             <code key={p} className="card-soft rounded-lg px-3 py-1.5 font-mono text-[12px] text-ink-soft">
@@ -318,10 +318,7 @@ export default function DocsPage() {
           </a>
           . Attribution is OpenChainBench plus the benchmark page.
         </p>
-        <Code>{`${SITE.url}/api/cite/ethereum-rpc/bib    # BibTeX
-${SITE.url}/api/cite/ethereum-rpc/ris    # RIS, for Zotero and EndNote
-${SITE.url}/api/cite/ethereum-rpc/apa    # APA, as plain text
-${SITE.url}/api/cite/ethereum-rpc/txt    # one sentence with the value and date`}</Code>
+        <CodeSnippet label="Citation addresses">{CITE_EXAMPLE}</CodeSnippet>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="card-soft rounded-xl p-5">
             <h3 className="display text-base text-ink">Two DOIs, not interchangeable</h3>
@@ -355,7 +352,9 @@ ${SITE.url}/api/cite/ethereum-rpc/txt    # one sentence with the value and date`
           provider, and <Link className="lnk" href="/partners">partners</Link> carries the embed
           terms.
         </p>
-        <Code>{`${SITE.url}/api/badge/ethereum-rpc/drpc`}</Code>
+        <CodeSnippet label="Badge address">
+          {`${SITE.url}/api/badge/ethereum-rpc/drpc`}
+        </CodeSnippet>
       </section>
 
       {/* VIII. Feeds and mirrors */}

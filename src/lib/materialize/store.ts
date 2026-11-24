@@ -12,6 +12,7 @@
 
 import { z } from "zod";
 import { causeCode } from "@/lib/error-cause";
+import { HTTP_SERVER_ERROR } from "@/lib/http-status";
 import {
   matKeys,
   parseSnapshot,
@@ -46,9 +47,20 @@ export class RedisReplyError extends Error {
   }
 }
 
+type UnavailableOptions = ErrorOptions & { unsent?: boolean };
+
 export class RedisUnavailableError extends Error {
   readonly code = "redis_unavailable";
   override name = "RedisUnavailableError";
+  readonly unsent: boolean;
+
+  constructor(
+    message: string,
+    { unsent = false, ...options }: UnavailableOptions = {},
+  ) {
+    super(message, options);
+    this.unsent = unsent;
+  }
 }
 
 const restReplySchema = z
@@ -58,7 +70,8 @@ const restReplySchema = z
 const unreadableReply = (cause: unknown) =>
   new RedisUnavailableError("materialize store: unreadable reply", { cause });
 const notConfigured = () =>
-  new RedisUnavailableError("materialize store: no redis configured");
+  new RedisUnavailableError("materialize store: no redis configured",
+    { unsent: true });
 
 function parseJson(text: string): unknown {
   try {
@@ -88,7 +101,7 @@ const STORE_DOWN_REPLY =
 
 function refusal(message: string, options?: ErrorOptions): Error {
   return STORE_DOWN_REPLY.test(message)
-    ? new RedisUnavailableError(message, options)
+    ? new RedisUnavailableError(message, { ...options, unsent: true })
     : new RedisReplyError(message, options);
 }
 
@@ -98,7 +111,8 @@ async function httpFailure(res: Response, what: string): Promise<Error> {
     `materialize store: ${what} http ${res.status}: ${detail.slice(0, 200)}`;
   return res.status === HTTP_BAD_REQUEST
     ? refusal(message)
-    : new RedisUnavailableError(message);
+    : new RedisUnavailableError(message,
+      { unsent: res.status < HTTP_SERVER_ERROR });
 }
 
 function described(err: unknown): string {
@@ -106,6 +120,11 @@ function described(err: unknown): string {
   const code = causeCode(err);
   return `${err.name}: ${err.message}${code ? ` (${code})` : ""}`;
 }
+
+const NEVER_CONNECTED = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN"]);
+
+const neverConnected = (err: unknown) =>
+  err instanceof Error && NEVER_CONNECTED.has(causeCode(err) ?? "");
 
 async function upstashPost(
   url: string,
@@ -124,7 +143,8 @@ async function upstashPost(
     });
   } catch (cause) {
     throw new RedisUnavailableError(
-      `materialize store: unreachable: ${described(cause)}`, { cause });
+      `materialize store: unreachable: ${described(cause)}`,
+      { cause, unsent: neverConnected(cause) });
   }
 }
 

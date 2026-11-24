@@ -12,10 +12,16 @@
  */
 
 import { AI_CRAWLER_RE } from "@/data/ai-crawlers";
+import { MS_PER_SECOND } from "@/lib/time-constants";
 
 const MAX_BUCKETS = 5000;
 
-type Bucket = { tokens: number; updatedAt: number; fullAt: number };
+type Bucket = {
+  tokens: number;
+  updatedAt: number;
+  fullAt: number;
+  heldUntil?: number;
+};
 
 const buckets = new Map<string, Bucket>();
 const GLOBAL_PREFIX = "__global__:";
@@ -93,6 +99,8 @@ export function rateLimit(
   }
 
   const now = Date.now();
+  const held = heldResult(key, now);
+  if (held) return held;
   const refillPerMs = capacity / (windowSec * 1000);
   let tokens = tokensAt(key, { capacity, refillPerMs, now });
   if (tokens < 1) {
@@ -116,6 +124,13 @@ function tokensAt(key: string, { capacity, refillPerMs, now }: Refill): number {
   return Math.max(0, Math.min(capacity, prev.tokens + elapsed * refillPerMs));
 }
 
+function heldResult(key: string, now: number): RateLimitResult | null {
+  const until = buckets.get(key)?.heldUntil ?? now;
+  if (until <= now) return null;
+  const retryAfterSec = Math.ceil((until - now) / MS_PER_SECOND);
+  return { ok: false, remaining: 0, retryAfterSec };
+}
+
 function emptyBucket(tokens: number, refillPerMs: number): RateLimitResult {
   const retryAfterMs = Math.ceil((1 - tokens) / refillPerMs);
   const retryAfterSec = Math.ceil(retryAfterMs / 1000);
@@ -128,10 +143,21 @@ export function peekLimit(
   windowSec: number,
 ): RateLimitResult {
   if (capacity <= 0 || windowSec <= 0) return MISCONFIGURED;
+  const now = Date.now();
+  const held = heldResult(key, now);
+  if (held) return held;
   const refillPerMs = capacity / (windowSec * 1000);
-  const tokens = tokensAt(key, { capacity, refillPerMs, now: Date.now() });
+  const tokens = tokensAt(key, { capacity, refillPerMs, now });
   if (tokens < 1) return emptyBucket(tokens, refillPerMs);
   return { ok: true, remaining: Math.floor(tokens), retryAfterSec: 0 };
+}
+
+export function holdLimit(key: string, seconds: number): void {
+  const now = Date.now();
+  const until = now + seconds * MS_PER_SECOND;
+  buckets.set(key,
+    { tokens: 1, updatedAt: now, fullAt: until, heldUntil: until });
+  if (buckets.size > MAX_BUCKETS) evictSoonestFull(key);
 }
 
 function evictSoonestFull(kept: string) {

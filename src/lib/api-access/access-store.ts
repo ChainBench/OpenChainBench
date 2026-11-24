@@ -83,6 +83,10 @@ export class AccessStoreError extends Error {
   ) {
     super(message, options);
   }
+
+  get unsent(): boolean {
+    return this.cause instanceof RedisUnavailableError && this.cause.unsent;
+  }
 }
 
 type Listed = {

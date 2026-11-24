@@ -34,6 +34,8 @@ export type StatusCounts = z.infer<typeof statusCountsSchema>;
 export const SECRET_CHARS = 43;
 export const TEAM_ROUTE = "/api/internal/api-access";
 export const STATUS_PAGE_PATH = "/api-access/status";
+export const REQUEST_PAGE_PATH = "/api-access";
+export const REQUEST_ROUTE = "/api/api-access/requests";
 export const statusLink = (token: string) => `${STATUS_PAGE_PATH}#${token}`;
 export const REQUEST_ID = /^[0-9a-f-]{36}$/;
 export const STATUS_TOKEN = new RegExp(`^[0-9A-Za-z]{${SECRET_CHARS}}$`);
@@ -105,7 +107,7 @@ export const invalidRequestSchema = z.object({
 });
 export type InvalidRequest = z.infer<typeof invalidRequestSchema>;
 
-const REQUEST_REFUSALS = ["busy", "queue_full"] as const;
+const REQUEST_REFUSALS = ["busy", "queue_full", "not_saved"] as const;
 export const requestRefusalSchema = z.object({
   error: z.enum(REQUEST_REFUSALS),
 });

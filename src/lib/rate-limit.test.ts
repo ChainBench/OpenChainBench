@@ -3,6 +3,7 @@ import {
   clientNetworkKey,
   clientSubnetKey,
   globalLimit,
+  holdLimit,
   isAiCrawler,
   peekLimit,
   rateLimit,
@@ -163,4 +164,21 @@ describe("clientNetworkKey", () => {
     expect(from("::ffff:cb00:7107")).toBe(from("203.0.113.7"));
     expect(from("::ffff:cb00:7107")).not.toBe(from("::ffff:cb00:7108"));
   });
+});
+
+test("a held network is refused until the hold ends, then served", () => {
+  const holdSec = 30;
+  const at = (ms: number) => new Date(LONG_AGO.getTime() + ms);
+  setSystemTime(LONG_AGO);
+  try {
+    holdLimit("held", holdSec);
+    setSystemTime(at(holdSec * 1000 - 100));
+    expect(peekLimit("held", 3, 60)).toMatchObject(
+      { ok: false, retryAfterSec: 1 });
+    setSystemTime(at(holdSec * 1000));
+    expect(peekLimit("held", 3, 60).ok).toBe(true);
+    expect(rateLimit("held", 3, 60).ok).toBe(true);
+  } finally {
+    setSystemTime();
+  }
 });
