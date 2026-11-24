@@ -68,25 +68,47 @@ function cutWithin(s: string, max: number): string {
   return HALF_CHARACTER_AT_END.test(cut) ? cut.slice(0, -1) : cut;
 }
 
-function escapedWithin(s: string, max: number): string {
-  const escaped = defangUrls(neutralise(s.trim()));
+function cutEscaped(escaped: string, max: number): string {
   const cut = cutWithin(escaped, max);
   const amp = cut.lastIndexOf("&");
   const open = amp >= 0 && !cut.includes(";", amp);
   return (open ? cut.slice(0, amp) : cut).trimEnd();
 }
 
-export function escapeForTeam(s: string, max: number): string {
-  const flat = s.normalize("NFKC").replace(CONTROL_CHARS, " ");
-  return escapedWithin(flat, max);
-}
+const oneLine = (s: string) =>
+  s.normalize("NFKC").replace(CONTROL_CHARS, " ");
 
-export function escapeForTeamMultiline(s: string, max: number): string {
-  const kept = s
+const keptLines = (s: string) =>
+  s
     .normalize("NFKC")
     .replace(/\r\n?/g, "\n")
     .replace(CONTROL_CHARS_KEEP_NL, " ");
-  return escapedWithin(kept, max);
+
+function escapedWithin(s: string, max: number): string {
+  return cutEscaped(defangUrls(neutralise(s.trim())), max);
+}
+
+export function escapeForTeam(s: string, max: number): string {
+  return escapedWithin(oneLine(s), max);
+}
+
+export function escapeForTeamMultiline(s: string, max: number): string {
+  return escapedWithin(keptLines(s), max);
+}
+
+type SlackPlainText = { type: "plain_text"; text: string; emoji: false };
+
+function slackPlain(s: string, max: number): SlackPlainText {
+  const text = cutEscaped(defangUrls(escapeHtmlText(s.trim())), max);
+  return { type: "plain_text", text, emoji: false };
+}
+
+export function plainForSlack(s: string, max: number): SlackPlainText {
+  return slackPlain(oneLine(s), max);
+}
+
+export function plainForSlackMultiline(s: string, max: number): SlackPlainText {
+  return slackPlain(keptLines(s), max);
 }
 
 async function telegramError(res: Response, token: string): Promise<string> {
