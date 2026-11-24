@@ -34,6 +34,7 @@ jobs:
       - run: pnpm validate
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm status-page --check
       - run: pnpm test
         env:
           TEST_REDIS_URL: redis://localhost:6379

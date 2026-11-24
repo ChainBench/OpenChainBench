@@ -8,7 +8,7 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteFooter } from "@/components/site-footer";
 import { SearchProvider } from "@/components/search/search-provider";
 import { SITE } from "@/data/site";
-import { THEME_KEY } from "@/lib/theme-key";
+import { THEME_SCRIPT } from "@/lib/theme-key";
 import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID, PERSON_JSONLD } from "@/lib/hub-jsonld";
 import { PHProvider } from "@/components/posthog-provider";
@@ -128,14 +128,6 @@ export const metadata: Metadata = {
   // today, so this was latent rather than live. The home page declares its
   // own, below in src/app/page.tsx.
 };
-
-const THEME_SCRIPT =
-  "(function(){try{" +
-  `var t=localStorage.getItem('${THEME_KEY}');` +
-  "var d=t==='dark'||(!t&&window.matchMedia(" +
-  "'(prefers-color-scheme: dark)').matches);" +
-  "if(d)document.documentElement.classList.add('dark');" +
-  "}catch(e){}})();";
 
 const ORG_JSONLD = {
   "@context": "https://schema.org",

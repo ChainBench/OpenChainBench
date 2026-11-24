@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { POST as createKey } from "@/app/api/api-access/key/route";
 import { POST as submit } from "@/app/api/api-access/requests/route";
+import { POST as showStatus } from "@/app/api/api-access/status/route";
 import { TEST_REQUESTER } from "@/test/access-request-fixtures";
 import { jsonPost } from "@/test/api-access-fixtures";
 import { isolateRedisEnv } from "@/test/env";
 import { quietConsole } from "@/test/quiet-console";
+import { SECRET_CHARS } from "./contract";
 import { ADMISSIONS, type Admission, requesterGate } from "./http";
 
 const logs = quietConsole();
@@ -25,11 +28,13 @@ async function callsUntilCapped(route: Route, network: string, body: unknown) {
 }
 
 describe("requester routes", () => {
-  const unavailable = { status: 503, error: "not_saved" };
-  const cases: [keyof typeof ADMISSIONS, Route, unknown, string][] = [
-    ["request", submit, TEST_REQUESTER, "2001:db8:c"],
+  const token = "A".repeat(SECRET_CHARS);
+  const cases: [keyof typeof ADMISSIONS, Route, unknown, string, string][] = [
+    ["request", submit, TEST_REQUESTER, "2001:db8:c", "not_saved"],
+    ["key", createKey, { token, replacing: null }, "2001:db8:a", "unavailable"],
+    ["status", showStatus, { token }, "2001:db8:b", "unavailable"],
   ];
-  for (const [name, route, body, prefix] of cases) {
+  for (const [name, route, body, prefix, outage] of cases) {
     test(`the ${name} route caps one /48, not its neighbours`,
       async () => {
         const capped = await callsUntilCapped(route, `${prefix}:1`, body);
@@ -41,9 +46,25 @@ describe("requester routes", () => {
         expect(sibling.status).toBe(429);
         const neighbour = await route(from(`${prefix}1:1::1`, body));
         expect({ status: neighbour.status, ...await neighbour.json() })
-          .toEqual(unavailable);
+          .toEqual({ status: 503, error: outage });
       });
   }
+
+  test("calls without a well-formed link use none of the limit",
+    async () => {
+      const network = "2001:db8:d:1";
+      const routes: [Route, unknown][] = [
+        [createKey, { token, replacing: null }],
+        [showStatus, { token }],
+      ];
+      for (const [route, body] of routes) {
+        for (let i = 1; i <= MAX_CALLS; i += 1) {
+          const junk = await route(from(`${network}::${i}`, { token: "x" }));
+          expect(junk.status).toBe(404);
+        }
+        expect((await route(from(`${network}::1`, body))).status).toBe(503);
+      }
+    });
 
   test("only served calls spend the site's budget", async () => {
     const admission: Admission = {

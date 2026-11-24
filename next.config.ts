@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 import { RENAMED_BENCH_SLUGS } from "./src/lib/removed-benches";
+import { STATUS_PAGE_PATH } from "./src/lib/api-access/contract";
+import { STATUS_PAGE_POLICY } from "./src/lib/api-access/status-page";
 
 // Content-Security-Policy. `'unsafe-inline'` for scripts is needed because
 // three pages emit JSON-LD via `dangerouslySetInnerHTML` (layout.tsx,
@@ -45,6 +47,15 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+];
+
+const STATUS_PAGE_HEADERS = [
+  ...SECURITY_HEADERS.filter(
+    (h) =>
+      h.key !== "Content-Security-Policy" && h.key !== "Referrer-Policy",
+  ),
+  { key: "Content-Security-Policy", value: STATUS_PAGE_POLICY },
+  { key: "Referrer-Policy", value: "no-referrer" },
 ];
 
 const nextConfig: NextConfig = {
@@ -138,6 +149,10 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         missing: [{ type: "host", value: "openchainbench.com" }],
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: STATUS_PAGE_PATH,
+        headers: STATUS_PAGE_HEADERS,
       },
       {
         // The RPC speed test fires fetch() at user-supplied endpoints
