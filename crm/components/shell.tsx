@@ -10,6 +10,7 @@ const NAV = [
   ["/costs", "Costs"],
   ["/server", "Server"],
   ["/health", "Data health"],
+  ["/api-access", "API access"],
 ] as const;
 
 export function fmtAge(min: number | null): string {
