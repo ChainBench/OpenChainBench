@@ -11,6 +11,7 @@ import {
 } from "@/lib/rate-limit";
 import { SECONDS_PER_MINUTE } from "@/lib/time-constants";
 import { AccessStoreError } from "./access-store";
+import type { RequestRefusal, StoreRefusal } from "./contract";
 
 const MAX_BODY_CHARS = 8_000;
 
@@ -24,9 +25,13 @@ export function privateJson(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: PRIVATE_HEADERS });
 }
 
+const BUSY: RequestRefusal = "busy";
+const UNAVAILABLE: StoreRefusal = "unavailable";
+const UNREADABLE: StoreRefusal = "unreadable";
+
 function siteBusy(retryAfterSec: number): Response {
   return Response.json(
-    { error: "busy", retryAfterSec },
+    { error: BUSY, retryAfterSec },
     {
       status: 503,
       headers: { ...PRIVATE_HEADERS, "Retry-After": String(retryAfterSec) },
@@ -148,9 +153,9 @@ export async function orUnavailable(
     if (err.code === "store_unexpected") throw err;
     if (err.code === "record_unreadable") {
       console.error("api access record unreadable", err);
-      return privateJson({ error: "unreadable" }, 500);
+      return privateJson({ error: UNREADABLE }, 500);
     }
     console.error("api access store unavailable", err);
-    return privateJson({ error: "unavailable" }, 503);
+    return privateJson({ error: UNAVAILABLE }, 503);
   }
 }
