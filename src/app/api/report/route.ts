@@ -1,67 +1,18 @@
 import { NextResponse } from "next/server";
 import { clientKey, globalLimit, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { CHAIN_RE, SLUG_RE } from "@/lib/slug";
+import {
+  escapeForTeam,
+  escapeForTeamMultiline,
+  notifyTeam,
+  teamChannelConfigured,
+} from "@/lib/team-notify";
 
 export const runtime = "nodejs";
 
 const MAX_MESSAGE = 2000;
 const MAX_CONTACT = 200;
 const MAX_HEADER_ECHO = 200;
-
-// C0 control characters + DEL + the Unicode "line/paragraph separator"
-// characters that Slack renders as newlines (U+2028, U+2029), plus the
-// bidi/format chars that visually rearrange text (U+200B-U+200F,
-// U+202A-U+202E, U+2060, U+FEFF). Stripped from every user-controlled
-// string before it hits a Slack mrkdwn field. KEEP_NL preserves \n
-// (U+000A) so the report body can still have paragraphs.
-const CONTROL_CHARS = new RegExp(
-  "[\\u0000-\\u001f\\u007f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2060\\ufeff]",
-  "g",
-);
-const CONTROL_CHARS_KEEP_NL = new RegExp(
-  "[\\u0000-\\u0009\\u000b-\\u001f\\u007f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2060\\ufeff]",
-  "g",
-);
-
-/** Defang bare URLs so Slack doesn't auto-link them. Reporter abusing the
- *  endpoint can otherwise inject phishing URLs that render as clickable
- *  links in the on-call channel. Replace `:` after any URL-ish scheme. */
-function defangUrls(s: string): string {
-  return s.replace(/\b(https?|ftp|mailto|tel|javascript|data|file)(:)/gi, "$1[:]");
-}
-
-/** Neutralise Slack mrkdwn so user-supplied strings can't inject mentions
- *  (`<@U123>`, `<!channel>`), link cloaking (`<https://evil|safe>`), code
- *  blocks (``` ``` ``` ```), or bold/italic/strike formatting that would
- *  let a reporter forge fake "*IP:* / *Contact:*" lines in the webhook. */
-function slackSafe(s: string, max: number): string {
-  // NFKC normalize first so Unicode-confusable variants (combining marks,
-  // compatibility forms) collapse to ASCII-equivalents the mention regex
-  // catches.
-  const normalized = s
-    .normalize("NFKC")
-    .replace(CONTROL_CHARS, " ")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/([`*_~|])/g, "​$1")
-    .replace(/@(channel|here|everyone)/gi, "@​$1");
-  return defangUrls(normalized).slice(0, max).trim();
-}
-
-/** Multiline variant: preserves \n so report bodies can use paragraphs. */
-function slackSafeMultiline(s: string, max: number): string {
-  const normalized = s
-    .normalize("NFKC")
-    .replace(/\r\n?/g, "\n")
-    .replace(CONTROL_CHARS_KEEP_NL, " ")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/([`*_~|])/g, "​$1")
-    .replace(/@(channel|here|everyone)/gi, "@​$1");
-  return defangUrls(normalized).slice(0, max).trim();
-}
 
 type Body = {
   slug?: unknown;
@@ -80,14 +31,7 @@ export async function POST(req: Request) {
   const gl = globalLimit("report", 60, 60);
   if (!gl.ok) return tooManyRequests(gl.retryAfterSec);
 
-  // Telegram first, Slack as the fallback it used to be. A report is one
-  // person telling us a number looks wrong, and it should land where someone
-  // actually reads it rather than in a channel nobody opens.
-  const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-  const tgChat = process.env.TELEGRAM_CHAT_ID;
-  const webhook = process.env.SLACK_REPORT_WEBHOOK_URL;
-  const telegram = tgToken && tgChat ? { token: tgToken, chat: tgChat } : null;
-  if (!telegram && !webhook) {
+  if (!teamChannelConfigured()) {
     return NextResponse.json(
       { error: "Reporting is not configured." },
       { status: 503 }
@@ -130,22 +74,25 @@ export async function POST(req: Request) {
     );
   }
 
-  const ua = slackSafe(req.headers.get("user-agent") ?? "unknown", MAX_HEADER_ECHO);
-  const referer = slackSafe(
+  const ua = escapeForTeam(
+    req.headers.get("user-agent") ?? "unknown",
+    MAX_HEADER_ECHO,
+  );
+  const referer = escapeForTeam(
     req.headers.get("referer") ?? page ?? "unknown",
     MAX_HEADER_ECHO,
   );
-  const ip = slackSafe(
+  const ip = escapeForTeam(
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       req.headers.get("x-real-ip") ??
       "unknown",
     64,
   );
 
-  const safeSlug = slackSafe(slug, 80);
-  const safeChain = chain ? slackSafe(chain, 40) : null;
-  const safeMessage = slackSafeMultiline(message, MAX_MESSAGE);
-  const safeContact = contact ? slackSafe(contact, MAX_CONTACT) : null;
+  const safeSlug = escapeForTeam(slug, 80);
+  const safeChain = chain ? escapeForTeam(chain, 40) : null;
+  const safeMessage = escapeForTeamMultiline(message, MAX_MESSAGE);
+  const safeContact = contact ? escapeForTeam(contact, MAX_CONTACT) : null;
 
   const titleLine = safeChain ? `${safeSlug} · chain ${safeChain}` : safeSlug;
   const slackPayload = {
@@ -182,75 +129,22 @@ export async function POST(req: Request) {
     ],
   };
 
-  if (telegram) {
-    // HTML, not Markdown: every interpolated value already went through
-    // slackSafe, which escapes &, < and > — exactly what Telegram's HTML
-    // mode needs. Markdown would need a different escape set and the two
-    // would drift.
-    const text =
+  const delivery = await notifyTeam({
+    telegramHtml:
       `\u{1F41E} <b>New OpenChainBench report</b>\n\n` +
       `<b>Bench</b> <code>${titleLine}</code>\n` +
       `<b>Page</b> ${referer}\n\n` +
       `${safeMessage}\n\n` +
       `<i>Contact: ${safeContact ?? "not provided"}</i>\n` +
       `<i>IP: ${ip}</i>\n` +
-      `<i>UA: ${ua}</i>`;
-    try {
-      const res = await fetch(
-        `https://api.telegram.org/bot${telegram.token}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: telegram.chat,
-            text: text.slice(0, 4096), // Telegram's own message ceiling
-            parse_mode: "HTML",
-            disable_web_page_preview: true,
-          }),
-          signal: AbortSignal.timeout(5_000),
-        },
-      );
-      if (!res.ok) {
-        // Never log the body: it echoes the request, and the token is in
-        // the URL of the request we just made.
-        console.error("Telegram rejected report", res.status);
-        return NextResponse.json(
-          { error: "Could not deliver the report. Try again in a moment." },
-          { status: 502 }
-        );
-      }
-      return NextResponse.json({ ok: true });
-    } catch {
-      console.error("Telegram sendMessage failed");
-      return NextResponse.json(
-        { error: "Could not deliver the report. Try again in a moment." },
-        { status: 502 }
-      );
-    }
-  }
-
-  try {
-    const slackRes = await fetch(webhook!, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(slackPayload),
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!slackRes.ok) {
-      const text = await slackRes.text().catch(() => "");
-      console.error("Slack webhook rejected report", slackRes.status, text);
-      return NextResponse.json(
-        { error: "Could not deliver the report. Try again in a moment." },
-        { status: 502 }
-      );
-    }
-  } catch (err) {
-    console.error("Slack webhook fetch failed", err);
+      `<i>UA: ${ua}</i>`,
+    slack: slackPayload,
+  });
+  if (delivery !== "sent") {
     return NextResponse.json(
-      { error: "Could not reach Slack." },
+      { error: "Could not deliver the report. Try again in a moment." },
       { status: 502 }
     );
   }
-
   return NextResponse.json({ ok: true });
 }

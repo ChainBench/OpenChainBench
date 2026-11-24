@@ -11,9 +11,9 @@
  */
 import { classifyPath, classifyReferrer, referrerPredicate, type Channel, type Section } from "@/lib/channels";
 import { num, queryHogQL, str } from "@/lib/posthog";
+import { SITE_HOST } from "@/lib/site";
 import { WINDOWS, type ReportWindow } from "@/lib/window";
 
-const SITE_HOST = process.env.SITE_HOST ?? "openchainbench.com";
 const HOST_FILTER = `properties.$host = '${SITE_HOST}'`;
 const PV_ANY = `event = '$pageview' AND ${HOST_FILTER}`;
 

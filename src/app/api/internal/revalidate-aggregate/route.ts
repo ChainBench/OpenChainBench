@@ -1,6 +1,6 @@
-import { timingSafeEqual } from "node:crypto";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { checkBearer } from "@/lib/internal-bearer";
 import { acquireRevalidateSlot, minIntervalSec } from "@/lib/revalidate-throttle";
 
 export const runtime = "nodejs";
@@ -18,19 +18,14 @@ export const dynamic = "force-dynamic";
  * timing-safe compare. Fails closed when the env is missing.
  */
 export async function POST(req: Request): Promise<NextResponse> {
-  const secret = (process.env.REVALIDATE_TOKEN ?? "").trim();
-  if (!secret) {
+  const auth = checkBearer(req, ["REVALIDATE_TOKEN"]);
+  if (auth === "unconfigured") {
     return NextResponse.json(
       { error: "no_secret_configured" },
       { status: 503 },
     );
   }
-  const header = (req.headers.get("authorization") ?? "").trim();
-  const expected = `Bearer ${secret}`;
-  const ok =
-    header.length === expected.length &&
-    timingSafeEqual(Buffer.from(header), Buffer.from(expected));
-  if (!ok) {
+  if (auth === "unauthorized") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   // Next 16's revalidateTag takes a required cache-profile argument.

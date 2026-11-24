@@ -8,6 +8,7 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteFooter } from "@/components/site-footer";
 import { SearchProvider } from "@/components/search/search-provider";
 import { SITE } from "@/data/site";
+import { THEME_SCRIPT } from "@/lib/theme-key";
 import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID, PERSON_JSONLD } from "@/lib/hub-jsonld";
 import { PHProvider } from "@/components/posthog-provider";
@@ -236,7 +237,7 @@ export default async function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('ocb-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+            __html: THEME_SCRIPT,
           }}
         />
         {/* Detect iOS in-app WebView (Telegram, Instagram, FB, Twitter, etc.).

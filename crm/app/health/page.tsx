@@ -1,10 +1,10 @@
 import { Shell, fmtAge } from "@/components/shell";
 import { Empty, fmtInt, Kpi } from "@/components/ui";
 import { readHistory, readSnapshot } from "@/lib/snapshot";
+import { SITE_ORIGIN } from "@/lib/site";
 import { parseWindow } from "@/lib/window";
 
 export const dynamic = "force-dynamic";
-const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
 
 export default async function HealthPage({ searchParams }: { searchParams: Promise<{ refresh?: string; w?: string }> }) {
   const [snap, history, sp] = await Promise.all([readSnapshot(), readHistory(), searchParams]);
@@ -116,7 +116,7 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
               {b.attention.map((r) => (
                 <tr key={r.slug}>
                   <td className="mono">
-                    <a href={`${SITE}/benchmarks/${r.slug}`} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+                    <a href={`${SITE_ORIGIN}/benchmarks/${r.slug}`} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
                       {r.slug}
                     </a>
                   </td>
