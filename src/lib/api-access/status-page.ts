@@ -4,7 +4,6 @@ import { SITE } from "../../data/site";
 import { THEME_SCRIPT } from "../theme-key";
 import {
   DECLINED_KEPT,
-  KEYED_PER_MINUTE,
   KEY_ROUTE,
   NEW_KEY_DELAY_SECONDS,
   OLD_KEY_DELAY,
@@ -12,11 +11,18 @@ import {
   STATUS_ROUTE,
   STATUS_TOKEN,
 } from "./contract";
+import {
+  KEYED_CACHE_NOTE,
+  KEYED_LIMIT,
+  PER_SERVER_NOTE,
+} from "./public-limits";
 import { STATUS_PAGE_PALETTE, STATUS_PAGE_SCRIPT } from "./status-page.gen";
 
 const CONFIG = [
   `data-contact="${escapeMarkup(SITE.email)}"`,
-  `data-key-limit="${KEYED_PER_MINUTE} requests per minute per route"`,
+  `data-key-limit="${escapeMarkup(
+    `${KEYED_LIMIT}. ${PER_SERVER_NOTE} ${KEYED_CACHE_NOTE}`,
+  )}"`,
   `data-old-key-delay="${escapeMarkup(OLD_KEY_DELAY)}"`,
   `data-declined-kept="${escapeMarkup(DECLINED_KEPT)}"`,
   `data-new-key-delay="${NEW_KEY_DELAY_SECONDS} seconds"`,

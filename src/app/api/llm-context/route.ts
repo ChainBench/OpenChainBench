@@ -12,7 +12,7 @@ import {
   rankedCandidates,
 } from "@/lib/citation";
 import { answerOneLine, loadRenderedAnswers } from "@/lib/answers-rendered";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 import { stripQueryRedirect } from "@/lib/canonical-query";
 
 export const runtime = "nodejs";
@@ -33,11 +33,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const canonical = stripQueryRedirect(req);
   if (canonical) return canonical;
-  const r = rateLimit(clientKey(req, "llm-context"), 30, 60, req);
-  if (!r.ok) {
-    const tooMany = tooManyRequests(r.retryAfterSec);
-    return new Response(await tooMany.text(), { status: tooMany.status, headers: tooMany.headers });
-  }
+  const refused = await limitApiCall(req, "llm-context");
+  if (refused) return refused;
 
   let benches;
   try {

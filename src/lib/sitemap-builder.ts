@@ -14,6 +14,7 @@ import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS } from "@/lib/chains";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { CATEGORIES } from "@/lib/categories";
+import { REQUEST_PAGE_PATH } from "@/lib/api-access/contract";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
@@ -242,6 +243,12 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
           },
         ]),
     { url: `${SITE.url}/docs`, lastModified: pageMtime("docs/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
+    {
+      url: `${SITE.url}${REQUEST_PAGE_PATH}`,
+      lastModified: pageMtime("api-access/page.tsx"),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
     { url: `${SITE.url}/contact`, lastModified: pageMtime("contact/page.tsx"), changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE.url}/fee-compare`, lastModified: pageMtime("fee-compare/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/tools`, lastModified: pageMtime("tools/page.tsx"), changeFrequency: "monthly", priority: 0.7 },

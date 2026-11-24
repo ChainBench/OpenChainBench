@@ -3,7 +3,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { fmtUnit } from "@/lib/format";
 import { fieldValue, leader, sparklineFor } from "@/lib/citation";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 import { SLUG_RE } from "@/lib/slug";
 import { scopeFromParams, scopeNote } from "@/lib/venue-type-filter";
 
@@ -22,8 +22,8 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const r = rateLimit(clientKey(req, "og"), 60, 60, req);
-  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  const refused = await limitApiCall(req, "og");
+  if (refused) return refused;
 
   const { slug } = await params;
   if (!SLUG_RE.test(slug)) {

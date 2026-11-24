@@ -7,7 +7,12 @@ import {
   KEYED_PER_MINUTE,
   REQUEST_PAGE_PATH,
 } from "@/lib/api-access/contract";
-import { PUBLIC_RANGE } from "@/lib/api-access/public-limits";
+import {
+  KEYED_CACHE_NOTE,
+  KEYED_EXCEPTIONS,
+  PER_SERVER_NOTE,
+  PUBLIC_RANGE,
+} from "@/lib/api-access/public-limits";
 import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata: import("next").Metadata = pageMetadata({
@@ -72,10 +77,10 @@ export default function ApiAccessPage() {
       </dl>
       <CodeSnippet label="Example call with a key">{EXAMPLE}</CodeSnippet>
       <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
-        Each of our servers counts calls on its own, so the limits are
-        approximate. Answers to calls with a key are not kept in our edge
-        cache, so cache them on your side. Call the API from your server: a
-        key placed in browser code can be read by anyone.
+        With a key, the limit is {KEYED_EXCEPTIONS}, whose answers cost
+        more to build. {PER_SERVER_NOTE} {KEYED_CACHE_NOTE} Call the API
+        from your server: a key placed in browser code can be read by
+        anyone.
         Endpoints are listed in the{" "}
         <Link className="lnk" href="/docs#rest">
           API reference
