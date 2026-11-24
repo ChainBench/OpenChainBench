@@ -2374,6 +2374,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "FiatBear is non-custodial copy trading for Hyperliquid perps: customers approve an agent wallet and FiatBear mirrors public Hyperliquid wallets into their own account; the copied orders carry its builder code at 0.05% of notional.",
     twitter: "@FiatBearDotCom",
   },
+  perpslap: {
+    url: "https://perpslap.eth.limo",
+    description:
+      "PerpSlap is a Hyperliquid screener and trading frontend served from ENS: it screens public Hyperliquid wallet performance, makes trade cards and bridges Arbitrum USDC; the perp orders it places carry its builder code at 0.05% of notional.",
+  },
 
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
