@@ -693,6 +693,8 @@ const RAW: Record<string, string> = {
   "true-markets": "/logos/true-markets.png",
   // FiatBear's app icon (192 px PNG), supplied by the operator.
   fiatbear: "/logos/fiatbear.png",
+  // PerpSlap's site icon (192 px PNG, perpslap.eth.limo/assets/icon-192.png).
+  perpslap: "/logos/perpslap.png",
   "nova-markets": "/logos/nova-markets.jpeg",
   "phantom-perps": "/logos/phantom-perps.svg",
   // ─── Terminal fill quality (bench № 268): the wallets' in-app swap ───
