@@ -2,10 +2,10 @@ import { Shell } from "@/components/shell";
 import { Delta, Empty, fmtInt, Kpi } from "@/components/ui";
 import { parseWindow } from "@/lib/window";
 import { readSnapshot, trafficFor } from "@/lib/snapshot";
+import { SITE_ORIGIN } from "@/lib/site";
 import type { OutboundRow } from "@/lib/traffic";
 
 export const dynamic = "force-dynamic";
-const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
 
 const COOKIELESS_HINT =
   "Clicks counted without the cookie the site's analytics script sets: JavaScript or cookies off, a link opened before the page finished loading or straight from another site, or a robot posing as a browser. A robot that forges the cookie is not in this column.";
@@ -75,7 +75,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
                     </td>
                     <td className="mono" style={{ color: "var(--muted)" }}>
                       {c.bench ? (
-                        <a href={`${SITE}/benchmarks/${c.bench}`} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+                        <a href={`${SITE_ORIGIN}/benchmarks/${c.bench}`} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
                           {c.bench}
                         </a>
                       ) : (

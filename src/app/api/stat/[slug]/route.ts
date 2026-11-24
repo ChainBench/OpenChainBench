@@ -19,7 +19,7 @@ import {
 } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { dataAgeHours, displayResults, isStaleBench } from "@/lib/provider-filters";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 import { SLUG_RE } from "@/lib/slug";
 
 export const runtime = "nodejs";
@@ -35,8 +35,8 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const r = rateLimit(clientKey(req, "stat"), 60, 60, req);
-  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  const refused = await limitApiCall(req, "stat");
+  if (refused) return refused;
 
   const { slug } = await params;
   if (!SLUG_RE.test(slug)) {

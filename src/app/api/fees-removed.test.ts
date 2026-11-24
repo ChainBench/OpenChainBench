@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { Benchmark } from "@/types/benchmark";
+import * as benchmarks from "@/data/benchmarks";
+import * as benchBlob from "@/lib/bench-blob";
 import type { BenchmarkFilters } from "@/lib/materialize/load";
 import { perpFeesBoard } from "@/test/benchmark";
+
+const realBenchmarks = { ...benchmarks };
+const realBenchBlob = { ...benchBlob };
 
 const ALL_IN_7D = [7, 7];
 const SPREAD_7D = [2, 2];
@@ -30,6 +35,7 @@ beforeEach(() => {
   feesVariant = undefined;
   blobReads = 0;
   mock.module("@/data/benchmarks", () => ({
+    ...realBenchmarks,
     getBenchmark: async (_slug: string, f: BenchmarkFilters = {}) =>
       f.fees ? feesVariant : bench("All-in cost"),
   }));
@@ -37,6 +43,7 @@ beforeEach(() => {
     unstable_cache: <T,>(fn: T) => fn,
   }));
   mock.module("@/lib/bench-blob", () => ({
+    ...realBenchBlob,
     loadSnapshotFromBlob: async (_slug: string, sig: string) => {
       blobReads += 1;
       const series7d = sig.includes("fees=removed") ? SPREAD_7D : ALL_IN_7D;

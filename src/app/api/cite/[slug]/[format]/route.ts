@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { citeBundle } from "@/lib/citation";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 import { SLUG_RE } from "@/lib/slug";
 
 export const runtime = "nodejs";
@@ -59,8 +59,8 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ slug: string; format: string }> },
 ) {
-  const r = rateLimit(clientKey(req, "cite"), 60, 60, req);
-  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  const refused = await limitApiCall(req, "cite");
+  if (refused) return refused;
 
   const { slug, format } = await params;
   if (!SLUG_RE.test(slug)) {
