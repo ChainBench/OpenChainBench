@@ -7,11 +7,22 @@ import { newRequestMessage } from "./team-message";
 const SLACK_TEXT_MAX_CHARS = 3000;
 const SLACK_FIELD_MAX_CHARS = 2000;
 
-const slackText = z.object({ text: z.string() });
+const slackText = z.object({ type: z.string(), text: z.string() });
 const slackBlocks = z.array(z.object({
   text: slackText.optional(),
   fields: z.array(slackText).optional(),
 }));
+
+function slackTexts(blocks: unknown[], type: "plain_text" | "mrkdwn") {
+  return slackBlocks
+    .parse(blocks)
+    .flatMap((b) => [...(b.text ? [b.text] : []), ...(b.fields ?? [])])
+    .filter((t) => t.type === type)
+    .map((t) => t.text);
+}
+
+const shownBySlack = (s: string) =>
+  s.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
 
 const hostile = {
   name: '<a href="https://evil.example">Open CRM</a> @channel',
@@ -27,18 +38,24 @@ describe("new request message", () => {
     expect(userText).not.toContain("<");
     expect(userText).not.toContain("https:");
     expect(userText).not.toMatch(/@channel/);
-    const posted = JSON.stringify(slack);
-    expect(posted).not.toContain("<");
-    expect(posted).not.toContain("https:");
-    expect(posted).not.toMatch(/@channel/);
+    expect(slack.text).not.toContain("<");
+    expect(slack.text).not.toContain("https:");
+    expect(slack.text).not.toMatch(/@channel/);
+    expect(JSON.stringify(slack.blocks)).not.toContain("<");
+    expect(JSON.stringify(slack.blocks)).not.toContain("https:");
+    expect(slackTexts(slack.blocks, "mrkdwn").join()).not.toContain("evil");
   });
 
-  test("backticks in the use case cannot close the Slack code block", () => {
-    const useCase = "```\n<!channel> escaped ``` and more text here";
-    const { slack } = newRequestMessage({ ...hostile, useCase });
-    const [, block] = slackBlocks.parse(slack.blocks);
-    const text = block?.text?.text ?? "";
-    expect(text.match(/```/g)).toHaveLength(2);
+  test("Slack shows every requester field as plain text, as typed", () => {
+    const useCase = "```\n<!channel> *bold* _x_ ~y~ @here :rotating_light:";
+    const requester = { ...hostile, name: "<b>R&D</b> @channel", useCase };
+    const { slack } = newRequestMessage(requester);
+    expect(slackTexts(slack.blocks, "plain_text").map(shownBySlack)).toEqual([
+      requester.name,
+      requester.email,
+      "https[:]//evil.example/<b>",
+      useCase,
+    ]);
   });
 
   test("the longest use case stays within Telegram and Slack limits", () => {
@@ -46,6 +63,9 @@ describe("new request message", () => {
     const { telegramHtml, slack } = newRequestMessage(requester);
     expect(telegramHtml.length).toBeLessThan(TELEGRAM_LIMIT);
     expect(telegramHtml.endsWith("</i>")).toBe(true);
+    const plain = slackTexts(slack.blocks, "plain_text");
+    const shown = shownBySlack(plain.at(-1) ?? "");
+    expect(requester.useCase.startsWith(shown)).toBe(true);
     for (const block of slackBlocks.parse(slack.blocks)) {
       if (block.text) {
         expect(block.text.text.length).toBeLessThan(SLACK_TEXT_MAX_CHARS);
@@ -67,6 +87,6 @@ describe("new request message", () => {
     const email = "o'brien_last*x@example.com";
     const { telegramHtml, slack } = newRequestMessage({ ...hostile, email });
     expect(telegramHtml).toContain(`<code>${email}</code>`);
-    expect(JSON.stringify(slack)).toContain(`\`${email}\``);
+    expect(slackTexts(slack.blocks, "plain_text")).toContain(email);
   });
 });

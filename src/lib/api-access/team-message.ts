@@ -2,6 +2,8 @@ import {
   escapeForTeam,
   escapeForTeamMultiline,
   escapeHtmlText,
+  plainForSlack,
+  plainForSlackMultiline,
   type TeamMessage,
 } from "@/lib/team-notify";
 import { MAX_PENDING, MAX_USE_CASE, type Requester } from "./contract";
@@ -11,6 +13,8 @@ const MAX_ESCAPED_USE_CASE = 2 * MAX_USE_CASE;
 const NEXT_STEP =
   "Email and site are not verified. Approve or decline the request in " +
   "the CRM: API access, Waiting tab.";
+
+const slackLabel = (label: string) => ({ type: "mrkdwn", text: `*${label}*` });
 
 export function newRequestMessage(requester: Requester): TeamMessage {
   const name = escapeForTeam(requester.name, MAX_FIELD);
@@ -34,16 +38,21 @@ export function newRequestMessage(requester: Requester): TeamMessage {
         {
           type: "section",
           fields: [
-            { type: "mrkdwn", text: `*From*\n\`${name}\` (\`${email}\`)` },
-            { type: "mrkdwn", text: `*Site*\n\`${site}\`` },
+            slackLabel("From"),
+            plainForSlack(requester.name, MAX_FIELD),
+            slackLabel("Email"),
+            plainForSlack(requester.email, MAX_FIELD),
+            slackLabel("Site"),
+            plainForSlack(requester.website, MAX_FIELD),
           ],
         },
+        { type: "section", text: slackLabel("What they will build") },
         {
           type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*What they will build*\n\`\`\`${useCase}\`\`\``,
-          },
+          text: plainForSlackMultiline(
+            requester.useCase,
+            MAX_ESCAPED_USE_CASE,
+          ),
         },
         {
           type: "context",
