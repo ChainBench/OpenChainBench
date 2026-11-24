@@ -235,6 +235,8 @@ describe("the provider set behind the cache keys", () => {
     // has chain tabs: v210/v203/v125, providers-v78.
     // An ADDITION on 2026-11-23: Metastreams joins benches 305 and 008:
     // v211/v204/v126, providers-v80.
+    // An ADDITION on 2026-11-24: PerpSlap joins bench 030 (no
+    // dimensions): v213/v206, providers-v81.
     expect(
       hash,
       [
@@ -253,6 +255,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("7efe1dcde38553b5");
+    ).toBe("7036c432ce896972");
   });
 });

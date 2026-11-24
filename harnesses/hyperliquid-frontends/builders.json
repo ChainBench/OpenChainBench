@@ -772,5 +772,12 @@
     "address": "0x9f719aed9e651e8c6060e06f67cf9f5f2c0f0232",
     "valid_from": "2026-07-16",
     "notes": "FiatBear (fiatbear.com), non-custodial copy trading for Hyperliquid perps: customers approve an agent wallet and FiatBear mirrors public Hyperliquid wallets into their own account. Copied orders carry this builder address with a 0.05% (5 bp) builder fee. Builder address from the operator; DefiLlama lists it as protocol fiatbear. valid_from is the first day the public fills bucket returns a file (2026-07-15 answers 403), checked on 2026-11-20."
+  },
+  {
+    "slug": "perpslap",
+    "name": "PerpSlap",
+    "address": "0xe7cc5aeb5d88913305fccb9ada23b355e5dc882d",
+    "valid_from": "2026-11-20",
+    "notes": "PerpSlap (https://perpslap.eth.limo), a Hyperliquid perpetuals frontend. Builder fee: 5 bps (0.05%). First confirmed public builder_fills archive: 2026-11-20; no earlier accessible archive was found in daily probes from 2026-10-01 through 2026-11-19."
   }
 ]

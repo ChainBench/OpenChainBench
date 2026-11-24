@@ -1089,7 +1089,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v210: bench 007 gains seven CEX rows and every row a venue type.
   // v211: Metastreams joins benches 305 and 008.
   // v212: bench 305 ranks Metastreams and Serialized on the asset tabs they price (ranked_on).
-  ["bench-unfiltered-v212", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v213: bench 030 adds PerpSlap.
+  ["bench-unfiltered-v213", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1480,7 +1481,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v203: lockstep with bench-unfiltered-v210 (bench 007 CEX rows).
   // v204: lockstep with bench-unfiltered-v211 (Metastreams on 305 and 008).
   // v205: lockstep with bench-unfiltered-v212 (ranked_on on bench 305).
-  ["all-benchmarks-v205", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v206: lockstep with bench-unfiltered-v213 (bench 030 adds PerpSlap).
+  ["all-benchmarks-v206", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
