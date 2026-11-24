@@ -1,13 +1,16 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
+import { quietConsole } from "@/test/quiet-console";
 import { TELEGRAM_LIMIT, stubTeamChannel } from "@/test/team-channel";
 import {
   escapeForTeam,
   escapeForTeamMultiline,
   notifyTeam,
+  type TeamDelivery,
   type TeamMessage,
 } from "./team-notify";
 
 const channel = stubTeamChannel();
+const logs = quietConsole();
 
 const SLACK_ENV = { SLACK_REPORT_WEBHOOK_URL: "https://hooks.example/slack" };
 
@@ -54,20 +57,19 @@ describe("notifyTeam", () => {
     TELEGRAM_BOT_TOKEN: "123:secret",
     TELEGRAM_CHAT_ID: "-42",
   };
-  const failures: [string, Record<string, string>, object][] = [
-    ["Slack answers 500", SLACK_ENV, { status: 500 }],
-    ["Slack cannot be reached", SLACK_ENV, { offline: true }],
-    ["Telegram cannot be reached", TELEGRAM, { offline: true }],
+  const failures: [string, Record<string, string>, object, TeamDelivery][] = [
+    ["Slack answers 500", SLACK_ENV, { status: 500 }, "failed"],
+    ["Slack cannot be reached", SLACK_ENV, { offline: true }, "failed"],
+    ["Telegram cannot be reached", TELEGRAM, { offline: true }, "failed"],
+    ["Slack answers 400", SLACK_ENV, { status: 400 }, "refused"],
+    ["Telegram answers 403", TELEGRAM, { status: 403 }, "refused"],
+    ["Slack times out", SLACK_ENV, { timeout: true }, "unsure"],
+    ["Telegram times out", TELEGRAM, { timeout: true }, "unsure"],
   ];
-  test.each(failures)("%s: reports failed", async (_, env, fault) => {
+  test.each(failures)("%s: reports %s", async (_, env, fault, delivery) => {
     Object.assign(process.env, env);
     Object.assign(channel, fault);
-    const log = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      expect(await notifyTeam(message)).toBe("failed");
-    } finally {
-      log.mockRestore();
-    }
+    expect(await notifyTeam(message)).toBe(delivery);
   });
 
   test("logs Telegram's refusal without the bot token", async () => {
@@ -78,28 +80,20 @@ describe("notifyTeam", () => {
       ok: false,
       description: "Unauthorized: bot123:secret is not valid",
     });
-    const log = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      expect(await notifyTeam(message)).toBe("failed");
-      expect(JSON.stringify(log.mock.calls)).not.toContain("123:secret");
-    } finally {
-      log.mockRestore();
-    }
+    expect(await notifyTeam(message)).toBe("refused");
+    expect(logs.errors()).toHaveBeenCalled();
+    expect(JSON.stringify(logs.errors().mock.calls))
+      .not.toContain("123:secret");
   });
 });
 
 test("logs Slack's failure without the webhook address", async () => {
   Object.assign(process.env, SLACK_ENV);
   channel.offline = true;
-  const log = spyOn(console, "error").mockImplementation(() => {});
-  try {
-    expect(await notifyTeam(message)).toBe("failed");
-    const logged = JSON.stringify(log.mock.calls);
-    expect(logged).toContain("fetch failed: [webhook]");
-    expect(logged).not.toContain("hooks.example");
-  } finally {
-    log.mockRestore();
-  }
+  expect(await notifyTeam(message)).toBe("failed");
+  const logged = JSON.stringify(logs.errors().mock.calls);
+  expect(logged).toContain("fetch failed: [webhook]");
+  expect(logged).not.toContain("hooks.example");
 });
 
 describe("escapeForTeam", () => {

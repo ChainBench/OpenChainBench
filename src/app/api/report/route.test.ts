@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
+import { quietConsole } from "@/test/quiet-console";
 import { stubTeamChannel } from "@/test/team-channel";
 import { POST } from "./route";
 
 const channel = stubTeamChannel();
+quietConsole();
 const sent = () => channel.calls.map((c) => String(c.body.text));
 let ip = 0;
 
@@ -54,13 +56,8 @@ describe("benchmark report", () => {
   });
 
   test("a delivery the team channel refuses is a 502", async () => {
-    const logged = spyOn(console, "error").mockImplementation(() => {});
     channel.status = 500;
-    try {
-      const res = await report();
-      expect(res.status).toBe(502);
-    } finally {
-      logged.mockRestore();
-    }
+    const res = await report();
+    expect(res.status).toBe(502);
   });
 });

@@ -4,7 +4,7 @@ import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { citableAsOf, citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 
 export const runtime = "nodejs";
 // Deliberately NOT cached harder than a day, even though a dated
@@ -86,8 +86,8 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ date: string }> },
 ) {
-  const r = rateLimit(clientKey(req, "citable-date"), 60, 60, req);
-  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  const refused = await limitApiCall(req, "citable-date");
+  if (refused) return refused;
 
   const { date } = await params;
   const m = ISO_DATE.exec(date);

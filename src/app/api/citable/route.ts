@@ -6,7 +6,7 @@ import { AllBenchmarksDraftError } from "@/lib/spec";
 import { citableAsOf, citeBundle, cohortSummaries, fieldValue, leader, leaders, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { answerOneLine, loadRenderedAnswers } from "@/lib/answers-rendered";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 import { stripQueryRedirect } from "@/lib/canonical-query";
 
 export const runtime = "nodejs";
@@ -40,8 +40,8 @@ function unavailable(): NextResponse {
 export async function GET(req: Request) {
   const canonical = stripQueryRedirect(req);
   if (canonical) return canonical;
-  const r = rateLimit(clientKey(req, "citable"), 60, 60, req);
-  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  const refused = await limitApiCall(req, "citable");
+  if (refused) return refused;
   // After the canonical redirect and the limiter: a 308 is not a read, and
   // a query-rotating client must meet the limiter before it can queue
   // events. The document sits behind an edge cache, so this counts cache

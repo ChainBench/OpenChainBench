@@ -29,6 +29,7 @@
   /* Status */
   --color-good: #10b981;
   --color-bad: #ef4444;
+  --color-bad-text: #b91c1c;
   --color-warn: #f59e0b;
 
   /* Editorial accent - burnt orange, the "active" / brand highlight */
@@ -79,6 +80,7 @@
 
   --color-good: #34d399;
   --color-bad: #fb7185;
+  --color-bad-text: #fda4af;
   --color-warn: #fbbf24;
 
   --color-accent: #fb923c;      /* slightly brighter orange in dark */

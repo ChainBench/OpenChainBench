@@ -3,10 +3,10 @@ import { Delta, Empty, fmtInt } from "@/components/ui";
 import { SECTION_LABEL, type Section } from "@/lib/channels";
 import { parseWindow, withWindow } from "@/lib/window";
 import { readSnapshot, trafficFor } from "@/lib/snapshot";
+import { SITE_ORIGIN } from "@/lib/site";
 import { sectionTotals } from "@/lib/traffic";
 
 export const dynamic = "force-dynamic";
-const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
 
 export default async function PagesPage({ searchParams }: { searchParams: Promise<{ refresh?: string; section?: string; w?: string }> }) {
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
@@ -97,7 +97,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
                 {shown.map((p) => (
                   <tr key={p.path}>
                     <td className="mono">
-                      <a href={`${SITE}${p.path}`} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+                      <a href={`${SITE_ORIGIN}${p.path}`} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
                         {p.path}
                       </a>
                     </td>

@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { Prometheus, extractMetricName } from "@/lib/prometheus";
 import { getSpecs } from "@/lib/spec";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 import { stripQueryRedirect } from "@/lib/canonical-query";
 
 export const runtime = "nodejs";
@@ -106,8 +106,8 @@ const computeFreshness = unstable_cache(
 export async function GET(req: Request) {
   const canonical = stripQueryRedirect(req);
   if (canonical) return canonical;
-  const r = rateLimit(clientKey(req, "freshness"), 120, 60, req);
-  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  const refused = await limitApiCall(req, "freshness");
+  if (refused) return refused;
 
   // Resolve the spec list outside the cached function so its slug list
   // can be part of the cache key. getSpecs() is itself memoised so this

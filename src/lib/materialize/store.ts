@@ -10,6 +10,9 @@
  * Readers GET the pointer then the blob: never a partial snapshot.
  */
 
+import { z } from "zod";
+import { causeCode } from "@/lib/error-cause";
+import { HTTP_SERVER_ERROR } from "@/lib/http-status";
 import {
   matKeys,
   parseSnapshot,
@@ -30,6 +33,129 @@ type RedisClient = import("ioredis").Redis;
 const TCP_ENV = ["OCB_REDIS_URL", "REDIS_URL"] as const;
 const URL_ENV = ["KV_REST_API_URL", "UPSTASH_REDIS_REST_URL"] as const;
 const TOKEN_ENV = ["KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN"] as const;
+
+const HTTP_BAD_REQUEST = 400;
+
+const WRONG_TYPE_REPLY = /\bWRONGTYPE\b/;
+
+export class RedisReplyError extends Error {
+  readonly code = "redis_refused";
+  override name = "RedisReplyError";
+
+  get wrongType(): boolean {
+    return WRONG_TYPE_REPLY.test(this.message);
+  }
+}
+
+type UnavailableOptions = ErrorOptions & { unsent?: boolean };
+
+export class RedisUnavailableError extends Error {
+  readonly code = "redis_unavailable";
+  override name = "RedisUnavailableError";
+  readonly unsent: boolean;
+
+  constructor(
+    message: string,
+    { unsent = false, ...options }: UnavailableOptions = {},
+  ) {
+    super(message, options);
+    this.unsent = unsent;
+  }
+}
+
+const restReplySchema = z
+  .object({ result: z.unknown().optional(), error: z.string().optional() })
+  .refine((reply) => "result" in reply || reply.error !== undefined);
+
+const unreadableReply = (cause: unknown) =>
+  new RedisUnavailableError("materialize store: unreadable reply", { cause });
+const notConfigured = () =>
+  new RedisUnavailableError("materialize store: no redis configured",
+    { unsent: true });
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    throw unreadableReply(err);
+  }
+}
+
+async function replyText(res: Response): Promise<string> {
+  try {
+    return await res.text();
+  } catch (cause) {
+    throw new RedisUnavailableError("materialize store: reply cut off",
+      { cause });
+  }
+}
+
+async function restReplies<T>(res: Response, schema: z.ZodType<T>) {
+  const parsed = schema.safeParse(parseJson(await replyText(res)));
+  if (!parsed.success) throw unreadableReply(parsed.error);
+  return parsed.data;
+}
+
+const STORE_DOWN_REPLY =
+  /\b(?:OOM|LOADING|READONLY|BUSY|MASTERDOWN)\b|\bERR max\b/;
+
+function refusal(message: string, options?: ErrorOptions): Error {
+  return STORE_DOWN_REPLY.test(message)
+    ? new RedisUnavailableError(message, { ...options, unsent: true })
+    : new RedisReplyError(message, options);
+}
+
+async function httpFailure(res: Response, what: string): Promise<Error> {
+  const detail = await res.text().catch(() => "");
+  const message =
+    `materialize store: ${what} http ${res.status}: ${detail.slice(0, 200)}`;
+  return res.status === HTTP_BAD_REQUEST
+    ? refusal(message)
+    : new RedisUnavailableError(message,
+      { unsent: res.status < HTTP_SERVER_ERROR });
+}
+
+function described(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const code = causeCode(err);
+  return `${err.name}: ${err.message}${code ? ` (${code})` : ""}`;
+}
+
+const NEVER_CONNECTED = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN"]);
+
+const neverConnected = (err: unknown) =>
+  err instanceof Error && NEVER_CONNECTED.has(causeCode(err) ?? "");
+
+async function upstashPost(
+  url: string,
+  token: string,
+  { body, timeoutMs }: { body: unknown; timeoutMs: number },
+): Promise<Response> {
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (cause) {
+    throw new RedisUnavailableError(
+      `materialize store: unreachable: ${described(cause)}`,
+      { cause, unsent: neverConnected(cause) });
+  }
+}
+
+async function tcpFailure(err: unknown): Promise<never> {
+  const { ReplyError } = await import("ioredis");
+  if (err instanceof ReplyError && err instanceof Error) {
+    throw refusal(`materialize store: ${err.message}`, { cause: err });
+  }
+  throw new RedisUnavailableError(
+    `materialize store: redis tcp failed: ${described(err)}`, { cause: err });
+}
 
 function tcpUrl(): string | null {
   return TCP_ENV.map((k) => process.env[k]).find(Boolean) ?? null;
@@ -61,41 +187,36 @@ async function tcp(): Promise<RedisClient> {
   return tcpClient;
 }
 
+function tcpCommand(
+  client: RedisClient,
+  cmd: (string | number)[],
+  timeoutMs: number,
+): Promise<unknown> {
+  const [name, ...args] = cmd.map(String);
+  if (name === undefined) throw new TypeError("materialize store: no command");
+  const result = client.call(name, ...args).catch(tcpFailure);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new RedisUnavailableError(
+        `materialize store: redis tcp timeout ${name}`)),
+      timeoutMs,
+    );
+  });
+  return Promise.race([result, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function redis(
   cmd: (string | number)[],
   timeoutMs = 4000,
 ): Promise<unknown> {
-  if (tcpUrl()) {
-    const client = await tcp();
-    const [name, ...args] = cmd.map(String);
-    const result = client.call(name, ...args);
-    const timeout = new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`materialize store: redis tcp timeout ${name}`)),
-        timeoutMs,
-      ),
-    );
-    return Promise.race([result, timeout]);
-  }
+  if (tcpUrl()) return tcpTransport(await tcp()).command(cmd, timeoutMs);
   const c = creds();
-  if (!c) throw new Error("materialize store: no redis configured");
-  const res = await fetch(c.url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${c.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(cmd),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(
-      `materialize store: redis http ${res.status}: ${detail.slice(0, 200)}`,
-    );
-  }
-  const body = (await res.json()) as { result?: unknown; error?: string };
-  if (body.error) throw new Error(`materialize store: ${body.error}`);
+  if (!c) throw notConfigured();
+  const res = await upstashPost(c.url, c.token, { body: cmd, timeoutMs });
+  if (!res.ok) throw await httpFailure(res, "redis");
+  const body = await restReplies(res, restReplySchema);
+  if (body.error) throw refusal(`materialize store: ${body.error}`);
   return body.result;
 }
 
@@ -220,32 +341,70 @@ export async function redisPipeline(
   cmds: (string | number)[][],
   timeoutMs = 6000,
 ): Promise<unknown[]> {
+  return pipelineValues(await redisPipelineSettled(cmds, timeoutMs));
+}
+
+export type PipelineReply =
+  | { result: unknown }
+  | { refused: RedisReplyError };
+
+export function pipelineValues(replies: PipelineReply[]): unknown[] {
+  return replies.map((reply) => {
+    if ("refused" in reply) throw reply.refused;
+    return reply.result;
+  });
+}
+
+function settled(failure: unknown): PipelineReply {
+  if (failure instanceof RedisReplyError) return { refused: failure };
+  throw failure;
+}
+
+async function tcpPipelineSettled(
+  client: RedisClient,
+  cmds: (string | number)[][],
+  timeoutMs: number,
+): Promise<PipelineReply[]> {
+  const out: PipelineReply[] = [];
+  for (const cmd of cmds) {
+    const reply = tcpCommand(client, cmd, timeoutMs)
+      .then((result) => ({ result }));
+    out.push(await reply.catch(settled));
+  }
+  return out;
+}
+
+export type Command = (string | number)[];
+
+export type RedisTransport = {
+  command: (cmd: Command, timeoutMs: number) => Promise<unknown>;
+  pipeline: (cmds: Command[], timeoutMs: number) => Promise<PipelineReply[]>;
+};
+
+export function tcpTransport(client: RedisClient): RedisTransport {
+  return {
+    command: (cmd, timeoutMs) => tcpCommand(client, cmd, timeoutMs),
+    pipeline: (cmds, timeoutMs) => tcpPipelineSettled(client, cmds, timeoutMs),
+  };
+}
+
+export async function redisPipelineSettled(
+  cmds: (string | number)[][],
+  timeoutMs = 6000,
+): Promise<PipelineReply[]> {
   if (cmds.length === 0) return [];
-  if (tcpUrl()) {
-    const out: unknown[] = [];
-    for (const cmd of cmds) out.push(await redis(cmd, timeoutMs));
-    return out;
-  }
+  if (tcpUrl()) return tcpTransport(await tcp()).pipeline(cmds, timeoutMs);
   const c = creds();
-  if (!c) throw new Error("materialize store: no redis configured");
-  const res = await fetch(`${c.url}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${c.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(cmds),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(
-      `materialize store: pipeline http ${res.status}: ${detail.slice(0, 200)}`,
-    );
+  if (!c) throw notConfigured();
+  const res = await upstashPost(`${c.url}/pipeline`, c.token,
+    { body: cmds, timeoutMs });
+  if (!res.ok) throw await httpFailure(res, "pipeline");
+  const body = await restReplies(res, z.array(restReplySchema));
+  if (body.length !== cmds.length) {
+    throw unreadableReply(`${body.length} replies to ${cmds.length}`);
   }
-  const body = (await res.json()) as { result?: unknown; error?: string }[];
-  return body.map((b) => {
-    if (b.error) throw new Error(`materialize store: ${b.error}`);
-    return b.result;
-  });
+  return body.map((b) =>
+    b.error
+      ? settled(refusal(`materialize store: ${b.error}`))
+      : { result: b.result });
 }

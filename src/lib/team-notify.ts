@@ -1,4 +1,5 @@
 import { causeCode } from "@/lib/error-cause";
+import { HTTP_SERVER_ERROR } from "@/lib/http-status";
 
 const TELEGRAM_MAX_CHARS = 4096;
 const DELIVERY_TIMEOUT_MS = 5_000;
@@ -20,7 +21,12 @@ export type TeamMessage = {
   slack: { text: string; blocks: unknown[] };
 };
 
-export type TeamDelivery = "sent" | "failed" | "unconfigured";
+export type TeamDelivery =
+  | "sent"
+  | "failed"
+  | "refused"
+  | "unsure"
+  | "unconfigured";
 
 type Channel =
   | { kind: "telegram"; token: string; chat: string }
@@ -62,25 +68,47 @@ function cutWithin(s: string, max: number): string {
   return HALF_CHARACTER_AT_END.test(cut) ? cut.slice(0, -1) : cut;
 }
 
-function escapedWithin(s: string, max: number): string {
-  const escaped = defangUrls(neutralise(s.trim()));
+function cutEscaped(escaped: string, max: number): string {
   const cut = cutWithin(escaped, max);
   const amp = cut.lastIndexOf("&");
   const open = amp >= 0 && !cut.includes(";", amp);
   return (open ? cut.slice(0, amp) : cut).trimEnd();
 }
 
-export function escapeForTeam(s: string, max: number): string {
-  const flat = s.normalize("NFKC").replace(CONTROL_CHARS, " ");
-  return escapedWithin(flat, max);
-}
+const oneLine = (s: string) =>
+  s.normalize("NFKC").replace(CONTROL_CHARS, " ");
 
-export function escapeForTeamMultiline(s: string, max: number): string {
-  const kept = s
+const keptLines = (s: string) =>
+  s
     .normalize("NFKC")
     .replace(/\r\n?/g, "\n")
     .replace(CONTROL_CHARS_KEEP_NL, " ");
-  return escapedWithin(kept, max);
+
+function escapedWithin(s: string, max: number): string {
+  return cutEscaped(defangUrls(neutralise(s.trim())), max);
+}
+
+export function escapeForTeam(s: string, max: number): string {
+  return escapedWithin(oneLine(s), max);
+}
+
+export function escapeForTeamMultiline(s: string, max: number): string {
+  return escapedWithin(keptLines(s), max);
+}
+
+type SlackPlainText = { type: "plain_text"; text: string; emoji: false };
+
+function slackPlain(s: string, max: number): SlackPlainText {
+  const text = cutEscaped(defangUrls(escapeHtmlText(s.trim())), max);
+  return { type: "plain_text", text, emoji: false };
+}
+
+export function plainForSlack(s: string, max: number): SlackPlainText {
+  return slackPlain(oneLine(s), max);
+}
+
+export function plainForSlackMultiline(s: string, max: number): SlackPlainText {
+  return slackPlain(keptLines(s), max);
 }
 
 async function telegramError(res: Response, token: string): Promise<string> {
@@ -98,6 +126,12 @@ function errorName(err: unknown): string {
   const code = causeCode(err);
   return code ? `${err.name} ${code}` : err.name;
 }
+
+const deliveryOfStatus = (res: Response): TeamDelivery =>
+  res.status < HTTP_SERVER_ERROR ? "refused" : "failed";
+
+const deliveryOfError = (err: unknown): TeamDelivery =>
+  err instanceof Error && err.name === "TimeoutError" ? "unsure" : "failed";
 
 async function sendTelegram(
   to: { token: string; chat: string },
@@ -124,10 +158,10 @@ async function sendTelegram(
       res.status,
       await telegramError(res, to.token),
     );
-    return "failed";
+    return deliveryOfStatus(res);
   } catch (err) {
     console.error("Telegram sendMessage failed", errorName(err));
-    return "failed";
+    return deliveryOfError(err);
   }
 }
 
@@ -145,12 +179,12 @@ async function sendSlack(
     if (res.ok) return "sent";
     const text = await res.text().catch(() => "");
     console.error("Slack webhook rejected team message", res.status, text);
-    return "failed";
+    return deliveryOfStatus(res);
   } catch (err) {
     const detail = err instanceof Error ? err.message : "";
     console.error("Slack webhook fetch failed", errorName(err),
       detail.replaceAll(webhook, "[webhook]").slice(0, MAX_LOGGED_ERROR));
-    return "failed";
+    return deliveryOfError(err);
   }
 }
 

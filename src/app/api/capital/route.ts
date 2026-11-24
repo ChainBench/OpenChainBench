@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SITE } from "@/data/site";
 import { getCapitalHub, type ChainRow } from "@/lib/capital-hub";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 
 /**
  * GET /api/capital: the /capital hub as JSON, the same rows the page and
@@ -33,8 +33,8 @@ function stripped(row: ChainRow, drop: readonly (keyof ChainRow)[]): Partial<Cha
 }
 
 export async function GET(req: NextRequest) {
-  const rl = rateLimit(clientKey(req, "capital"), 120, 60, req);
-  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+  const refused = await limitApiCall(req, "capital");
+  if (refused) return refused;
 
   const hub = await getCapitalHub();
   // A bench that is not served here, or that did not load this time, has

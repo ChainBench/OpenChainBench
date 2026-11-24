@@ -136,6 +136,13 @@ export function Lines({
   );
 }
 
+export const plural = (n: number, word: string) =>
+  n === 1 ? `1 ${word}` : `${n} ${word}s`;
+
+export const bannerStyle = (tone: string) => ({
+  borderLeft: `3px solid ${tone}`,
+});
+
 export function Empty({ text }: { text: string }) {
   return (
     <p className="py-6 text-center text-xs" style={{ color: "var(--faint)" }}>
