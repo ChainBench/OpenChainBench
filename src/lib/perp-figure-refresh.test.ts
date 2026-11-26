@@ -4,9 +4,16 @@ import { fetchPerpCohortFresh } from "./perp-stats";
 
 const NOW = 1_800_000_000;
 const stamp = (venue: string, metric: string, ago: number): PromSample => ({
-  metric: { venue, metric },
+  metric: { venue, metric, instance: "perp-cohort-stats:2112" },
   value: [NOW, String(NOW - ago)],
 });
+
+const groupedBy = (query: string, s: PromSample): PromSample => {
+  const by = /\bby \(([^)]*)\)/.exec(query)?.[1]?.split(/,\s*/);
+  if (!by) return s;
+  const kept = Object.entries(s.metric).filter(([k]) => by.includes(k));
+  return { ...s, metric: Object.fromEntries(kept) };
+};
 
 const volume30d = (venue: string, name?: string): PromSample => ({
   metric: name ? { __name__: name, venue } : { venue },
@@ -23,7 +30,8 @@ stubPrometheus((query) => {
       stamp("hyperliquid", "active_markets", 150),
       stamp("gains", "volume_30d", 3_600),
       stamp("gains", "volume_24h", 60),
-    ];
+      stamp("gains", "oi", -30),
+    ].map((s) => groupedBy(query, s));
   }
   if (query.startsWith("perp_venue_volume_30d_usd or")) {
     return [
@@ -50,5 +58,6 @@ test("figure ages per venue", async () => {
     activeMarkets: 150,
   });
   expect(row("gains")?.figureAgeSec?.volume30d).toBe(3_600);
+  expect(row("gains")?.figureAgeSec?.openInterest).toBe(0);
   expect(row("lighter")?.figureAgeSec).toBeUndefined();
 });
