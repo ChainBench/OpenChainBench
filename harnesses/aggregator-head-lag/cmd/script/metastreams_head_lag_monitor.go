@@ -23,7 +23,8 @@ import (
 //
 // One socket, one subscription per chain: the documented stream limits are
 // per key (20 subscriptions), and one connection carrying three is how their
-// own quickstart is written. Auth is a Bearer key on the upgrade request.
+// own quickstart is written. The key buys a token from the connect call, behind
+// Cloudflare; the token opens the socket on the direct stream, past it.
 //
 // Three of the four bench chains. Metastreams does not index Base (its chains
 // are solana, bsc, robinhood and elysium), and all three it does are
@@ -36,7 +37,7 @@ import (
 // the scraping paths, and a proxy hop on one feed only would be a handicap no
 // other feed carries.
 const (
-	metastreamsWSURL       = "wss://api.metastreams.io/v1/stream"
+	metastreamsConnectURL  = "https://api.metastreams.io/v1/stream/connect"
 	metastreamsReadTimeout = 90 * time.Second
 	// The quietest bench pool (Solana SOL/USDC Raydium) runs at about 12
 	// transactions a minute. A gap this long is a dead subscription.
@@ -128,11 +129,36 @@ func runMetastreamsHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *
 	}
 }
 
+func metastreamsConnect(key string) (url, token string, err error) {
+	req, _ := http.NewRequest(http.MethodPost, metastreamsConnectURL, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("connect: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return "", "", errMetastreamsUnauthorized
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return "", "", fmt.Errorf("connect: HTTP %d", resp.StatusCode)
+	}
+	var c struct{ URL, Token string }
+	if err := json.NewDecoder(resp.Body).Decode(&c); err != nil {
+		return "", "", fmt.Errorf("connect: %w", err)
+	}
+	return c.URL, c.Token, nil
+}
+
 func metastreamsConnectAndStream(config *Config, stopChan <-chan struct{}) error {
+	url, token, err := metastreamsConnect(config.MetastreamsAPIKey)
+	if err != nil {
+		return err
+	}
 	dialer := websocket.Dialer{HandshakeTimeout: 20 * time.Second}
 	h := http.Header{}
-	h.Set("Authorization", "Bearer "+config.MetastreamsAPIKey)
-	conn, resp, err := dialer.Dial(metastreamsWSURL, h)
+	h.Set("Authorization", "Bearer "+token)
+	conn, resp, err := dialer.Dial(url, h)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return errMetastreamsUnauthorized
