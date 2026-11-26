@@ -538,6 +538,7 @@ type Router struct {
 
 	cfg     *Config
 	sources []Source
+	now     func() time.Time
 	// carry holds the last successfully published value per (venue,
 	// metric). On a total-miss tick we re-emit the previous value but
 	// do NOT advance perp_venue_last_refresh_unix, so the UI can
@@ -560,7 +561,7 @@ type fundingCarryEntry struct {
 	RefreshTS     int64
 }
 
-func NewRouter(cfg *Config) *Router {
+func NewRouter(cfg *Config, now func() time.Time) *Router {
 	sources := []Source{
 		NewHyperliquidNativeSource(),
 		NewLighterNativeSource(),
@@ -606,6 +607,7 @@ func NewRouter(cfg *Config) *Router {
 	return &Router{
 		cfg:       cfg,
 		sources:   sources,
+		now:       now,
 		carry:     map[string]map[string]carryEntry{},
 		fundCarry: map[string]map[string]fundingCarryEntry{},
 	}
@@ -657,7 +659,7 @@ func (r *Router) fundingCarrySet(venue, asset string, p fundingPoint, ts int64) 
 // from the priority map, runs the cross-check on the secondary, publishes
 // gauges, and carries forward any (venue, metric) that fully missed.
 func (r *Router) Sweep() {
-	tickTS := time.Now().Unix()
+	tickTS := r.now().Unix()
 	defer perpCohortLastTickUnix.Set(float64(tickTS))
 
 	// Fan-out: each source runs in its own goroutine with a 15s upper
@@ -752,6 +754,7 @@ func (r *Router) Sweep() {
 				}
 				publishCohort(v.Slug, metric, winnerVal)
 				perpVenueLastRefreshUnix.WithLabelValues(v.Slug, winner).Set(float64(tickTS))
+				perpVenueMetricRefreshUnix.WithLabelValues(v.Slug, metric).Set(float64(tickTS))
 				// Reset source-used label set for this (venue, metric)
 				// then set winner=1. Reset uses a small known label set.
 				for _, name := range prio {

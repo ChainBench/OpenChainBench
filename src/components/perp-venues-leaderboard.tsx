@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { formatAge } from "@/components/live-indicator";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PerpVenueRow } from "@/lib/perp-stats";
 import { perpProductSlug } from "@/lib/perp-product-slug";
@@ -102,7 +103,9 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
           className="text-[11px] text-ink-faint"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
-          {filtered.length} of {rows.length} venues
+          {filtered.length} of {rows.length} venues. Under a figure: how
+          long before &ldquo;Data as of&rdquo; it was last measured, amber
+          from 2 min, red from 10 min.
         </p>
         <input
           type="search" aria-label="Search venue or chain..."
@@ -205,7 +208,6 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                       <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
                         {r.name}
                       </span>
-                      <AgeBadge ts={r.lastRefreshUnix} />
                       <ChevronRight
                         size={14}
                         className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -213,13 +215,25 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                     </Link>
                   </Td>
                   <Td muted>{r.chain}</Td>
-                  <Td mono>{fmtUSD(r.volume30d)}</Td>
-                  <Td mono>{fmtUSD(r.openInterest)}</Td>
-                  <Td mono>{fmtUSD(r.fees30d)}</Td>
+                  <FigureCell
+                    text={fmtUSD(r.volume30d)}
+                    ageSec={r.figureAgeSec?.volume30d}
+                  />
+                  <FigureCell
+                    text={fmtUSD(r.openInterest)}
+                    ageSec={r.figureAgeSec?.openInterest}
+                  />
+                  <FigureCell
+                    text={fmtUSD(r.fees30d)}
+                    ageSec={r.figureAgeSec?.fees30d}
+                  />
                   <Td mono>{fmtBps(r.allInFeeBpsEth)}</Td>
                   <Td mono>{fmtBpsSigned(r.funding24hBpsEth)}</Td>
-                  <VolOiCell ratio={vor} />
-                  <Td mono>{fmtCount(r.activeMarkets)}</Td>
+                  <VolOiCell ratio={vor} ages={r.figureAgeSec} />
+                  <FigureCell
+                    text={fmtCount(r.activeMarkets)}
+                    ageSec={r.figureAgeSec?.activeMarkets}
+                  />
                   <Td mono>{fmtPct(r.health)}</Td>
                 </tr>
               );
@@ -241,85 +255,55 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
   );
 }
 
-/**
- * Tiny freshness pill that flags stale rows on the leaderboard. Hidden
- * when the harness has not published a refresh stamp (ts === null) or
- * when the row is younger than 2 minutes (within one Prom scrape).
- * Amber between 2 and 10 minutes, red beyond. Renders inline with the
- * venue name so the operator sees freeze/downtime at a glance without
- * scanning a sidecar column.
- */
-function AgeBadge({ ts }: { ts: number | null }) {
-  // Subscribe to a 30s wall-clock tick via `useSyncExternalStore`. The
-  // server snapshot returns null, which keeps SSR output empty and
-  // sidesteps any hydration mismatch from server-vs-client clock skew.
-  // The client subscription pushes a fresh `Date.now()` every 30s and
-  // satisfies React's react-hooks/set-state-in-effect rule because no
-  // setState ever runs inside an effect body.
-  const nowSec = useSyncExternalStore(
-    subscribeWallClock,
-    getClientNowSec,
-    getServerNowSec,
+function FigureCell({
+  text,
+  ageSec,
+}: {
+  text: string;
+  ageSec: number | null | undefined;
+}) {
+  return (
+    <Td mono>
+      {text}
+      <AgeBadge ageSec={ageSec} />
+    </Td>
   );
-  if (nowSec == null || ts == null || !Number.isFinite(ts)) return null;
-  const ageSec = nowSec - ts;
-  if (ageSec < 120) return null;
-  const ageMin = Math.floor(ageSec / 60);
+}
+
+function olderAge(...ages: (number | null | undefined)[]): number | null {
+  const known = ages.filter((a): a is number => a != null);
+  return known.length ? Math.max(...known) : null;
+}
+
+const AGE_CLASS = "block mt-0.5 leading-none text-[10px] whitespace-nowrap";
+
+function AgeBadge({ ageSec }: { ageSec: number | null | undefined }) {
+  if (ageSec == null || !Number.isFinite(ageSec) || ageSec < 120) return null;
   const stale = ageSec >= 600;
-  const iso = new Date(ts * 1000).toISOString();
-  const label = stale ? `${ageMin}m stale` : `${ageMin}m ago`;
-  const color = stale ? "text-red-500" : "text-amber-500";
+  const color = stale ? "text-bad-text" : "text-amber-700 dark:text-warn";
+  const age = formatAge(Math.floor(ageSec));
   return (
     <span
-      className={`label-mono text-[9.5px] uppercase tracking-wide shrink-0 ${color}`}
+      className={`${AGE_CLASS} ${color}`}
       style={{ fontFamily: "var(--font-mono, monospace)" }}
-      title={`Data last refreshed by harness at ${iso}`}
+      title={`Last measured ${age} before the “Data as of” time`}
     >
-      {label}
+      {`${age} ${stale ? "stale" : "behind"}`}
     </span>
   );
 }
 
-/**
- * Tiny wall-clock store consumed by AgeBadge through
- * `useSyncExternalStore`. Updates every 30 seconds; one shared
- * setInterval covers every mounted badge so a hundred rows do not
- * spin up a hundred timers. Returns null on the server so SSR output
- * stays free of clock-dependent text.
- */
-let wallClockNowSec = Math.floor(Date.now() / 1000);
-const wallClockListeners = new Set<() => void>();
-let wallClockTimer: ReturnType<typeof setInterval> | null = null;
-
-function subscribeWallClock(cb: () => void): () => void {
-  wallClockListeners.add(cb);
-  if (wallClockTimer == null && typeof window !== "undefined") {
-    wallClockTimer = setInterval(() => {
-      wallClockNowSec = Math.floor(Date.now() / 1000);
-      for (const fn of wallClockListeners) fn();
-    }, 30_000);
-  }
-  return () => {
-    wallClockListeners.delete(cb);
-    if (wallClockListeners.size === 0 && wallClockTimer != null) {
-      clearInterval(wallClockTimer);
-      wallClockTimer = null;
-    }
-  };
-}
-
-function getClientNowSec(): number {
-  return wallClockNowSec;
-}
-
-function getServerNowSec(): null {
-  return null;
-}
-
-function VolOiCell({ ratio }: { ratio: number | null }) {
+function VolOiCell({
+  ratio,
+  ages,
+}: {
+  ratio: number | null;
+  ages: PerpVenueRow["figureAgeSec"];
+}) {
   if (ratio == null || !Number.isFinite(ratio)) {
     return <Td mono>...</Td>;
   }
+  const ageSec = olderAge(ages?.volume24h, ages?.openInterest);
   // Same bands as the perp-volume-oi-ratio bench, on 24h volume: 0.3x to
   // 4x is where order books with real holders (0.3x to 3x) and pool or
   // oracle venues (1x to 4x) sit (teal); under 0.3x the volume may be
@@ -352,6 +336,7 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
           ? `${ratio.toFixed(1)}x`
           : `${Math.round(ratio).toLocaleString("en-US")}x`}
       </span>
+      <AgeBadge ageSec={ageSec} />
     </td>
   );
 }

@@ -46,7 +46,7 @@ func main() {
 	fmt.Println("Exposes /metrics, /health, /logs on :2112.")
 
 	cfg := loadConfig()
-	router := NewRouter(cfg)
+	router := NewRouter(cfg, time.Now)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)

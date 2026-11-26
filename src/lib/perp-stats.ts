@@ -72,10 +72,15 @@ export type PerpVenueRow = {
   allInFeeBpsEth: number | null;
   /** Funding cost in bps to hold a $1000 ETH long 24h (from perp-funding bench). */
   funding24hBpsEth: number | null;
-  /** Unix seconds of the harness's last successful refresh for this venue.
-   *  Sourced from `perp_venue_last_refresh_unix` (max by venue). Null when
-   *  the gauge is absent so the UI can hide the age badge gracefully. */
-  lastRefreshUnix: number | null;
+  figureAgeSec?: PerpFigureAges;
+};
+
+type PerpFigureAges = {
+  volume24h: number | null;
+  volume30d: number | null;
+  openInterest: number | null;
+  fees30d: number | null;
+  activeMarkets: number | null;
 };
 
 /**
@@ -254,7 +259,7 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
     health,
     allInFeeEth,
     funding24hEth,
-    lastRefresh,
+    figureStamps,
   ] = await Promise.all([
     queryVector(prom, `perp_venue_volume_24h_usd`),
     queryVector(prom, `perp_venue_volume_30d_usd or (avg_over_time(perp_venue_volume_24h_usd[30d]) * 30)`),
@@ -294,11 +299,11 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
       prom,
       `avg_over_time(perp_venue_funding_24h_bps{asset="ETH"}[24h]) or avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[24h])`,
     ),
-    // Latest harness-side refresh stamp per venue. `max by` collapses
-    // any duplicate scraper instances so a venue with two scrape jobs
-    // still surfaces a single freshness value. Used by the UI age badge
-    // on /perps to flag Prom freeze or harness downtime per row.
-    queryVector(prom, `max by (venue) (perp_venue_last_refresh_unix)`),
+    queryVector(
+      prom,
+      "max by (venue, metric) " +
+        "(last_over_time(perp_venue_metric_refresh_unix[1d]))",
+    ),
   ]);
 
   const byVenue = new Map<string, PerpVenueRow>();
@@ -317,13 +322,15 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
       health: null,
       allInFeeBpsEth: null,
       funding24hBpsEth: null,
-      lastRefreshUnix: null,
     });
   }
 
   const apply = (
     series: { labels: Record<string, string>; value: number }[] | null,
-    field: keyof Omit<PerpVenueRow, "slug" | "name" | "chain" | "venueType">,
+    field: keyof Omit<
+      PerpVenueRow,
+      "slug" | "name" | "chain" | "venueType" | "figureAgeSec"
+    >,
   ) => {
     for (const s of series ?? []) {
       const v = s.labels.venue;
@@ -363,13 +370,16 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
     row.funding24hBpsEth = s.value;
   }
 
-  for (const s of lastRefresh ?? []) {
-    const venueLabel = s.labels.venue;
-    if (!venueLabel) continue;
-    const targetSlug = venueLabel === "gmx" ? "gmx-v2" : venueLabel;
-    const row = byVenue.get(targetSlug);
-    if (!row) continue;
-    row.lastRefreshUnix = s.value;
+  const asOf = Math.floor(Date.now() / 1000);
+  const vol30dFromGauge = new Set(
+    (vol30d ?? [])
+      .filter((s) => s.labels.__name__ === "perp_venue_volume_30d_usd")
+      .map((s) => s.labels.venue),
+  );
+  const figureAges = figureAgesByVenue(figureStamps, asOf, vol30dFromGauge);
+  for (const [slug, ages] of figureAges) {
+    const row = byVenue.get(slug);
+    if (row) row.figureAgeSec = ages;
   }
 
   const venues = [...byVenue.values()];
@@ -418,7 +428,7 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
       volumeRankedVenues,
       avgFunding24hEth,
     },
-    asOf: Math.floor(Date.now() / 1000),
+    asOf,
   };
 }
 
@@ -639,6 +649,38 @@ export async function fetchPerpByAssetMatrix(): Promise<PerpAssetRow[]> {
   } catch {
     return [];
   }
+}
+
+function figureAgesByVenue(
+  series: { labels: Record<string, string>; value: number }[] | null,
+  asOf: number,
+  vol30dFromGauge: ReadonlySet<string>,
+): Map<string, PerpFigureAges> {
+  const stamps = new Map<string, Map<string, number>>();
+  for (const s of series ?? []) {
+    const { venue, metric } = s.labels;
+    if (!venue || !metric) continue;
+    const byMetric = stamps.get(venue) ?? new Map<string, number>();
+    byMetric.set(metric, s.value);
+    stamps.set(venue, byMetric);
+  }
+  const out = new Map<string, PerpFigureAges>();
+  for (const [venue, byMetric] of stamps) {
+    const age = (metric: string) => {
+      const stamp = byMetric.get(metric);
+      return stamp == null ? null : Math.max(0, asOf - stamp);
+    };
+    out.set(venue, {
+      volume24h: age("volume_24h"),
+      volume30d: age(
+        vol30dFromGauge.has(venue) ? "volume_30d" : "volume_24h",
+      ),
+      openInterest: age("oi"),
+      fees30d: age("fees_30d"),
+      activeMarkets: age("active_markets"),
+    });
+  }
+  return out;
 }
 
 /**
