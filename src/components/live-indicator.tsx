@@ -140,7 +140,7 @@ function utcClock(iso: string): string {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
 }
 
-export function formatAge(sec: number): string {
+function formatAge(sec: number): string {
   if (sec < 60) return `${sec}s`;
   const min = Math.floor(sec / 60);
   if (min < 60) return `${min}m`;

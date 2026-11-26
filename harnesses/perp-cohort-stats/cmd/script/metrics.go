@@ -167,7 +167,8 @@ var (
 	perpVenueLastRefreshUnix = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_last_refresh_unix",
-			Help: "Unix timestamp of the last successful refresh for a (venue, source) pair. On total-miss ticks the carry-forward keeps the gauge value but does NOT advance this timestamp, so the UI can compute true data age.",
+			Help: "Unix timestamp of the last successful refresh " +
+				"for a (venue, source) pair.",
 		},
 		[]string{"venue", "source"},
 	)

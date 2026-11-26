@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { formatAge } from "@/components/live-indicator";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PerpVenueRow } from "@/lib/perp-stats";
 import { perpProductSlug } from "@/lib/perp-product-slug";
@@ -88,6 +87,10 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
     });
   }, [rows, sortKey, sortDir, q]);
 
+  const showsAgeLegend = filtered.some((r) =>
+    Object.values(shownAges(r, ratio(r))).some(isShownAge),
+  );
+
   const setSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -103,9 +106,8 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
           className="text-[11px] text-ink-faint"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
-          {filtered.length} of {rows.length} venues. Under a figure: how
-          long before &ldquo;Data as of&rdquo; it was last measured, amber
-          from 2 min, red from 10 min.
+          {filtered.length} of {rows.length} venues.
+          {showsAgeLegend && AGE_LEGEND}
         </p>
         <input
           type="search" aria-label="Search venue or chain..."
@@ -185,6 +187,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
             {filtered.map((r, i) => {
               const productHref = `/products/${perpProductSlug(r.slug)}#perp`;
               const vor = ratio(r);
+              const ages = shownAges(r, vor);
               return (
                 <tr
                   key={r.slug}
@@ -217,22 +220,19 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                   <Td muted>{r.chain}</Td>
                   <FigureCell
                     text={fmtUSD(r.volume30d)}
-                    ageSec={r.figureAgeSec?.volume30d}
+                    ageSec={ages.volume30d}
                   />
                   <FigureCell
                     text={fmtUSD(r.openInterest)}
-                    ageSec={r.figureAgeSec?.openInterest}
+                    ageSec={ages.openInterest}
                   />
-                  <FigureCell
-                    text={fmtUSD(r.fees30d)}
-                    ageSec={r.figureAgeSec?.fees30d}
-                  />
+                  <FigureCell text={fmtUSD(r.fees30d)} ageSec={ages.fees30d} />
                   <Td mono>{fmtBps(r.allInFeeBpsEth)}</Td>
                   <Td mono>{fmtBpsSigned(r.funding24hBpsEth)}</Td>
-                  <VolOiCell ratio={vor} ages={r.figureAgeSec} />
+                  <VolOiCell ratio={vor} ageSec={ages.volOi} />
                   <FigureCell
                     text={fmtCount(r.activeMarkets)}
-                    ageSec={r.figureAgeSec?.activeMarkets}
+                    ageSec={ages.activeMarkets}
                   />
                   <Td mono>{fmtPct(r.health)}</Td>
                 </tr>
@@ -255,12 +255,65 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
   );
 }
 
+const BEHIND_AFTER_SEC = 120;
+const STALE_AFTER_SEC = 600;
+
+const AGE_LEGEND =
+  " Under Vol 30d, OI, Fees 30d, Vol/OI and Markets: how long before " +
+  "“Data as of” the figure was measured, “behind” in amber from " +
+  `${BEHIND_AFTER_SEC / 60} min, “stale” in red from ` +
+  `${STALE_AFTER_SEC / 60} min.`;
+
+type ShownAges = {
+  volume30d: number | null;
+  openInterest: number | null;
+  fees30d: number | null;
+  volOi: number | null;
+  activeMarkets: number | null;
+};
+
+function shownAges(r: PerpVenueRow, volOi: number | null): ShownAges {
+  const a = r.figureAgeSec;
+  const ifShown = (value: number | null, age: number | null | undefined) =>
+    value == null ? null : (age ?? null);
+  return {
+    volume30d: ifShown(r.volume30d, a?.volume30d),
+    openInterest: ifShown(r.openInterest, a?.openInterest),
+    fees30d: ifShown(r.fees30d, a?.fees30d),
+    volOi: ifShown(volOi, olderAge(a?.volume24h, a?.openInterest)),
+    activeMarkets: ifShown(r.activeMarkets, a?.activeMarkets),
+  };
+}
+
+function olderAge(...ages: (number | null | undefined)[]): number | null {
+  const known = ages.filter((a): a is number => a != null);
+  return known.length ? Math.max(...known) : null;
+}
+
+function isShownAge(ageSec: number | null): ageSec is number {
+  return (
+    ageSec != null &&
+    Number.isFinite(ageSec) &&
+    ageSec >= BEHIND_AFTER_SEC
+  );
+}
+
+function ageWords(sec: number): string {
+  const plural = (n: number, unit: string) =>
+    `${n} ${unit}${n === 1 ? "" : "s"}`;
+  const days = Math.floor(sec / 86_400);
+  if (days > 0) return plural(days, "day");
+  const hours = Math.floor(sec / 3_600);
+  if (hours > 0) return plural(hours, "hour");
+  return `${Math.floor(sec / 60)} min`;
+}
+
 function FigureCell({
   text,
   ageSec,
 }: {
   text: string;
-  ageSec: number | null | undefined;
+  ageSec: number | null;
 }) {
   return (
     <Td mono>
@@ -270,40 +323,37 @@ function FigureCell({
   );
 }
 
-function olderAge(...ages: (number | null | undefined)[]): number | null {
-  const known = ages.filter((a): a is number => a != null);
-  return known.length ? Math.max(...known) : null;
-}
-
 const AGE_CLASS = "block mt-0.5 leading-none text-[10px] whitespace-nowrap";
 
-function AgeBadge({ ageSec }: { ageSec: number | null | undefined }) {
-  if (ageSec == null || !Number.isFinite(ageSec) || ageSec < 120) return null;
-  const stale = ageSec >= 600;
+function AgeBadge({ ageSec }: { ageSec: number | null }) {
+  if (!isShownAge(ageSec)) return null;
+  const stale = ageSec >= STALE_AFTER_SEC;
   const color = stale ? "text-bad-text" : "text-amber-700 dark:text-warn";
-  const age = formatAge(Math.floor(ageSec));
+  const age = ageWords(ageSec);
   return (
-    <span
-      className={`${AGE_CLASS} ${color}`}
-      style={{ fontFamily: "var(--font-mono, monospace)" }}
-      title={`Last measured ${age} before the “Data as of” time`}
-    >
-      {`${age} ${stale ? "stale" : "behind"}`}
-    </span>
+    <>
+      {" "}
+      <span
+        className={`${AGE_CLASS} ${color}`}
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+        title={`Measured ${age} before the “Data as of” time`}
+      >
+        {`${age} ${stale ? "stale" : "behind"}`}
+      </span>
+    </>
   );
 }
 
 function VolOiCell({
   ratio,
-  ages,
+  ageSec,
 }: {
   ratio: number | null;
-  ages: PerpVenueRow["figureAgeSec"];
+  ageSec: number | null;
 }) {
   if (ratio == null || !Number.isFinite(ratio)) {
     return <Td mono>...</Td>;
   }
-  const ageSec = olderAge(ages?.volume24h, ages?.openInterest);
   // Same bands as the perp-volume-oi-ratio bench, on 24h volume: 0.3x to
   // 4x is where order books with real holders (0.3x to 3x) and pool or
   // oracle venues (1x to 4x) sit (teal); under 0.3x the volume may be

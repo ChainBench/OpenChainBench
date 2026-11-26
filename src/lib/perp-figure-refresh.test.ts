@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { afterEach, expect, setSystemTime, test } from "bun:test";
 import { stubPrometheus, type PromSample } from "@/test/prometheus-stub";
 import { fetchPerpCohortFresh } from "./perp-stats";
 
@@ -18,9 +18,9 @@ stubPrometheus((query) => {
     return [
       stamp("hyperliquid", "volume_24h", 60),
       stamp("hyperliquid", "volume_30d", 2 * 86_400),
-      stamp("hyperliquid", "oi", 60),
+      stamp("hyperliquid", "oi", 90),
       stamp("hyperliquid", "fees_30d", 7 * 86_400),
-      stamp("hyperliquid", "active_markets", 60),
+      stamp("hyperliquid", "active_markets", 150),
       stamp("gains", "volume_30d", 3_600),
       stamp("gains", "volume_24h", 60),
     ];
@@ -34,22 +34,21 @@ stubPrometheus((query) => {
   return [];
 });
 
+afterEach(() => {
+  setSystemTime();
+});
+
 test("figure ages per venue", async () => {
-  const realNow = Date.now;
-  Date.now = () => NOW * 1000;
-  try {
-    const cohort = await fetchPerpCohortFresh();
-    const row = (slug: string) => cohort?.venues.find((v) => v.slug === slug);
-    expect(row("hyperliquid")?.figureAgeSec).toEqual({
-      volume24h: 60,
-      volume30d: 60,
-      openInterest: 60,
-      fees30d: 7 * 86_400,
-      activeMarkets: 60,
-    });
-    expect(row("gains")?.figureAgeSec?.volume30d).toBe(3_600);
-    expect(row("lighter")?.figureAgeSec).toBeUndefined();
-  } finally {
-    Date.now = realNow;
-  }
+  setSystemTime(new Date(NOW * 1000));
+  const cohort = await fetchPerpCohortFresh();
+  const row = (slug: string) => cohort?.venues.find((v) => v.slug === slug);
+  expect(row("hyperliquid")?.figureAgeSec).toEqual({
+    volume24h: 60,
+    volume30d: 60,
+    openInterest: 90,
+    fees30d: 7 * 86_400,
+    activeMarkets: 150,
+  });
+  expect(row("gains")?.figureAgeSec?.volume30d).toBe(3_600);
+  expect(row("lighter")?.figureAgeSec).toBeUndefined();
 });

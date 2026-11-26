@@ -1,31 +1,11 @@
 // perp-cohort-stats is a Prom-exporter harness that publishes per-venue
 // cohort gauges for the OCB perp benches and product pages.
 //
-//	=== Gauges exposed ==============================================
-//	perp_venue_volume_24h_usd{venue}
-//	perp_venue_volume_30d_usd{venue}
-//	perp_venue_oi_usd{venue}
-//	perp_venue_fees_30d_usd{venue}
-//	perp_venue_active_markets{venue}
-//	perp_venue_top_market_volume_24h_usd{venue}
-//	perp_venue_health{venue}
-//	perp_venue_funding_24h_bps{venue, asset}
-//	perp_venue_funding_interval_hours{venue, asset}
-//	perp_venue_last_refresh_unix{venue, source}
-//	perp_cohort_stats_source_used{venue, metric, source}
-//	perp_cohort_stats_fetch_errors_total{venue, source, error_type}
-//	perp_cohort_stats_data_divergence_total{venue, metric}
-//	perp_cohort_stats_last_tick_unix
-//
 // Architecture is multi-source with a priority router (see adapter.go).
 // Each metric has an ordered list of acceptable sources; the first that
 // returns non-nil wins. The next source in the list is still consulted
 // for cross-check: divergences > 10 percent bump a counter but never
 // gate publication.
-//
-// On full miss (every source for a (venue, metric) failed), the router
-// republishes the last in-memory value but does NOT advance the
-// per-source last_refresh_unix gauge, so the UI can compute true age.
 //
 // HTTP server is fixed at :2112 per the OCB Railway harness convention.
 package main

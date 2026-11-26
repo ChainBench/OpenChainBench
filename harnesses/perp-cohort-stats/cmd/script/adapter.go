@@ -536,13 +536,9 @@ type Router struct {
 	knownCrypto map[string]bool
 	knownRWA    map[string]bool
 
-	cfg     *Config
-	sources []Source
-	now     func() time.Time
-	// carry holds the last successfully published value per (venue,
-	// metric). On a total-miss tick we re-emit the previous value but
-	// do NOT advance perp_venue_last_refresh_unix, so the UI can
-	// compute true data age.
+	cfg        *Config
+	sources    []Source
+	now        func() time.Time
 	carry      map[string]map[string]carryEntry
 	carryMu    sync.Mutex
 	fundCarry  map[string]map[string]fundingCarryEntry
