@@ -695,6 +695,8 @@ const RAW: Record<string, string> = {
   fiatbear: "/logos/fiatbear.png",
   // PerpSlap's site icon (192 px PNG, perpslap.eth.limo/assets/icon-192.png).
   perpslap: "/logos/perpslap.png",
+  // Prow's site icon (prowdex.com/icon.svg).
+  prow: "/logos/prow.svg",
   "nova-markets": "/logos/nova-markets.jpeg",
   "phantom-perps": "/logos/phantom-perps.svg",
   // ─── Terminal fill quality (bench № 268): the wallets' in-app swap ───

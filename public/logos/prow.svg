@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="104" height="104" viewBox="0 0 104 104" fill="none">
+<defs>
+  <linearGradient id="g" x1="26" y1="6.97" x2="78" y2="97.03" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#5A93FF"/><stop offset="0.5" stop-color="#2E6BFF"/><stop offset="1" stop-color="#173FC4"/>
+  </linearGradient>
+  <filter id="b" x="-46" y="-70" width="196" height="126" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="8.84"/></filter>
+<clipPath id="c"><rect width="104" height="104" rx="30.16"/></clipPath></defs>
+<g clip-path="url(#c)">
+  <rect width="104" height="104" fill="url(#g)"/>
+  <ellipse cx="52" cy="-6.76" rx="80.08" ry="45.24" fill="#fff" fill-opacity="0.18" filter="url(#b)"/>
+  <g transform="translate(0 0) scale(1)"><path d="M52 18C37 34 28 54 28 84H52V18Z" fill="#fff"/><path d="M52 18C67 34 76 54 76 84H52V18Z" fill="#BFD1FF"/></g>
+</g>
+<rect x="0.5" y="0.5" width="103" height="103" rx="29.66" fill="none" stroke="#fff" stroke-opacity="0.22"/>
+</svg>
