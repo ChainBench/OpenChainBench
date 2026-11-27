@@ -779,5 +779,12 @@
     "address": "0xe7cc5aeb5d88913305fccb9ada23b355e5dc882d",
     "valid_from": "2026-11-20",
     "notes": "PerpSlap (https://perpslap.eth.limo), a Hyperliquid perpetuals frontend. Builder fee: 5 bps (0.05%). First confirmed public builder_fills archive: 2026-11-20; no earlier accessible archive was found in daily probes from 2026-10-01 through 2026-11-19."
+  },
+  {
+    "slug": "prow",
+    "name": "Prow",
+    "address": "0xf9fc41ce1dd210f0141401b325ae35e881f7dd35",
+    "valid_from": "2026-10-19",
+    "notes": "Prow (https://prowdex.com), a non-custodial web app for trading perps on Hyperliquid, Aster and Lighter, with trading bots and prediction markets. Builder fee is 0% until 2026-12-31 and 0.025% per trade from 2027-01-01 (https://prowdex.com/docs/fees/fees). First accessible public builder_fills archive: 2026-10-19 (earlier days probed back to 2026-07-30 return 403). Volume is very small so far."
   }
 ]
