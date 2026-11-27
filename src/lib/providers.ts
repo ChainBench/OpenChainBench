@@ -1087,7 +1087,9 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v211.
   // v81: PerpSlap is new to the site (bench 030 builder).
   //      Lockstep with bench-unfiltered-v213.
-  ["providers-v81"],
+  // v82: Prow is new to the site (bench 030 builder).
+  //      Lockstep with bench-unfiltered-v214.
+  ["providers-v82"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
