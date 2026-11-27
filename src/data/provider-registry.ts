@@ -2379,6 +2379,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "PerpSlap is a Hyperliquid screener and trading frontend served from ENS: it screens public Hyperliquid wallet performance, makes trade cards and bridges Arbitrum USDC; the perp orders it places carry its builder code at 0.05% of notional.",
   },
+  prow: {
+    url: "https://prowdex.com",
+    description:
+      "Prow is a non-custodial web app for trading perps on Hyperliquid, Aster and Lighter from one account, with trading bots and prediction markets; the Hyperliquid orders it places carry its builder code.",
+    twitter: "@prowdexcom",
+  },
 
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
