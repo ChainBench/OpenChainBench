@@ -156,10 +156,19 @@ var (
 		},
 		[]string{"venue", "asset"},
 	)
+	perpVenueMetricRefreshUnix = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_venue_metric_refresh_unix",
+			Help: "Unix time of the last tick a source produced this (venue, metric); " +
+				"a carried-forward figure keeps its stamp.",
+		},
+		[]string{"venue", "metric"},
+	)
 	perpVenueLastRefreshUnix = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_last_refresh_unix",
-			Help: "Unix timestamp of the last successful refresh for a (venue, source) pair. On total-miss ticks the carry-forward keeps the gauge value but does NOT advance this timestamp, so the UI can compute true data age.",
+			Help: "Unix timestamp of the last successful refresh " +
+				"for a (venue, source) pair.",
 		},
 		[]string{"venue", "source"},
 	)
@@ -202,7 +211,7 @@ func init() {
 		perpVenueTvlUsd,
 		perpLeverageMax, perpLiqPriceMovePct, perpLiqCollateralLostPct, perpLiqCollateralKeptPct,
 		perpVenueHealth, perpVenueFunding24hBps, perpVenueFundingIntervalHours,
-		perpVenueFundingRefreshUnix, perpVenueLastRefreshUnix,
+		perpVenueFundingRefreshUnix, perpVenueLastRefreshUnix, perpVenueMetricRefreshUnix,
 		perpCohortFetchErrors, perpCohortSourceUsed, perpCohortDataDivergence,
 		perpCohortLastTickUnix,
 	)

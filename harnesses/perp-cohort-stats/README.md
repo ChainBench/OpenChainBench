@@ -28,6 +28,7 @@ reads on every SSR render of the perp pages.
 Plus observability:
 
 - `perp_venue_last_refresh_unix{venue, source}`
+- `perp_venue_metric_refresh_unix{venue, metric}` (the age the /perps leaderboard shows per figure)
 - `perp_cohort_stats_source_used{venue, metric, source}` (1 for the source that served the value)
 - `perp_cohort_stats_fetch_errors_total{venue, source, error_type}`
 - `perp_cohort_stats_data_divergence_total{venue, metric}`
@@ -73,7 +74,8 @@ proxy layer and the harness ignores it.
   in the priority list for that (venue, metric).
 - Full miss for a (venue, metric) -> in-memory carry-forward
   republishes the last known value but does NOT advance
-  `perp_venue_last_refresh_unix`, so the UI can compute true age.
+  `perp_venue_last_refresh_unix` or `perp_venue_metric_refresh_unix`,
+  so the UI can compute each figure's true age.
 - Cross-check between primary and secondary: when both return non-zero
   and disagree by more than 10 percent, increment
   `perp_cohort_stats_data_divergence_total{venue, metric}`. Publication

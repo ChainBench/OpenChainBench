@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -87,6 +87,10 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
     });
   }, [rows, sortKey, sortDir, q]);
 
+  const showsAgeLegend = filtered.some((r) =>
+    Object.values(shownAges(r, ratio(r))).some(isShownAge),
+  );
+
   const setSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -102,7 +106,8 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
           className="text-[11px] text-ink-faint"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
-          {filtered.length} of {rows.length} venues
+          {filtered.length} of {rows.length} venues.
+          {showsAgeLegend && AGE_LEGEND}
         </p>
         <input
           type="search" aria-label="Search venue or chain..."
@@ -182,6 +187,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
             {filtered.map((r, i) => {
               const productHref = `/products/${perpProductSlug(r.slug)}#perp`;
               const vor = ratio(r);
+              const ages = shownAges(r, vor);
               return (
                 <tr
                   key={r.slug}
@@ -205,7 +211,6 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                       <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
                         {r.name}
                       </span>
-                      <AgeBadge ts={r.lastRefreshUnix} />
                       <ChevronRight
                         size={14}
                         className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -213,13 +218,22 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                     </Link>
                   </Td>
                   <Td muted>{r.chain}</Td>
-                  <Td mono>{fmtUSD(r.volume30d)}</Td>
-                  <Td mono>{fmtUSD(r.openInterest)}</Td>
-                  <Td mono>{fmtUSD(r.fees30d)}</Td>
+                  <FigureCell
+                    text={fmtUSD(r.volume30d)}
+                    ageSec={ages.volume30d}
+                  />
+                  <FigureCell
+                    text={fmtUSD(r.openInterest)}
+                    ageSec={ages.openInterest}
+                  />
+                  <FigureCell text={fmtUSD(r.fees30d)} ageSec={ages.fees30d} />
                   <Td mono>{fmtBps(r.allInFeeBpsEth)}</Td>
                   <Td mono>{fmtBpsSigned(r.funding24hBpsEth)}</Td>
-                  <VolOiCell ratio={vor} />
-                  <Td mono>{fmtCount(r.activeMarkets)}</Td>
+                  <VolOiCell ratio={vor} ageSec={ages.volOi} />
+                  <FigureCell
+                    text={fmtCount(r.activeMarkets)}
+                    ageSec={ages.activeMarkets}
+                  />
                   <Td mono>{fmtPct(r.health)}</Td>
                 </tr>
               );
@@ -241,82 +255,102 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
   );
 }
 
-/**
- * Tiny freshness pill that flags stale rows on the leaderboard. Hidden
- * when the harness has not published a refresh stamp (ts === null) or
- * when the row is younger than 2 minutes (within one Prom scrape).
- * Amber between 2 and 10 minutes, red beyond. Renders inline with the
- * venue name so the operator sees freeze/downtime at a glance without
- * scanning a sidecar column.
- */
-function AgeBadge({ ts }: { ts: number | null }) {
-  // Subscribe to a 30s wall-clock tick via `useSyncExternalStore`. The
-  // server snapshot returns null, which keeps SSR output empty and
-  // sidesteps any hydration mismatch from server-vs-client clock skew.
-  // The client subscription pushes a fresh `Date.now()` every 30s and
-  // satisfies React's react-hooks/set-state-in-effect rule because no
-  // setState ever runs inside an effect body.
-  const nowSec = useSyncExternalStore(
-    subscribeWallClock,
-    getClientNowSec,
-    getServerNowSec,
-  );
-  if (nowSec == null || ts == null || !Number.isFinite(ts)) return null;
-  const ageSec = nowSec - ts;
-  if (ageSec < 120) return null;
-  const ageMin = Math.floor(ageSec / 60);
-  const stale = ageSec >= 600;
-  const iso = new Date(ts * 1000).toISOString();
-  const label = stale ? `${ageMin}m stale` : `${ageMin}m ago`;
-  const color = stale ? "text-red-500" : "text-amber-500";
-  return (
-    <span
-      className={`label-mono text-[9.5px] uppercase tracking-wide shrink-0 ${color}`}
-      style={{ fontFamily: "var(--font-mono, monospace)" }}
-      title={`Data last refreshed by harness at ${iso}`}
-    >
-      {label}
-    </span>
-  );
-}
+const BEHIND_AFTER_SEC = 120;
+const STALE_AFTER_SEC = 600;
 
-/**
- * Tiny wall-clock store consumed by AgeBadge through
- * `useSyncExternalStore`. Updates every 30 seconds; one shared
- * setInterval covers every mounted badge so a hundred rows do not
- * spin up a hundred timers. Returns null on the server so SSR output
- * stays free of clock-dependent text.
- */
-let wallClockNowSec = Math.floor(Date.now() / 1000);
-const wallClockListeners = new Set<() => void>();
-let wallClockTimer: ReturnType<typeof setInterval> | null = null;
+const AGE_LEGEND =
+  " Under Vol 30d, OI, Fees 30d, Vol/OI and Markets: how long before " +
+  "“Data as of” the figure was measured, “behind” in amber from " +
+  `${BEHIND_AFTER_SEC / 60} min, “stale” in red from ` +
+  `${STALE_AFTER_SEC / 60} min.`;
 
-function subscribeWallClock(cb: () => void): () => void {
-  wallClockListeners.add(cb);
-  if (wallClockTimer == null && typeof window !== "undefined") {
-    wallClockTimer = setInterval(() => {
-      wallClockNowSec = Math.floor(Date.now() / 1000);
-      for (const fn of wallClockListeners) fn();
-    }, 30_000);
-  }
-  return () => {
-    wallClockListeners.delete(cb);
-    if (wallClockListeners.size === 0 && wallClockTimer != null) {
-      clearInterval(wallClockTimer);
-      wallClockTimer = null;
-    }
+type ShownAges = {
+  volume30d: number | null;
+  openInterest: number | null;
+  fees30d: number | null;
+  volOi: number | null;
+  activeMarkets: number | null;
+};
+
+function shownAges(r: PerpVenueRow, volOi: number | null): ShownAges {
+  const a = r.figureAgeSec;
+  const ifShown = (value: number | null, age: number | null | undefined) =>
+    value == null ? null : (age ?? null);
+  return {
+    volume30d: ifShown(r.volume30d, a?.volume30d),
+    openInterest: ifShown(r.openInterest, a?.openInterest),
+    fees30d: ifShown(r.fees30d, a?.fees30d),
+    volOi: ifShown(volOi, olderAge(a?.volume24h, a?.openInterest)),
+    activeMarkets: ifShown(r.activeMarkets, a?.activeMarkets),
   };
 }
 
-function getClientNowSec(): number {
-  return wallClockNowSec;
+function olderAge(...ages: (number | null | undefined)[]): number | null {
+  const known = ages.filter((a): a is number => a != null);
+  return known.length ? Math.max(...known) : null;
 }
 
-function getServerNowSec(): null {
-  return null;
+function isShownAge(ageSec: number | null): ageSec is number {
+  return (
+    ageSec != null &&
+    Number.isFinite(ageSec) &&
+    ageSec >= BEHIND_AFTER_SEC
+  );
 }
 
-function VolOiCell({ ratio }: { ratio: number | null }) {
+function ageWords(sec: number): string {
+  const plural = (n: number, unit: string) =>
+    `${n} ${unit}${n === 1 ? "" : "s"}`;
+  const days = Math.floor(sec / 86_400);
+  if (days > 0) return plural(days, "day");
+  const hours = Math.floor(sec / 3_600);
+  if (hours > 0) return plural(hours, "hour");
+  return `${Math.floor(sec / 60)} min`;
+}
+
+function FigureCell({
+  text,
+  ageSec,
+}: {
+  text: string;
+  ageSec: number | null;
+}) {
+  return (
+    <Td mono>
+      {text}
+      <AgeBadge ageSec={ageSec} />
+    </Td>
+  );
+}
+
+const AGE_CLASS = "block mt-0.5 leading-none text-[10px] whitespace-nowrap";
+
+function AgeBadge({ ageSec }: { ageSec: number | null }) {
+  if (!isShownAge(ageSec)) return null;
+  const stale = ageSec >= STALE_AFTER_SEC;
+  const color = stale ? "text-bad-text" : "text-amber-700 dark:text-warn";
+  const age = ageWords(ageSec);
+  return (
+    <>
+      {" "}
+      <span
+        className={`${AGE_CLASS} ${color}`}
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+        title={`Measured ${age} before the “Data as of” time`}
+      >
+        {`${age} ${stale ? "stale" : "behind"}`}
+      </span>
+    </>
+  );
+}
+
+function VolOiCell({
+  ratio,
+  ageSec,
+}: {
+  ratio: number | null;
+  ageSec: number | null;
+}) {
   if (ratio == null || !Number.isFinite(ratio)) {
     return <Td mono>...</Td>;
   }
@@ -352,6 +386,7 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
           ? `${ratio.toFixed(1)}x`
           : `${Math.round(ratio).toLocaleString("en-US")}x`}
       </span>
+      <AgeBadge ageSec={ageSec} />
     </td>
   );
 }
